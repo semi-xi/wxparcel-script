@@ -1,0 +1,46 @@
+{
+  "name": "wxparcel-script",
+  "version": "1.0.0",
+  "license": "MIT",
+  "bin": "./bin/cli",
+  "main": "./libs/index.js",
+  "lint-staged": {
+    "*.js": [
+      "npm run lint",
+      "git add"
+    ]
+  },
+  "scripts": {
+    "eslint": "eslint --config .eslintrc.js --ext .js --fix './**/*.js'",
+    "lint": "npm run eslint",
+    "precommit": "lint-staged",
+    "develop": "babel ./src --out-dir ./libs --watch",
+    "product": "babel ./src --out-dir ./libs",
+    "start": "npm run develop"
+  },
+  "dependencies": {
+    "babel-register": "^6.26.0",
+    "colors": "^1.3.0",
+    "columnify": "^1.5.4",
+    "commander": "^2.16.0",
+    "detect-port": "^1.2.3",
+    "fs-extra": "^6.0.1",
+    "ip": "^1.1.5",
+    "lodash": "^4.17.10",
+    "strip-comments": "^1.0.2"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^8.2.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "eslint": "^4.14.0",
+    "eslint-config-standard": "^11.0.0-beta.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-node": "^5.2.1",
+    "eslint-plugin-promise": "^3.6.0",
+    "eslint-plugin-standard": "^3.0.1",
+    "husky": "^0.14.3",
+    "lint-staged": "^7.2.0"
+  }
+}
