@@ -2,12 +2,16 @@ import fs from 'fs-extra'
 import path from 'path'
 import colors from 'colors'
 import chokidar from 'chokidar'
+import waterfall from 'async/waterfall'
+import map from 'lodash/map'
 import flatten from 'lodash/flatten'
 import forEach from 'lodash/forEach'
+import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets from './assets'
 import Parser from './parser'
 import Printer from './printer'
+import Package from '../package.json'
 
 const JSON_REGEXP = /\.json$/
 const JS_REGEXP = /\.js$/
@@ -17,29 +21,19 @@ const WXSS_REGEXP = /\.wxss$/
 export default class Parcel {
   constructor () {
     this.running = false
-    this.parsing = false
-    this.isReady = false
+    this.paddingTask = null
+  }
 
-    let appConfFile = path.join(OptionManager.outDir, './app.json')
-    let projectConfFile = path.join(OptionManager.outDir, './project.config.json')
+  _buildAppConf (config) {
+    let { outDir } = OptionManager
+    let appConfFile = path.join(outDir, './app.json')
+    return writeJsonFile(appConfFile, config).then(() => appConfFile)
+  }
 
-    let mkConfigFile = (file, config) => {
-      fs.ensureFileSync(file)
-      fs.writeFileSync(file, JSON.stringify(config, null, 2))
-    }
-
-    mkConfigFile(appConfFile, OptionManager.appConfig)
-    mkConfigFile(projectConfFile, OptionManager.projectConfig)
-
-    OptionManager.watchAppConfigChanged(({ config }) => {
-      mkConfigFile(appConfFile, config)
-      Printer.trace(colors.cyan(`${colors.bold(appConfFile)} is updated`))
-    })
-
-    OptionManager.watchProjectConfigChanged(({ config }) => {
-      mkConfigFile(projectConfFile, config)
-      Printer.info(colors.cyan(`${colors.bold(projectConfFile)} is updated`))
-    })
+  _buildProjConf (config) {
+    let { outDir } = OptionManager
+    let projectConfFile = path.join(outDir, './project.config.json')
+    return writeJsonFile(projectConfFile, config).then(() => projectConfFile)
   }
 
   run () {
@@ -49,6 +43,7 @@ export default class Parcel {
     }
 
     this.running = true
+    Printer.time()
 
     let entries = this.findAllEntries()
     let components = entries.map(({ files }) => {
@@ -60,112 +55,102 @@ export default class Parcel {
 
     let modules = [].concat(entries, components)
     let files = modules.map((entry) => entry.files)
+    files = flatten(files)
 
-    let transform = (files) => {
-      return this.transform(files).then((chunks) => {
-        if (!Array.isArray(chunks) || chunks.length === 0) {
-          return Promise.resolve()
-        }
+    return this.transform(files, OptionManager).then((assets) => {
+      let { appConfig, projectConfig } = OptionManager
+      let initTasks = [
+        this._buildAppConf(appConfig),
+        this._buildProjConf(projectConfig)
+      ]
 
-        let promises = []
-        chunks.forEach(({ file, source, ...options }) => {
-          /**
-           * 重复编译的文件将忽略
-           */
-          if (Assets.exists(file)) {
-            return
-          }
+      return Promise.all(initTasks).then((files) => {
+        let [appFile, projFile] = files
+        let confStats = []
+        let stats = fs.statSync(appFile)
+        confStats.push({ assets: appFile, size: stats.size })
 
-          Assets.add(file, options)
+        stats = fs.statSync(projFile)
+        confStats.push({ assets: projFile, size: stats.size })
 
-          /**
-           * 这里依赖必须跟随每一个文件,
-           * 因此这里必须独立每一个运行不能统一执行
-           */
-          let { dependencies } = options
-          if (Array.isArray(dependencies) && dependencies.length > 0) {
-            dependencies = dependencies.filter(({ dependency, destination }) => {
-              let extname = path.extname(destination)
-              /**
-               * 过滤没有后缀的文件
-               */
-              if (extname !== '' && !/\.js/.test(extname)) {
-                return false
-              }
+        return this.flush(assets).then((stats) => {
+          stats = confStats.concat(stats)
+          stats.spendTime = Printer.timeEnd()
 
-              /**
-               * 过滤系统依赖
-               */
-              if (dependency === path.basename(dependency)) {
-                return false
-              }
-
-              return true
-            })
-
-            let files = dependencies.map(({ dependency }) => dependency)
-            let promise = transform(files)
-            promises.push(promise)
-
-            /**
-             * 这里需要更改原依赖文件的路径
-             * require('./a.js') => require('dist/path/a.js')
-             * require('lodash/get') => require('dist/path/lodash/get')
-             */
-            promise.then(() => {
-              let chunk = Assets.getChunk(file)
-              if (!chunk) {
-                return
-              }
-
-              let directory = path.dirname(chunk.destination)
-              let changeRoutes = (source) => {
-                let code = source.toString()
-
-                dependencies.forEach(({ destination, required }) => {
-                  let relativePath = path.relative(directory, destination)
-                  if (relativePath.charAt(0) !== '.') {
-                    relativePath = `./${relativePath}`
-                  }
-
-                  relativePath = relativePath.replace('node_modules', OptionManager.npmDir)
-
-                  let origin = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
-                  let target = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
-                  code = code.replace(origin, target)
-                })
-
-                return Buffer.from(code)
-              }
-
-              chunk.pipe(Parser.transform(changeRoutes))
-            })
-          }
+          this.printStats(stats)
+          this.running = false
         })
-
-        if (promises.length > 0) {
-          return Promise.all(promises)
-        }
-
-        return Promise.resolve()
       })
-    }
-
-    transform(flatten(files)).then(() => this.flush())
+    })
   }
 
   watch () {
-    let handleFileChange = (path) => {
-      if (this.isReady === false || this.parsing === false) {
-        // @todo 堆栈
+    OptionManager.watch()
+
+    OptionManager.watchAppConfigChanged(({ config }) => {
+      this._buildAppConf(config).then((file) => {
+        Printer.trace(colors.cyan(`${colors.bold(file)} is updated`))
+      })
+    })
+
+    OptionManager.watchProjectConfigChanged(({ config }) => {
+      this._buildProjConf(config).then((file) => {
+        Printer.info(colors.cyan(`${colors.bold(file)} is updated`))
+      })
+    })
+
+    let handleFileChange = (file) => {
+      let { appConfigFile, projectConfigFile } = OptionManager
+      if ([appConfigFile, projectConfigFile].indexOf(file) !== -1) {
         return
       }
+
+      if (!Assets.exists(file)) {
+        return
+      }
+
+      let { rootDir } = OptionManager
+      let relativePath = colors.bold(file.replace(rootDir, ''))
+      Printer.info(`Source file ${relativePath} has been changed, compiling...`)
+
+      let compile = () => {
+        this.running = true
+
+        Printer.time()
+
+        let { chunk } = Assets.get(file)
+        return this.transformChunkToMetadataForTask(chunk)
+          .then((metadata) => {
+            let dependencies = metadata.dependencies || []
+            if (!Array.isArray(dependencies) || dependencies.length === 0) {
+              return [metadata]
+            }
+
+            let files = dependencies.map((item) => item.dependency)
+            return this.transform(files).then((assets) => [metadata, ...assets])
+          })
+          .then((assets) => this.flush(assets))
+          .then((stats) => {
+            stats.spendTime = Printer.timeEnd()
+
+            this.printStats(stats)
+            this.running = false
+
+            this.excutePaddingTask()
+          })
+      }
+
+      if (this.running === true) {
+        this.paddingTask = compile.bind(this)
+        return
+      }
+
+      compile()
     }
 
-    let handleFileUnlink = (path) => {
-      if (this.isReady === false || this.parsing === false) {
-        // @todo 堆栈
-        return
+    let handleFileUnlink = (file) => {
+      if (this.running === false || this.parsing === false) {
+
       }
     }
 
@@ -188,53 +173,95 @@ export default class Parcel {
     process.on('SIGINT', handleProcessSigint)
   }
 
-  flush () {
-    let { assets } = Assets
-    let promises = assets.map(({ chunk }) => new Promise((resolve, reject) => {
-      let { destination, stream } = chunk
-      fs.ensureFileSync(destination)
+  excutePaddingTask () {
+    if (typeof this.paddingTask === 'function') {
+      this.paddingTask()
+      this.paddingTask = undefined
+    }
+  }
 
-      let writableStream = fs.createWriteStream(destination)
+  flush (assets) {
+    if (!Array.isArray(assets) || assets.length === 0) {
+      throw new TypeError('Assets is not a array or not be provided or be empty')
+    }
 
-      let size = 0
-      stream.on('data', (buffer) => {
-        size += buffer.byteLength
+    let promises = assets.map(({ destination, source }) => {
+      return new Promise((resolve, reject) => {
+        let queue = [
+          fs.ensureFile.bind(fs, destination),
+          fs.writeFile.bind(fs, destination, source)
+        ]
+
+        waterfall(queue, (error) => {
+          if (error) {
+            reject(error)
+            return
+          }
+
+          let stats = fs.statSync(destination)
+          resolve({ assets: destination, size: stats.size })
+        })
       })
-
-      stream.on('error', (error) => {
-        reject(error)
-        stream.end()
-      })
-
-      writableStream.on('finish', () => {
-        let stats = {
-          assets: destination,
-          size: size
-        }
-
-        resolve(stats)
-      })
-
-      writableStream.on('error', (error) => {
-        reject(error)
-        writableStream.end()
-      })
-
-      stream.pipe(writableStream)
-    }))
+    })
 
     return Promise.all(promises)
   }
 
-  transform (files) {
-    let { rules } = OptionManager
-    let promises = files.map((file) => {
-      let rulesToFile = rules.filter(({ test: pattern }) => pattern.test(file))
-      let rule = rulesToFile[0]
-      return Parser.parse(file, rule)
+  transform (files, options = OptionManager, assets = []) {
+    return this._transform(files).then((metadata) => {
+      assets.push(...metadata)
+
+      let tasks = []
+      metadata.forEach((data) => {
+        let { dependencies } = data
+        if (!Array.isArray(dependencies) || dependencies.length === 0) {
+          return
+        }
+
+        let files = dependencies.map((item) => item.dependency)
+        tasks.push(this.transform(files, options, assets))
+      })
+
+      return Promise.all(tasks).then(() => assets)
+    })
+  }
+
+  _transform (files, options = OptionManager) {
+    if (!Array.isArray(files) || files.length === 0) {
+      throw new TypeError('Files is not a array or not provided or is empty')
+    }
+
+    let chunks = []
+    files.forEach((file) => {
+      if (Assets.exists(file)) {
+        return
+      }
+
+      let rule = this.matchRule(file, options.rules)
+      let { chunk } = Assets.add(file, { rule })
+      chunk && chunks.push(chunk)
     })
 
+    return this.transformChunksToMetadataForTask(chunks)
+  }
+
+  transformChunkToMetadataForTask (chunk) {
+    let { file, rule, destination } = chunk
+    return Parser.compile(file, rule).then((source) => {
+      return Parser.resolve(source, file, OptionManager).then((metadata) => {
+        return { ...metadata, destination, rule }
+      })
+    })
+  }
+
+  transformChunksToMetadataForTask (chunks) {
+    let transform = this.transformChunkToMetadataForTask.bind(this)
+    let promises = chunks.map(transform)
     return Promise.all(promises)
+  }
+
+  matchRule (file, rules = []) {
+    return rules.find(({ test: pattern }) => pattern.test(file))
   }
 
   findAllEntries () {
@@ -297,13 +324,13 @@ export default class Parcel {
 
       let tester = [JSON_REGEXP, JS_REGEXP, WXML_REGEXP, WXSS_REGEXP]
       let index = tester.findIndex((regexp) => regexp.test(file))
-      if (-1 !== index) {
+      if (index !== -1) {
         return true
       }
 
       if (Array.isArray(OptionManager.rules)) {
         let index = OptionManager.rules.findIndex((rule) => rule.test.test(file))
-        if (-1 !== index) {
+        if (index !== -1) {
           return true
         }
       }
@@ -318,7 +345,7 @@ export default class Parcel {
       throw new Error('Paths is not a array or not be provided')
     }
 
-    for (let i = paths.length; i --;) {
+    for (let i = paths.length; i--;) {
       let dir = paths[i]
       let target = path.join(dir, file)
 
@@ -329,4 +356,50 @@ export default class Parcel {
 
     return false
   }
+
+  printStats (stats, watching = OptionManager.watching) {
+    let { rootDir, srcDir } = OptionManager
+
+    let statsFormatter = stats.map(({ assets, size }) => {
+      assets = assets.replace(rootDir, '.')
+      return { assets, size }
+    })
+
+    let warning = map(stats.conflict, (dependency, file) => {
+      file = file.replace(rootDir, '')
+      dependency = dependency.replace(rootDir, '')
+      return `-> ${file} ${colors.gray('reqiured')} ${dependency}`
+    })
+
+    Printer.push('')
+    Printer.push(`${capitalize(Package.name).replace(/-(\w)/g, (_, $1) => $1.toUpperCase())} Version at ${colors.cyan.bold(Package.version)}`)
+    Printer.push(`${colors.gray('Time:')} ${colors.bold(colors.white(stats.spendTime))}ms\n`)
+    Printer.push(Printer.formatStats(statsFormatter))
+    Printer.push('')
+
+    watching && Printer.push(`✨ Open your ${colors.magenta.bold('WeChat Develop Tool')} to serve`)
+    watching && Printer.push(`✨ Watching folder ${colors.white.bold(srcDir)}, cancel at ${colors.white.bold('Ctrl + C')}`)
+    Printer.push('')
+
+    if (warning.length > 0) {
+      Printer.push(colors.yellow.bold('Some below files required each other, it maybe occur circular reference error in WeChat Mini Program'))
+      Printer.push(warning.join('\n'))
+      Printer.push('')
+    }
+
+    Printer.flush()
+  }
+}
+
+const writeJsonFile = function (file, source) {
+  return new Promise((resolve, reject) => {
+    source = JSON.stringify(source, null, 2)
+
+    let queue = [
+      fs.ensureFile.bind(fs, file),
+      fs.writeFile.bind(fs, file, source)
+    ]
+
+    waterfall(queue, (error) => error ? reject(error) : resolve())
+  })
 }

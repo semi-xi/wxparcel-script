@@ -4,33 +4,33 @@
 export let JSRule = {
   test: /\.js$/,
   extname: '.js',
-  // loaders: [
-  //   {
-  //     use: require.resolve('../loaders/babel'),
-  //     options: {}
-  //   },
-  //   {
-  //     use: require.resolve('../loaders/envify'),
-  //     options: {
-  //       env: {
-  //         NODE_ENV: 'production'
-  //       }
-  //     }
-  //   },
-  //   {
-  //     use: require.resolve('../loaders/linkage'),
-  //     options: {}
-  //   },
-  //   {
-  //     use: require.resolve('../loaders/file'),
-  //     options: {}
-  //   }
-  // ]
+  loaders: [
+    {
+      use: require.resolve('../loaders/wxparcel-babel-loader'),
+      options: {}
+    }
+    // {
+    //   use: require.resolve('../loaders/envify'),
+    //   options: {
+    //     env: {
+    //       NODE_ENV: 'production'
+    //     }
+    //   }
+    // },
+    // {
+    //   use: require.resolve('../loaders/linkage'),
+    //   options: {}
+    // },
+    // {
+    //   use: require.resolve('../loaders/file'),
+    //   options: {}
+    // }
+  ]
 }
 
 export let CSSRule = {
   test: /\.scss$/,
-  extname: '.wxss',
+  extname: '.wxss'
   // loaders: [
   //   {
   //     use: require.resolve('../loaders/sass'),
@@ -44,7 +44,7 @@ export let CSSRule = {
 }
 
 export let HTMLRule = {
-  test: /\.wxml$/,
+  test: /\.wxml$/
   // loaders: [
   //   {
   //     use: require.resolve('../loaders/file'),
@@ -54,7 +54,7 @@ export let HTMLRule = {
 }
 
 export let WXSRule = {
-  test: /\.wxs$/,
+  test: /\.wxs$/
   // loaders: [
   //   {
   //     use: require.resolve('../loaders/file'),
@@ -63,11 +63,12 @@ export let WXSRule = {
   // ]
 }
 
-export let Rules = [JSRule, CSSRule, HTMLRule, WXSRule]
+// export let Rules = [JSRule, CSSRule, HTMLRule, WXSRule]
+export let Rules = [JSRule]
 
 export let Plugins = [
-  new CleanerPlugin(),
-  new SpritesmithPlugin()
+  // new CleanerPlugin(),
+  // new SpritesmithPlugin()
 ]
 
 export default {

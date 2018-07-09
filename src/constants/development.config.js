@@ -1,4 +1,4 @@
-import Config, { Plugins } from './common.config'
+import Config from './common.config'
 // import StaticServerPlugin from '../plugins/staticServer'
 
 // Plugins.push(new StaticServerPlugin())

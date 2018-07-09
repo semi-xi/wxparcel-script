@@ -18,6 +18,11 @@ export class Assets {
     return assets
   }
 
+  update (file, options = {}) {
+    let { chunk } = this.get(file) || {}
+    chunk && chunk.update(options)
+  }
+
   get (file) {
     let index = this.index(file)
     return index !== -1 ? this.assets[index] : null

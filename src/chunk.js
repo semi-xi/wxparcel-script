@@ -1,5 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
+import isPlainObject from 'lodash/isPlainObject'
 import optionManager from './option-manager'
 
 export class Chunk {
@@ -13,14 +14,13 @@ export class Chunk {
     }
 
     this.file = file
-    this.stream = options.stream || null
     this.dependencies = options.dependencies || []
 
     let { rootDir, srcDir, outDir, npmDir, staticDir } = optionManager
     let { rule, destination } = this.options = options
 
-    rule = rule || {}
-    destination = destination || ''
+    rule = this.rule = rule || {}
+    destination = this.destination = destination || ''
 
     if (destination) {
       if (rule.extname) {
@@ -30,8 +30,7 @@ export class Chunk {
 
         filename = filename.replace(extname, rule.extname)
         this.destination = path.join(dirname, filename)
-      }
-      else {
+      } else {
         this.destination = destination
       }
     } else {
@@ -56,11 +55,21 @@ export class Chunk {
     }
   }
 
-  pipe (transform) {
-    return new Promise((resolve, reject) => {
-      this.stream = this.stream.pipe(transform)
-      this.stream.on('finish', resolve.bind(null, this))
-      this.stream.on('error', reject.bind(null))
-    })
+  update (props = {}) {
+    if (props.hasOwnProperty('file') && typeof props.file === 'string') {
+      this.file = props.file
+    }
+
+    if (props.hasOwnProperty('dependencies') && Array.isArray(props.dependencies)) {
+      this.dependencies = props.dependencies
+    }
+
+    if (props.hasOwnProperty('rule') && isPlainObject(props.rule)) {
+      this.rule = props.rule
+    }
+
+    if (props.hasOwnProperty('destination') && typeof props.destination === 'string') {
+      this.destination = props.destination
+    }
   }
 }

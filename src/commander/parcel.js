@@ -12,7 +12,10 @@ const run = function (options) {
     throw new TypeError('找不到配置文件配置')
   }
 
-  configFile = path.join(OptionManager.rootDir, configFile)
+  if (!path.isAbsolute(configFile)) {
+    configFile = path.join(OptionManager.rootDir, configFile)
+  }
+
   if (!fs.existsSync(configFile)) {
     throw new Error(`配置文件不存在, 请检查配置文件, ${configFile}`)
   }
@@ -30,28 +33,37 @@ const run = function (options) {
 
   let parcel = new Parcel()
   parcel.run()
+
+  if (options.watch) {
+    OptionManager.watching = !!options.watch
+    parcel.watch()
+  }
 }
 
 program
-.command('development')
-.description('构建微信小程序(开发模式)')
-.option('-c, --config <config>', '设置配置文件')
-.option('-w, --watch <watch>', '监听文件变更')
-.action(function (options) {
-  options = defaultsDeep({}, options, {
-    config: path.join(__dirname, '../constants/development.config'),
-    watch: true
-  })
+  .command('development')
+  .description('构建微信小程序(开发模式)')
+  .option('-c, --config <config>', '设置配置文件')
+  .option('-w, --watch <watch>', '监听文件变更')
+  .action(function (options) {
+    if (options.hasOwnProperty('watch')) {
+      options.watch = options.watch === 'true'
+    }
 
-  run(options)
-})
+    options = defaultsDeep({}, options, {
+      config: path.join(__dirname, '../constants/development.config.js'),
+      watch: true
+    })
+
+    run(options)
+  })
 
 program
-.command('production')
-.description('构建微信小程序(生产模式)')
-.option('-c, --config', '设置配置文件')
-.action(function (options) {
-  options = defaultsDeep({}, options, {
-    config: path.join(__dirname, '../constants/production.config')
+  .command('production')
+  .description('构建微信小程序(生产模式)')
+  .option('-c, --config', '设置配置文件')
+  .action(function (options) {
+    options = defaultsDeep({}, options, {
+      config: path.join(__dirname, '../constants/production.config.js')
+    })
   })
-})

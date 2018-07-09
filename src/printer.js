@@ -5,6 +5,7 @@ import columnify from 'columnify'
 export class Printer {
   constructor () {
     this.silence = process.argv.findIndex((argv) => argv === '--quiet')
+    this.messages = []
   }
 
   /**
@@ -66,6 +67,27 @@ export class Printer {
    */
   trace (message) {
     this.silence !== true && console.log(message)
+  }
+
+  /**
+   * 开始计时
+   */
+  time () {
+    this.startTime = Date.now()
+  }
+
+  /**
+   * 结束计时并返回所花时间
+   * @return {Number} 所花时间
+   */
+  timeEnd () {
+    if (!this.startTime) {
+      this.warn('Please excute \'time()\' first')
+    }
+
+    let spendTime = Date.now() - this.startTime
+    this.startTime = NaN
+    return spendTime
   }
 
   /**
