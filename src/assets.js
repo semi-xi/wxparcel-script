@@ -1,7 +1,7 @@
 import findIndex from 'lodash/findIndex'
 import { Chunk } from './chunk'
 
-export class Assets {
+export default class Assets {
   constructor () {
     this.assets = []
   }
@@ -52,5 +52,3 @@ export class Assets {
     this.assets = []
   }
 }
-
-export default new Assets()

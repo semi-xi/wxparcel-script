@@ -11,7 +11,7 @@
     ]
   },
   "scripts": {
-    "eslint": "eslint --config .eslintrc.js --ext .js --fix './**/*.js'",
+    "eslint": "eslint --config .eslintrc.js --ext .js --fix './src/**/*.js'",
     "lint": "npm run eslint",
     "precommit": "lint-staged",
     "develop": "babel ./src --out-dir ./libs --watch",

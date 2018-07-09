@@ -5,9 +5,124 @@ import isEmpty from 'lodash/isEmpty'
 import waterfall from 'async/waterfall'
 import stripComments from 'strip-comments'
 import OptionManager from './option-manager'
+import Assets from './assets'
 import { resolve as relativeResolve } from './share/requireRelative'
 
-export const resolveDestination = function (file, options) {
+export default class Parser {
+  constructor (options = OptionManager) {
+    this.assets = new Assets(options)
+  }
+
+  _resolveJs (source, file, options = OptionManager) {
+    let relativeTo = path.dirname(file)
+    let dependencies = resolveDependencies(source.toString(), file, relativeTo, options)
+    return { file, source, dependencies }
+  }
+
+  _resolve (source, file, options = OptionManager) {
+    if (/\.js$/.test(file)) {
+      return this._resolveJs(source, file, options)
+    }
+
+    return { file, source, dependencies: [] }
+  }
+
+  _resolveRule (source, file, rule) {
+    let loaders = []
+    if (!isEmpty(rule)) {
+      loaders = rule.loaders || []
+    }
+
+    if (loaders.length === 0) {
+      return Promise.resolve(source)
+    }
+
+    let tasks = loaders.map((loader) => (source, callback) => {
+      if (!loader.hasOwnProperty('use')) {
+        callback(new Error('Params use is not provided from loader'))
+        return
+      }
+
+      if (typeof loader.use !== 'string') {
+        callback(new Error('Params use is not a stirng'))
+        return
+      }
+
+      let transformer = require(loader.use)
+      transformer = transformer.default || transformer
+
+      let options = OptionManager.connect({ file, rule })
+      transformer.call(this, source, options)
+        .then((source) => callback(null, source))
+        .catch((error) => callback(error))
+    })
+
+    tasks.unshift((callback) => callback(null, source))
+
+    return new Promise((resolve, reject) => {
+      waterfall(tasks, (error, source) => {
+        error ? reject(error) : resolve(source)
+      })
+    })
+  }
+
+  multiCompile (files, options = OptionManager, assets = []) {
+    if (!Array.isArray(files) || files.length === 0) {
+      return Promise.resolve()
+    }
+
+    let promises = files.map((file) => this.compile(file, options, assets))
+    return Promise.all(promises).then(() => assets)
+  }
+
+  compile (file, options = OptionManager, assets = []) {
+    if (this.assets.exists(file)) {
+      return Promise.resolve()
+    }
+
+    let rule = this.matchRule(file, options.rules)
+    let { chunk } = this.assets.add(file, { rule })
+
+    let rollup = (metadata) => {
+      let { dependencies } = metadata
+      let { destination } = chunk
+      assets.push({ ...metadata, rule, destination })
+
+      if (!Array.isArray(dependencies) || dependencies.length === 0) {
+        return assets
+      }
+
+      let files = []
+      filterDependencies(dependencies).forEach(({ dependency }) => {
+        !this.assets.exists(dependency) && files.push(dependency)
+      })
+
+      if (!Array.isArray(files) || files.length === 0) {
+        return assets
+      }
+
+      return this.multiCompile(files, options, assets).then(() => assets)
+    }
+
+    return this.transform(file, rule, options).then((metadata) => rollup(metadata))
+  }
+
+  transform (file, rule, options = OptionManager) {
+    if (!rule) {
+      rule = this.matchRule(file, options.rules)
+    }
+
+    return readFilePromisify(file)
+      .then((source) => this._resolveRule(source, file, rule))
+      .then((source) => this._resolve(source, file, options))
+  }
+
+  matchRule (file, rules = []) {
+    return rules.find(({ test: pattern }) => pattern.test(file))
+  }
+}
+
+const resolveDestination = function (file, options) {
   let { rootDir, srcDir, outDir } = options
 
   /**
@@ -20,7 +135,7 @@ export const resolveDestination = function (file, options) {
     : file.replace(rootDir, outDir)
 }
 
-export const resolveDependencies = function (code, file, relativeTo, options) {
+const resolveDependencies = function (code, file, relativeTo, options) {
   if (code) {
     code = stripComments(code, { sourceType: 'module' })
   }
@@ -46,7 +161,7 @@ export const resolveDependencies = function (code, file, relativeTo, options) {
   return dependencies
 }
 
-export const filterDependencies = function (dependencies) {
+const filterDependencies = function (dependencies) {
   return dependencies.filter(({ dependency, destination }) => {
     let extname = path.extname(destination)
     /**
@@ -67,73 +182,6 @@ export const filterDependencies = function (dependencies) {
   })
 }
 
-export const compile = function (file, rule = {}) {
-  return new Promise((resolve, reject) => {
-    fs.readFile(file, (error, source) => {
-      if (error) {
-        reject(error)
-        return
-      }
-
-      let loaders = []
-      if (!isEmpty(rule)) {
-        loaders = rule.loaders || []
-      }
-
-      if (loaders.length === 0) {
-        resolve(source.toString())
-        return
-      }
-
-      let tasks = loaders.map((loader) => {
-        return function (source, callback) {
-          if (!loader.hasOwnProperty('use')) {
-            callback(new Error('Params use is not provided from loader'))
-            return
-          }
-
-          if (typeof loader.use !== 'string') {
-            callback(new Error('Params use is not a stirng'))
-            return
-          }
-
-          let compile = require(loader.use)
-          compile = compile.default || compile
-
-          let options = OptionManager.connect({ file, rule })
-          compile(source, options)
-            .then((source) => callback(null, source))
-            .catch((error) => callback(error))
-        }
-      })
-
-      tasks.unshift((callback) => callback(null, source))
-      waterfall(tasks, (error, source) => error ? reject(error) : resolve(source))
-    })
-  })
-}
-
-export const resolveJs = function (source, file, options) {
-  let relativeTo = path.dirname(file)
-  let dependencies = resolveDependencies(source, file, relativeTo, options)
-  return { file, source, dependencies }
-}
-
-export const resolve = function (source, file, options) {
-  return new Promise((resolve) => {
-    source = source.toString()
-
-    if (/\.js$/.test(file)) {
-      let stats = resolveJs(source, file, options)
-      resolve(stats)
-      return
-    }
-
-    resolve({ file, source, dependencies: [] })
-  })
-}
-
-export default {
-  compile,
-  resolve
-}
+const readFilePromisify = (file) => new Promise((resolve, reject) => {
+  fs.readFile(file, (error, source) => error ? reject(error) : resolve(source))
+})

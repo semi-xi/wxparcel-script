@@ -106,7 +106,7 @@ export class OptionManager {
         return `Option test is not provided, ${mkTips()}`
       }
 
-      if (rule.test instanceof RegExp) {
+      if (!(rule.test instanceof RegExp)) {
         return `Option test is not a regexp, ${mkTips()}`
       }
 

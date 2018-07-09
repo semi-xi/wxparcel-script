@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { transform } from 'babel-core'
 
-export default function loader (source, options) {
+export default function abelLoader (source, options) {
   return new Promise((resolve) => {
     let babelRcFile = path.join(options.rootDir, '.babelrc')
     let babelOptions = {}

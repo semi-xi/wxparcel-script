@@ -8,7 +8,6 @@ import flatten from 'lodash/flatten'
 import forEach from 'lodash/forEach'
 import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
-import Assets from './assets'
 import Parser from './parser'
 import Printer from './printer'
 import Package from '../package.json'
@@ -19,9 +18,10 @@ const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
 
 export default class Parcel {
-  constructor () {
+  constructor (options = OptionManager) {
     this.running = false
     this.paddingTask = null
+    this.parser = new Parser(options)
   }
 
   _buildAppConf (config) {
@@ -57,7 +57,7 @@ export default class Parcel {
     let files = modules.map((entry) => entry.files)
     files = flatten(files)
 
-    return this.transform(files, OptionManager).then((assets) => {
+    let installation = (assets) => {
       let { appConfig, projectConfig } = OptionManager
       let initTasks = [
         this._buildAppConf(appConfig),
@@ -81,7 +81,9 @@ export default class Parcel {
           this.running = false
         })
       })
-    })
+    }
+
+    return this.parser.multiCompile(files, OptionManager).then(installation)
   }
 
   watch () {
@@ -99,13 +101,22 @@ export default class Parcel {
       })
     })
 
-    let handleFileChange = (file) => {
+    let ignoreFile = (file) => {
       let { appConfigFile, projectConfigFile } = OptionManager
       if ([appConfigFile, projectConfigFile].indexOf(file) !== -1) {
-        return
+        return true
       }
 
-      if (!Assets.exists(file)) {
+      let { assets } = this.parser
+      if (!assets.exists(file)) {
+        return true
+      }
+
+      return false
+    }
+
+    let handleFileChange = (file) => {
+      if (ignoreFile(file) === true) {
         return
       }
 
@@ -118,16 +129,19 @@ export default class Parcel {
 
         Printer.time()
 
-        let { chunk } = Assets.get(file)
-        return this.transformChunkToMetadataForTask(chunk)
+        let { chunk } = this.parser.assets.get(file)
+        this.parser.transform(file)
           .then((metadata) => {
+            metadata.destination = chunk.destination
+            metadata.rule = chunk.rule
+
             let dependencies = metadata.dependencies || []
             if (!Array.isArray(dependencies) || dependencies.length === 0) {
               return [metadata]
             }
 
             let files = dependencies.map((item) => item.dependency)
-            return this.transform(files).then((assets) => [metadata, ...assets])
+            return this.parser.multiCompile(files).then((assets) => [metadata, ...assets])
           })
           .then((assets) => this.flush(assets))
           .then((stats) => {
@@ -149,9 +163,11 @@ export default class Parcel {
     }
 
     let handleFileUnlink = (file) => {
-      if (this.running === false || this.parsing === false) {
+      if (ignoreFile(file) === true) {
 
       }
+
+      // todo...
     }
 
     let watcher = chokidar.watch(OptionManager.srcDir)
@@ -205,63 +221,6 @@ export default class Parcel {
     })
 
     return Promise.all(promises)
-  }
-
-  transform (files, options = OptionManager, assets = []) {
-    return this._transform(files).then((metadata) => {
-      assets.push(...metadata)
-
-      let tasks = []
-      metadata.forEach((data) => {
-        let { dependencies } = data
-        if (!Array.isArray(dependencies) || dependencies.length === 0) {
-          return
-        }
-
-        let files = dependencies.map((item) => item.dependency)
-        tasks.push(this.transform(files, options, assets))
-      })
-
-      return Promise.all(tasks).then(() => assets)
-    })
-  }
-
-  _transform (files, options = OptionManager) {
-    if (!Array.isArray(files) || files.length === 0) {
-      throw new TypeError('Files is not a array or not provided or is empty')
-    }
-
-    let chunks = []
-    files.forEach((file) => {
-      if (Assets.exists(file)) {
-        return
-      }
-
-      let rule = this.matchRule(file, options.rules)
-      let { chunk } = Assets.add(file, { rule })
-      chunk && chunks.push(chunk)
-    })
-
-    return this.transformChunksToMetadataForTask(chunks)
-  }
-
-  transformChunkToMetadataForTask (chunk) {
-    let { file, rule, destination } = chunk
-    return Parser.compile(file, rule).then((source) => {
-      return Parser.resolve(source, file, OptionManager).then((metadata) => {
-        return { ...metadata, destination, rule }
-      })
-    })
-  }
-
-  transformChunksToMetadataForTask (chunks) {
-    let transform = this.transformChunkToMetadataForTask.bind(this)
-    let promises = chunks.map(transform)
-    return Promise.all(promises)
-  }
-
-  matchRule (file, rules = []) {
-    return rules.find(({ test: pattern }) => pattern.test(file))
   }
 
   findAllEntries () {
