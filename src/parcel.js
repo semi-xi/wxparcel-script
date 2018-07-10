@@ -57,7 +57,7 @@ export default class Parcel {
     let files = modules.map((entry) => entry.files)
     files = flatten(files)
 
-    let installation = (assets) => {
+    let installation = (flowdata) => {
       let { appConfig, projectConfig } = OptionManager
       let initTasks = [
         this._buildAppConf(appConfig),
@@ -73,7 +73,7 @@ export default class Parcel {
         stats = fs.statSync(projFile)
         confStats.push({ assets: projFile, size: stats.size })
 
-        return this.flush(assets).then((stats) => {
+        return this.flush(flowdata).then((stats) => {
           stats = confStats.concat(stats)
           stats.spendTime = Printer.timeEnd()
 
@@ -83,7 +83,9 @@ export default class Parcel {
       })
     }
 
-    return this.parser.multiCompile(files, OptionManager).then(installation)
+    return this.parser
+      .multiCompile(files, OptionManager)
+      .then(installation)
   }
 
   watch () {
@@ -130,7 +132,8 @@ export default class Parcel {
         Printer.time()
 
         let { chunk } = this.parser.assets.get(file)
-        this.parser.transform(file)
+        this.parser
+          .transform(file)
           .then((metadata) => {
             metadata.destination = chunk.destination
             metadata.rule = chunk.rule

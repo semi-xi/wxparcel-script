@@ -1,7 +1,9 @@
 import fs from 'fs-extra'
 import path from 'path'
+import uniqBy from 'lodash/uniqBy'
 import findIndex from 'lodash/findIndex'
 import isEmpty from 'lodash/isEmpty'
+import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'async/waterfall'
 import stripComments from 'strip-comments'
 import OptionManager from './option-manager'
@@ -13,21 +15,7 @@ export default class Parser {
     this.assets = new Assets(options)
   }
 
-  _resolveJs (source, file, options = OptionManager) {
-    let relativeTo = path.dirname(file)
-    let dependencies = resolveDependencies(source.toString(), file, relativeTo, options)
-    return { file, source, dependencies }
-  }
-
-  _resolve (source, file, options = OptionManager) {
-    if (/\.js$/.test(file)) {
-      return this._resolveJs(source, file, options)
-    }
-
-    return { file, source, dependencies: [] }
-  }
-
-  _resolveRule (source, file, rule) {
+  _resolveRule (source, file, rule, instance) {
     let loaders = []
     if (!isEmpty(rule)) {
       loaders = rule.loaders || []
@@ -52,7 +40,7 @@ export default class Parser {
       transformer = transformer.default || transformer
 
       let options = OptionManager.connect({ file, rule })
-      transformer.call(this, source, options)
+      transformer(source, options, instance)
         .then((source) => callback(null, source))
         .catch((error) => callback(error))
     })
@@ -66,16 +54,44 @@ export default class Parser {
     })
   }
 
-  multiCompile (files, options = OptionManager, assets = []) {
-    if (!Array.isArray(files) || files.length === 0) {
-      return Promise.resolve()
-    }
+  _resolveJs (source, file, options = OptionManager, instance) {
+    let relativeTo = path.dirname(file)
+    let dependencies = resolveDependencies(source.toString(), file, relativeTo, options)
 
-    let promises = files.map((file) => this.compile(file, options, assets))
-    return Promise.all(promises).then(() => assets)
+    dependencies.forEach((item) => {
+      let { file, destination, dependency, required } = item
+      instance.emitFile(file, destination, dependency, required)
+    })
+
+    return { file, source, dependencies }
   }
 
-  compile (file, options = OptionManager, assets = []) {
+  _resolve (source, file, options = OptionManager, instance) {
+    if (/\.js$/.test(file)) {
+      return this._resolveJs(source, file, options, instance)
+    }
+
+    return { file, source, dependencies: [] }
+  }
+
+  transform (file, rule, options = OptionManager) {
+    if (!rule) {
+      rule = this.matchRule(file, options.rules)
+    }
+
+    let instance = new InstanceForTransform()
+
+    return readFilePromisify(file)
+      .then((source) => this._resolveRule(source, file, rule, instance))
+      .then((source) => this._resolve(source, file, options, instance))
+      .then((metadata) => {
+        let dependencies = [].concat(metadata.dependencies, instance.dependencies)
+        metadata.dependencies = uniqBy(dependencies, 'dependency')
+        return metadata
+      })
+  }
+
+  compile (file, options = OptionManager) {
     if (this.assets.exists(file)) {
       return Promise.resolve()
     }
@@ -84,12 +100,15 @@ export default class Parser {
     let { chunk } = this.assets.add(file, { rule })
 
     let rollup = (metadata) => {
-      let { dependencies } = metadata
-      let { destination } = chunk
-      assets.push({ ...metadata, rule, destination })
+      let { source, dependencies, ...otherData } = metadata
+      source = Buffer.from(source)
 
+      chunk.update({ dependencies, rule })
+
+      let destination = chunk.destination || ''
+      let flowdata = { source, dependencies, ...otherData, rule, destination }
       if (!Array.isArray(dependencies) || dependencies.length === 0) {
-        return assets
+        return flowdata
       }
 
       let files = []
@@ -98,27 +117,55 @@ export default class Parser {
       })
 
       if (!Array.isArray(files) || files.length === 0) {
-        return assets
+        return flowdata
       }
 
-      return this.multiCompile(files, options, assets).then(() => assets)
+      return this.multiCompile(files, options)
     }
 
-    return this.transform(file, rule, options).then((metadata) => rollup(metadata))
+    return this.transform(file, rule, options).then(rollup)
   }
 
-  transform (file, rule, options = OptionManager) {
-    if (!rule) {
-      rule = this.matchRule(file, options.rules)
+  multiCompile (files, options = OptionManager) {
+    if (!Array.isArray(files) || files.length === 0) {
+      return Promise.resolve([])
     }
 
-    return readFilePromisify(file)
-      .then((source) => this._resolveRule(source, file, rule))
-      .then((source) => this._resolve(source, file, options))
+    let promises = files.map((file) => this.compile(file, options))
+    return Promise.all(promises).then((flowdata) => {
+      flowdata = flattenDeep(flowdata).filter((item) => item)
+      return flowdata
+    })
   }
 
   matchRule (file, rules = []) {
-    return rules.find(({ test: pattern }) => pattern.test(file))
+    return rules.find(({ test: pattern }) => pattern.test(file)) || null
+  }
+}
+
+class InstanceForTransform {
+  constructor () {
+    this.dependencies = []
+  }
+
+  emitFile (file, destination, dependency, required) {
+    if (typeof file !== 'string') {
+      throw new TypeError('File is not a string or not be provided')
+    }
+
+    if (typeof destination !== 'string') {
+      throw new TypeError('Destination is not a string or not be provided')
+    }
+
+    if (typeof dependency !== 'string') {
+      throw new TypeError('Dependency is not a string or not be provided')
+    }
+
+    if (typeof required !== 'string') {
+      throw new TypeError('Required is not a string or not be provided')
+    }
+
+    this.dependencies.push({ file, destination, dependency, required })
   }
 }
 

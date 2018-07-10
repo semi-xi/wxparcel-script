@@ -4,7 +4,7 @@ import columnify from 'columnify'
 
 export class Printer {
   constructor () {
-    this.silence = process.argv.findIndex((argv) => argv === '--quiet')
+    this.silence = process.argv.findIndex((argv) => argv === '--quiet') !== -1
     this.messages = []
   }
 
