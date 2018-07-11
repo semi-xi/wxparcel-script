@@ -3,11 +3,10 @@ import fs from 'fs-extra'
 import path from 'path'
 import isEmpty from 'lodash/isEmpty'
 import mapValues from 'lodash/mapValues'
-import { EventEmitter } from 'events'
+import Printer from './printer'
 
 export class OptionManager {
   constructor (options = {}) {
-    this.emitter = new EventEmitter()
     this.rootDir = process.cwd()
     this.execDir = path.join(__dirname, '../')
 
@@ -86,13 +85,17 @@ export class OptionManager {
 
   resolveWXProjectConf (file) {
     if (!fs.existsSync(file)) {
-      throw new Error(`找不到微信小程序项目配置文件, 请检查文件 ${file}`)
+      let message = `File ${file} is not found, please ensure ${file} is valid.`
+      Printer.error(message)
+      throw new Error(message)
     }
 
     try {
       this.projectConfig = fs.readJSONSync(file)
     } catch (error) {
-      throw new Error(`微信小程序项目配置文件错误, 请检查配置文件 ${file};\n错误信息: ${error.message}`)
+      let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
+      Printer.error(message)
+      throw new Error(message)
     }
 
     this.projectConfigFile = file
@@ -100,25 +103,20 @@ export class OptionManager {
 
   resolveWXAppConf (file) {
     if (!fs.existsSync(file)) {
-      throw new Error(`找不到微信小程序项目入口配置文件, 请检查配置文件 ${file}`)
+      let message = `File ${file} is not found, please ensure ${file} is valid.`
+      Printer.error(message)
+      throw new Error(message)
     }
 
     try {
       this.appConfig = fs.readJSONSync(file)
     } catch (error) {
-      throw new Error(`微信小程序项目入口配置文件错误, 请检查配置文件 ${file};\n错误信息: ${error.message}`)
-    }
-
-    if (this.watcher) {
-      this.watcher.unwatch(this.appConfigFile)
-      this.watcher.add(file)
+      let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
+      Printer.error(message)
+      throw new Error(message)
     }
 
     this.appConfigFile = file
-    this.emitter.emit('appConfigFileChanged', {
-      file: file,
-      config: this.appConfig
-    })
   }
 
   connect (options = {}) {
