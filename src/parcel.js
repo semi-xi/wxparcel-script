@@ -7,11 +7,15 @@ import map from 'lodash/map'
 import flatten from 'lodash/flatten'
 import forEach from 'lodash/forEach'
 import capitalize from 'lodash/capitalize'
+import pathToRegexp from 'path-to-regexp'
 import OptionManager from './option-manager'
+import Assets from './assets'
 import Parser from './parser'
 import Printer from './printer'
+import IgnoreFiles from './constants/ingore-files'
 import Package from '../package.json'
 
+const IGORE_FILES_REGEXP = IgnoreFiles.map((pattern) => pathToRegexp(pattern))
 const JSON_REGEXP = /\.json$/
 const JS_REGEXP = /\.js$/
 const WXML_REGEXP = /\.wxml$/
@@ -22,159 +26,133 @@ export default class Parcel {
     this.running = false
     this.paddingTask = null
     this.parser = new Parser(options)
+    this.plugins = OptionManager.plugins.filter((plugin) => {
+      return 'apply' in plugin && typeof plugin.apply === 'function'
+    })
   }
 
-  _buildAppConf (config) {
-    let { outDir } = OptionManager
-    let appConfFile = path.join(outDir, './app.json')
-    return writeJsonFile(appConfFile, config).then(() => appConfFile)
+  hook (hook) {
+    let promises = this.plugins.map((plugin) => {
+      return plugin.apply(hook, OptionManager, Printer)
+    })
+
+    return Promise.all(promises)
   }
 
-  _buildProjConf (config) {
-    let { outDir } = OptionManager
-    let projectConfFile = path.join(outDir, './project.config.json')
-    return writeJsonFile(projectConfFile, config).then(() => projectConfFile)
-  }
-
-  run () {
+  async run () {
     if (this.running === true) {
       Printer.warn(`WXParcel is running, you can enter ${colors.bold('Ctrl + C')} to exit.`)
-      return
+      return Promise.resolve()
     }
 
     this.running = true
     Printer.time()
 
-    let entries = this.findAllEntries()
-    let components = entries.map(({ files }) => {
-      let file = files.find((file) => JSON_REGEXP.test(file))
-      return this.findAllComponents(file)
-    })
+    this.hook('async')
+    await this.hook('before')
 
-    components = flatten(components)
+    let { appConfigFile, projectConfigFile } = OptionManager
+    let entries = this.findEntries()
+    entries = entries.concat([appConfigFile, projectConfigFile])
 
-    let modules = [].concat(entries, components)
-    let files = modules.map((entry) => entry.files)
-    files = flatten(files)
+    let flowdata = await this.parser.multiCompile(entries, OptionManager)
+    let stats = await this.flush(flowdata)
+    stats.spendTime = Printer.timeEnd()
 
-    let installation = (flowdata) => {
-      let { appConfig, projectConfig } = OptionManager
-      let initTasks = [
-        this._buildAppConf(appConfig),
-        this._buildProjConf(projectConfig)
-      ]
-
-      return Promise.all(initTasks).then((files) => {
-        let [appFile, projFile] = files
-        let confStats = []
-        let stats = fs.statSync(appFile)
-        confStats.push({ assets: appFile, size: stats.size })
-
-        stats = fs.statSync(projFile)
-        confStats.push({ assets: projFile, size: stats.size })
-
-        return this.flush(flowdata).then((stats) => {
-          stats = confStats.concat(stats)
-          stats.spendTime = Printer.timeEnd()
-
-          this.printStats(stats)
-          this.running = false
-        })
-      })
-    }
-
-    return this.parser
-      .multiCompile(files, OptionManager)
-      .then(installation)
+    this.printStats(stats)
+    this.running = false
   }
 
   watch () {
-    OptionManager.watch()
+    let { rootDir, appConfigFile, projectConfigFile } = OptionManager
 
-    OptionManager.watchAppConfigChanged(({ config }) => {
-      this._buildAppConf(config).then((file) => {
-        Printer.trace(colors.cyan(`${colors.bold(file)} is updated`))
-      })
-    })
-
-    OptionManager.watchProjectConfigChanged(({ config }) => {
-      this._buildProjConf(config).then((file) => {
-        Printer.info(colors.cyan(`${colors.bold(file)} is updated`))
-      })
-    })
-
-    let ignoreFile = (file) => {
-      let { appConfigFile, projectConfigFile } = OptionManager
-      if ([appConfigFile, projectConfigFile].indexOf(file) !== -1) {
-        return true
-      }
-
-      let { assets } = this.parser
-      if (!assets.exists(file)) {
-        return true
-      }
-
-      return false
+    const ignoreFile = (file) => {
+      return IGORE_FILES_REGEXP.findIndex((pattern) => pattern.test(file)) !== -1
     }
 
-    let handleFileChange = (file) => {
-      if (ignoreFile(file) === true) {
+    const transform = async (file) => {
+      this.running = true
+      Printer.time()
+
+      let { chunk } = Assets.exists(file) ? Assets.get(file) : Assets.add(file)
+      let fileFlowData = await this.parser.transform(file)
+      fileFlowData.destination = chunk.destination
+      fileFlowData.rule = chunk.rule
+
+      let entries = this.findEntries()
+      let dependencies = fileFlowData.dependencies || []
+      let files = dependencies.map((item) => item.dependency)
+      files = entries.concat(files)
+
+      let otherFlowdata = await this.parser.multiCompile(files)
+      let flowdata = [fileFlowData, ...otherFlowdata]
+
+      let stats = await this.flush(flowdata)
+      stats.spendTime = Printer.timeEnd()
+
+      this.printStats(stats)
+      this.running = false
+
+      this.excutePaddingTask()
+    }
+
+    const handleFileChanged = (file) => {
+      if (ignoreFile(file)) {
         return
       }
 
-      let { rootDir } = OptionManager
-      let relativePath = colors.bold(file.replace(rootDir, ''))
-      Printer.info(`Source file ${relativePath} has been changed, compiling...`)
+      let relativePath = file.replace(rootDir, '')
+      let message = `File ${colors.bold(relativePath)} has been changed`
 
-      let compile = () => {
-        this.running = true
+      if (appConfigFile === file) {
+        Printer.info(`${message}, resolve and compile...`)
 
-        Printer.time()
-
-        let { chunk } = this.parser.assets.get(file)
-        this.parser
-          .transform(file)
-          .then((metadata) => {
-            metadata.destination = chunk.destination
-            metadata.rule = chunk.rule
-
-            let dependencies = metadata.dependencies || []
-            if (!Array.isArray(dependencies) || dependencies.length === 0) {
-              return [metadata]
-            }
-
-            let files = dependencies.map((item) => item.dependency)
-            return this.parser.multiCompile(files).then((assets) => [metadata, ...assets])
-          })
-          .then((assets) => this.flush(assets))
-          .then((stats) => {
-            stats.spendTime = Printer.timeEnd()
-
-            this.printStats(stats)
-            this.running = false
-
-            this.excutePaddingTask()
-          })
-      }
-
-      if (this.running === true) {
-        this.paddingTask = compile.bind(this)
+        OptionManager.resolveWXAppConf(file)
+        transform(file)
         return
       }
 
-      compile()
-    }
+      if (projectConfigFile === file) {
+        Printer.info(`${message}, resolve and compile...`)
 
-    let handleFileUnlink = (file) => {
-      if (ignoreFile(file) === true) {
-
+        OptionManager.resolveWXAppConf(file)
+        transform(file)
+        return
       }
 
-      // todo...
+      if (Assets.exists(file)) {
+        Printer.info(`${message}, compile...`)
+        transform(file)
+        return
+      }
+
+      Printer.info(`${message}, but it's not be required, ignore...`)
     }
 
-    let watcher = chokidar.watch(OptionManager.srcDir)
-    watcher.on('change', handleFileChange)
+    const handleFileUnlink = (file) => {
+      if (ignoreFile(file)) {
+        return
+      }
+
+      let relativePath = file.replace(rootDir, '')
+      let message = `File ${colors.bold(relativePath)} has been deleted`
+
+      if (Assets.exists(file)) {
+        Printer.warn(`${message}, it will be only delete from cache.`)
+        Assets.del(file)
+      }
+    }
+
+    /**
+     * 监听文件变化
+     * Docs: https://github.com/paulmillr/chokidar#api
+     */
+    let watcher = chokidar.watch(OptionManager.srcDir, {
+      // 初始化不执行 add 事件
+      ignoreInitial: true
+    })
+
+    watcher.on('change', handleFileChanged)
     watcher.on('unlink', handleFileUnlink)
 
     let handleProcessSigint = process.exit.bind(process)
@@ -199,26 +177,23 @@ export default class Parcel {
     }
   }
 
-  flush (assets) {
-    if (!Array.isArray(assets) || assets.length === 0) {
-      throw new TypeError('Assets is not a array or not be provided or be empty')
+  flush (flowdata) {
+    if (!Array.isArray(flowdata) || flowdata.length === 0) {
+      return Promise.reject(new TypeError('Flowdata is not a array or not be provided or be empty'))
     }
 
-    let promises = assets.map(({ destination, source }) => {
+    let promises = flowdata.map(({ destination, source }) => {
       return new Promise((resolve, reject) => {
-        let queue = [
+        let taskQueue = [
           fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, source)
+          fs.writeFile.bind(fs, destination, source),
+          fs.stat.bind(fs, destination)
         ]
 
-        waterfall(queue, (error) => {
-          if (error) {
-            reject(error)
-            return
-          }
-
-          let stats = fs.statSync(destination)
-          resolve({ assets: destination, size: stats.size })
+        waterfall(taskQueue, (error, stats) => {
+          error
+            ? reject(error)
+            : resolve({ assets: destination, size: stats.size })
         })
       })
     })
@@ -226,22 +201,37 @@ export default class Parcel {
     return Promise.all(promises)
   }
 
-  findAllEntries () {
-    let entries = OptionManager.appConfig.pages || []
+  findEntries () {
+    let pages = this.findAllPages()
+    let components = pages.map(({ files }) => {
+      let file = files.find((file) => JSON_REGEXP.test(file))
+      return this.findAllComponents(file)
+    })
 
-    entries = entries.map((entry) => {
-      entry = path.join(OptionManager.srcDir, entry)
+    components = flatten(components)
 
-      let folder = path.dirname(entry)
+    let entries = [].concat(pages, components)
+    let files = entries.map((entry) => entry.files)
+
+    return flatten(files)
+  }
+
+  findAllPages () {
+    let pages = OptionManager.appConfig.pages || []
+
+    pages = pages.map((page) => {
+      page = path.join(OptionManager.srcDir, page)
+
+      let folder = path.dirname(page)
       if (!fs.existsSync(folder)) {
         throw new Error(`查找不到文件夹 ${folder}`)
       }
 
-      let name = path.basename(entry)
+      let name = path.basename(page)
       return this.findModule(name, folder)
     })
 
-    return entries
+    return pages
   }
 
   findAllComponents (file) {
@@ -351,17 +341,4 @@ export default class Parcel {
 
     Printer.flush()
   }
-}
-
-const writeJsonFile = function (file, source) {
-  return new Promise((resolve, reject) => {
-    source = JSON.stringify(source, null, 2)
-
-    let queue = [
-      fs.ensureFile.bind(fs, file),
-      fs.writeFile.bind(fs, file, source)
-    ]
-
-    waterfall(queue, (error) => error ? reject(error) : resolve())
-  })
 }

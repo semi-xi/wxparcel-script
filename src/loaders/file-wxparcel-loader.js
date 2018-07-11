@@ -38,7 +38,7 @@ const FILE_REGEXPS = {
   }
 }
 
-export default function fileLoader (source, options) {
+export default function fileLoader (source, options, instance) {
   return new Promise((resolve) => {
     let { file, rules } = options
     let fileRegexp = Object.assign({}, rules, FILE_REGEXPS)
@@ -94,28 +94,28 @@ export default function fileLoader (source, options) {
         continue
       }
 
-      let file = ''
+      let dependency = ''
       switch (relativePath.charAt(0)) {
         case '~':
-          file = path.join(srcDir, relativePath)
+          dependency = path.join(srcDir, relativePath)
           break
         case '/':
-          file = path.join(rootDir, relativePath)
+          dependency = path.join(rootDir, relativePath)
           break
         case '.':
-          file = path.join(directory, relativePath)
+          dependency = path.join(directory, relativePath)
           break
         default:
           continue
       }
 
       let basename = path.basename(filename).replace(extname, '')
-      filename = basename + '.' + genFileSync(file) + extname
+      filename = basename + '.' + genFileSync(dependency) + extname
 
       let destination = path.join(staticDir, filename)
-      if (dependencies.findIndex((item) => item.file === file) === -1) {
-        dependencies.push({ file, destination })
-        this.emitFile({ file, destination })
+      if (dependencies.indexOf(dependency) === -1) {
+        dependencies.push(dependency)
+        instance.emitFile(file, destination, dependency, match[1])
       }
 
       let url = trimEnd(pubPath, '/') + '/' + trimStart(destination.replace(staticDir, ''), '/')

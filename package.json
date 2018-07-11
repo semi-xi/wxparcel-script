@@ -25,10 +25,18 @@
     "columnify": "^1.5.4",
     "commander": "^2.16.0",
     "detect-port": "^1.2.3",
+    "finalhandler": "^1.1.1",
     "fs-extra": "^6.0.1",
     "ip": "^1.1.5",
     "lodash": "^4.17.10",
-    "strip-comments": "^1.0.2"
+    "node-sass": "^4.9.2",
+    "path-to-regexp": "^2.2.1",
+    "promise-waterfall": "^0.1.0",
+    "serve-static": "^1.13.2",
+    "spritesheet-templates": "^10.2.2",
+    "spritesmith": "^3.3.1",
+    "strip-comments": "^1.0.2",
+    "uglify-js": "^3.4.4"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

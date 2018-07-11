@@ -5,7 +5,7 @@ import defaultsDeep from 'lodash/defaultsDeep'
 import OptionManager from '../option-manager'
 import Parcel from '../parcel'
 
-const run = function (options) {
+const run = async function (options) {
   let { config: configFile } = options
 
   if (!configFile) {
@@ -32,10 +32,10 @@ const run = function (options) {
   OptionManager.resolve(parcelOptions)
 
   let parcel = new Parcel()
-  parcel.run()
+  await parcel.run()
 
   if (options.watch) {
-    OptionManager.watching = !!options.watch
+    OptionManager.watching = true
     parcel.watch()
   }
 }
@@ -66,4 +66,6 @@ program
     options = defaultsDeep({}, options, {
       config: path.join(__dirname, '../constants/production.config.js')
     })
+
+    run(options)
   })

@@ -3,8 +3,6 @@ import fs from 'fs-extra'
 import path from 'path'
 import isEmpty from 'lodash/isEmpty'
 import mapValues from 'lodash/mapValues'
-import chokidar from 'chokidar'
-import Printer from './printer'
 import { EventEmitter } from 'events'
 
 export class OptionManager {
@@ -16,50 +14,6 @@ export class OptionManager {
     !isEmpty(options) && this.resolve(options)
   }
 
-  watch () {
-    let handleFileChange = (file) => {
-      let { projectConfigFile, appConfigFile } = this
-
-      switch (file) {
-        case appConfigFile:
-          this.resolveWXAppConf(file)
-          return
-
-        case projectConfigFile:
-          this.resolveWXProjectConf(file)
-      }
-    }
-
-    let handleFileUnlink = (file) => {
-      Printer.warn(`文件 ${file} 已删除, wxparcel 将使用缓存中的配置继续执行; 添加文件将读取新的配置文件`)
-    }
-
-    this.watcher && this.watcher.close()
-    this.watcher = chokidar.watch()
-
-    this.watcher.on('change', handleFileChange)
-    this.watcher.on('unlink', handleFileUnlink)
-
-    this.watcher.add(this.projectConfigFile)
-    this.watcher.add(this.appConfigFile)
-
-    let handleProcessSigint = process.exit.bind(process)
-    let handleProcessExit = () => {
-      this.watcher && this.watcher.close()
-
-      process.removeListener('exit', handleProcessExit)
-      process.removeListener('SIGINT', handleProcessSigint)
-
-      handleProcessExit = undefined
-      handleProcessSigint = undefined
-
-      this.watcher = undefined
-    }
-
-    process.on('exit', handleProcessExit)
-    process.on('SIGINT', handleProcessSigint)
-  }
-
   resolve (options = {}) {
     this.srcDir = path.join(this.rootDir, options.src || 'src')
     this.outDir = path.join(this.rootDir, options.output || 'app')
@@ -68,6 +22,7 @@ export class OptionManager {
     this.pubPath = options.publicPath || `http://${ip.address()}:3000`
     this.npmDir = options.nodeModuleDirectoryName || 'npm'
     this.rules = options.rules || []
+    this.plugins = options.plugins || []
     this.watching = options.watch || false
     this.silence = options.silence || process.argv.indexOf('--quiet') !== -1
     this.projectConfig = {}
@@ -140,16 +95,7 @@ export class OptionManager {
       throw new Error(`微信小程序项目配置文件错误, 请检查配置文件 ${file};\n错误信息: ${error.message}`)
     }
 
-    if (this.watcher) {
-      this.watcher.unwatch(this.projectConfigFile)
-      this.watcher.add(file)
-    }
-
     this.projectConfigFile = file
-    this.emitter.emit('projectConfigFileChanged', {
-      file: file,
-      config: this.projectConfig
-    })
   }
 
   resolveWXAppConf (file) {
@@ -173,24 +119,6 @@ export class OptionManager {
       file: file,
       config: this.appConfig
     })
-  }
-
-  watchAppConfigChanged (callback) {
-    if (typeof callback !== 'function') {
-      throw new TypeError('回调函数不存在或并没有提供')
-    }
-
-    this.emitter.addListener('appConfigFileChanged', callback)
-    return this
-  }
-
-  watchProjectConfigChanged (callback) {
-    if (typeof callback !== 'function') {
-      throw new TypeError('回调函数不存在或并没有提供')
-    }
-
-    this.emitter.addListener('projectConfigFileChanged', callback)
-    return this
   }
 
   connect (options = {}) {

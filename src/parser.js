@@ -1,20 +1,17 @@
 import fs from 'fs-extra'
 import path from 'path'
+import omit from 'lodash/omit'
 import uniqBy from 'lodash/uniqBy'
 import findIndex from 'lodash/findIndex'
 import isEmpty from 'lodash/isEmpty'
 import flattenDeep from 'lodash/flattenDeep'
-import waterfall from 'async/waterfall'
+import waterfall from 'promise-waterfall'
 import stripComments from 'strip-comments'
 import OptionManager from './option-manager'
 import Assets from './assets'
 import { resolve as relativeResolve } from './share/requireRelative'
 
 export default class Parser {
-  constructor (options = OptionManager) {
-    this.assets = new Assets(options)
-  }
-
   _resolveRule (source, file, rule, instance) {
     let loaders = []
     if (!isEmpty(rule)) {
@@ -25,33 +22,24 @@ export default class Parser {
       return Promise.resolve(source)
     }
 
-    let tasks = loaders.map((loader) => (source, callback) => {
+    let taskQueue = loaders.map((loader) => (source) => {
       if (!loader.hasOwnProperty('use')) {
-        callback(new Error('Params use is not provided from loader'))
-        return
+        return Promise.reject(new Error('Params use is not provided from loader'))
       }
 
       if (typeof loader.use !== 'string') {
-        callback(new Error('Params use is not a stirng'))
-        return
+        return Promise.reject(new Error('Params use is not a stirng'))
       }
 
       let transformer = require(loader.use)
       transformer = transformer.default || transformer
 
       let options = OptionManager.connect({ file, rule })
-      transformer(source, options, instance)
-        .then((source) => callback(null, source))
-        .catch((error) => callback(error))
+      return transformer(source.toString(), options, instance)
     })
 
-    tasks.unshift((callback) => callback(null, source))
-
-    return new Promise((resolve, reject) => {
-      waterfall(tasks, (error, source) => {
-        error ? reject(error) : resolve(source)
-      })
-    })
+    taskQueue.unshift(() => Promise.resolve(source))
+    return waterfall(taskQueue)
   }
 
   _resolveJs (source, file, options = OptionManager, instance) {
@@ -63,6 +51,7 @@ export default class Parser {
       instance.emitFile(file, destination, dependency, required)
     })
 
+    source = Buffer.from(source)
     return { file, source, dependencies }
   }
 
@@ -71,6 +60,7 @@ export default class Parser {
       return this._resolveJs(source, file, options, instance)
     }
 
+    source = Buffer.from(source)
     return { file, source, dependencies: [] }
   }
 
@@ -87,22 +77,27 @@ export default class Parser {
       .then((metadata) => {
         let dependencies = [].concat(metadata.dependencies, instance.dependencies)
         metadata.dependencies = uniqBy(dependencies, 'dependency')
+
         return metadata
       })
   }
 
   compile (file, options = OptionManager) {
-    if (this.assets.exists(file)) {
+    let chunkOptions = {}
+
+    if (typeof file === 'object') {
+      chunkOptions = omit(file, 'file')
+      file = file.file
+    }
+
+    if (Assets.exists(file)) {
       return Promise.resolve()
     }
 
     let rule = this.matchRule(file, options.rules)
-    let { chunk } = this.assets.add(file, { rule })
-
+    let { chunk } = Assets.add(file, Object.assign(chunkOptions, { rule }))
     let rollup = (metadata) => {
       let { source, dependencies, ...otherData } = metadata
-      source = Buffer.from(source)
-
       chunk.update({ dependencies, rule })
 
       let destination = chunk.destination || ''
@@ -112,15 +107,22 @@ export default class Parser {
       }
 
       let files = []
-      filterDependencies(dependencies).forEach(({ dependency }) => {
-        !this.assets.exists(dependency) && files.push(dependency)
+      dependencies.forEach((item) => {
+        if (Assets.exists(item.dependency)) {
+          return
+        }
+
+        let { dependency, destination } = item
+        files.push({ file: dependency, destination })
       })
 
       if (!Array.isArray(files) || files.length === 0) {
         return flowdata
       }
 
-      return this.multiCompile(files, options)
+      return this.multiCompile(files, options).then((subFlowdata) => {
+        return [flowdata].concat(subFlowdata)
+      })
     }
 
     return this.transform(file, rule, options).then(rollup)
@@ -205,7 +207,7 @@ const resolveDependencies = function (code, file, relativeTo, options) {
     }
   }
 
-  return dependencies
+  return filterDependencies(dependencies)
 }
 
 const filterDependencies = function (dependencies) {

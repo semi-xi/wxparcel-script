@@ -6,6 +6,7 @@ export class Printer {
   constructor () {
     this.silence = process.argv.findIndex((argv) => argv === '--quiet') !== -1
     this.messages = []
+    this.layzedMessages = []
   }
 
   /**
@@ -16,10 +17,41 @@ export class Printer {
    * @return {Printer} 自身
    */
   push (message, type = 'append') {
-    if (typeof message === 'string') {
-      type === 'append'
-        ? this.messages.push(message)
-        : this.messages.unshift(message)
+    if (typeof message !== 'string') {
+      return this
+    }
+
+    switch (type) {
+      case 'append':
+        this.messages.push(message)
+        break
+      case 'prepend':
+        this.messages.unshift(message)
+        break
+    }
+
+    return this
+  }
+
+  /**
+   * 添加到延迟消息队列中
+   *
+   * @param {Sting} message 信息
+   * @param {Menu} type 类型 ['append', 'prepend']
+   * @return {Printer} 自身
+   */
+  layze (message, type = 'append') {
+    if (typeof message !== 'string') {
+      return this
+    }
+
+    switch (type) {
+      case 'append':
+        this.layzedMessages.push(message)
+        break
+      case 'prepend':
+        this.layzedMessages.unshift(message)
+        break
     }
 
     return this
@@ -30,7 +62,10 @@ export class Printer {
    */
   flush () {
     this.messages.forEach(this.trace.bind(this))
+    this.layzedMessages.forEach(this.trace.bind(this))
+
     this.messages.splice(0)
+    this.layzedMessages.splice(0)
   }
 
   /**
