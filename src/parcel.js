@@ -22,20 +22,12 @@ const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
 
 export default class Parcel {
-  constructor (options = OptionManager) {
+  constructor () {
     this.running = false
     this.paddingTask = null
     this.plugins = OptionManager.plugins.filter((plugin) => {
       return 'apply' in plugin && typeof plugin.apply === 'function'
     })
-  }
-
-  hook (hook) {
-    let promises = this.plugins.map((plugin) => {
-      return plugin.apply(hook, OptionManager, Printer)
-    })
-
-    return Promise.all(promises)
   }
 
   async run () {
@@ -202,6 +194,14 @@ export default class Parcel {
             : resolve({ assets: destination, size: stats.size })
         })
       })
+    })
+
+    return Promise.all(promises)
+  }
+
+  hook (hook) {
+    let promises = this.plugins.map((plugin) => {
+      return plugin.apply(hook, OptionManager, Printer)
     })
 
     return Promise.all(promises)
