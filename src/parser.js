@@ -95,7 +95,7 @@ export default class Parser {
     }
 
     let rule = this.matchRule(file, options.rules)
-    let { chunk } = Assets.add(file, Object.assign(chunkOptions, { rule }))
+    let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
     let rollup = (metadata) => {
       let { source, dependencies, ...otherData } = metadata
       chunk.update({ dependencies, rule })

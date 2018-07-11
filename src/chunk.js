@@ -72,4 +72,12 @@ export class Chunk {
       this.destination = props.destination
     }
   }
+
+  destory () {
+    this.file = undefined
+    this.dependencies = undefined
+    this.options = undefined
+    this.rule = undefined
+    this.destination = undefined
+  }
 }

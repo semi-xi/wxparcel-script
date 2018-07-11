@@ -45,22 +45,26 @@ export default class Parcel {
       return Promise.resolve()
     }
 
-    this.running = true
-    Printer.time()
+    try {
+      this.running = true
+      Printer.time()
 
-    this.hook('async')
-    await this.hook('before')
+      this.hook('async')
+      await this.hook('before')
 
-    let { appConfigFile, projectConfigFile } = OptionManager
-    let entries = this.findEntries()
-    entries = entries.concat([appConfigFile, projectConfigFile])
+      let { appConfigFile, projectConfigFile } = OptionManager
+      let entries = this.findEntries()
+      entries = entries.concat([appConfigFile, projectConfigFile])
 
-    let flowdata = await this.parser.multiCompile(entries, OptionManager)
-    let stats = await this.flush(flowdata)
-    stats.spendTime = Printer.timeEnd()
-
-    this.printStats(stats)
-    this.running = false
+      let flowdata = await this.parser.multiCompile(entries, OptionManager)
+      let stats = await this.flush(flowdata)
+      stats.spendTime = Printer.timeEnd()
+      this.printStats(stats)
+    } catch (error) {
+      Printer.error(error)
+    } finally {
+      this.running = false
+    }
   }
 
   watch () {
@@ -71,29 +75,32 @@ export default class Parcel {
     }
 
     const transform = async (file) => {
-      this.running = true
-      Printer.time()
+      try {
+        this.running = true
+        Printer.time()
 
-      let { chunk } = Assets.exists(file) ? Assets.get(file) : Assets.add(file)
-      let fileFlowData = await this.parser.transform(file)
-      fileFlowData.destination = chunk.destination
-      fileFlowData.rule = chunk.rule
+        let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file)
+        let fileFlowData = await this.parser.transform(file)
+        fileFlowData.destination = chunk.destination
+        fileFlowData.rule = chunk.rule
 
-      let entries = this.findEntries()
-      let dependencies = fileFlowData.dependencies || []
-      let files = dependencies.map((item) => item.dependency)
-      files = entries.concat(files)
+        let entries = this.findEntries()
+        let dependencies = fileFlowData.dependencies || []
+        let files = dependencies.map((item) => item.dependency)
+        files = entries.concat(files)
 
-      let otherFlowdata = await this.parser.multiCompile(files)
-      let flowdata = [fileFlowData, ...otherFlowdata]
+        let otherFlowdata = await this.parser.multiCompile(files)
+        let flowdata = [fileFlowData, ...otherFlowdata]
 
-      let stats = await this.flush(flowdata)
-      stats.spendTime = Printer.timeEnd()
-
-      this.printStats(stats)
-      this.running = false
-
-      this.excutePaddingTask()
+        let stats = await this.flush(flowdata)
+        stats.spendTime = Printer.timeEnd()
+        this.printStats(stats)
+      } catch (error) {
+        Printer.error(error)
+      } finally {
+        this.running = false
+        this.excutePaddingTask()
+      }
     }
 
     const handleFileChanged = (file) => {

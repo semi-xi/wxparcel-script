@@ -1,36 +1,28 @@
-import findIndex from 'lodash/findIndex'
 import { Chunk } from './chunk'
 
 export class Assets {
   constructor () {
-    this.assets = []
+    this.chunks = []
   }
 
   index (file) {
-    return findIndex(this.assets, { file })
+    return this.chunks.findIndex((chunk) => chunk.file === file)
   }
 
   add (file, options = {}) {
     let chunk = new Chunk(file, options)
-    let assets = { file, chunk }
-
-    this.assets.push(assets)
-    return assets
+    this.chunks.push(chunk)
+    return chunk
   }
 
   update (file, options = {}) {
-    let { chunk } = this.get(file) || {}
+    let chunk = this.get(file)
     chunk && chunk.update(options)
   }
 
   get (file) {
     let index = this.index(file)
-    return index !== -1 ? this.assets[index] : null
-  }
-
-  getChunk (file) {
-    let assets = this.get(file) || {}
-    return assets.chunk
+    return this.chunks[index] || null
   }
 
   del (file) {
@@ -42,14 +34,11 @@ export class Assets {
     return this.index(file) !== -1
   }
 
-  output (file) {
-    let chunk = this.getChunk(file) || {}
-    return chunk.destination
-  }
+  clean () {
+    let chunks = this.chunks.splice(0)
+    this.chunks = []
 
-  reset () {
-    this.assets.splice(0).forEach(({ chunk }) => chunk.destory())
-    this.assets = []
+    chunks.forEach((chunk) => chunk.destory())
   }
 }
 
