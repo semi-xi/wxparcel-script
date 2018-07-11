@@ -25,7 +25,6 @@ export default class Parcel {
   constructor (options = OptionManager) {
     this.running = false
     this.paddingTask = null
-    this.parser = new Parser(options)
     this.plugins = OptionManager.plugins.filter((plugin) => {
       return 'apply' in plugin && typeof plugin.apply === 'function'
     })
@@ -56,7 +55,7 @@ export default class Parcel {
       let entries = this.findEntries()
       entries = entries.concat([appConfigFile, projectConfigFile])
 
-      let flowdata = await this.parser.multiCompile(entries, OptionManager)
+      let flowdata = await Parser.multiCompile(entries, OptionManager)
       let stats = await this.flush(flowdata)
       stats.spendTime = Printer.timeEnd()
       this.printStats(stats)
@@ -80,7 +79,7 @@ export default class Parcel {
         Printer.time()
 
         let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file)
-        let fileFlowData = await this.parser.transform(file)
+        let fileFlowData = await Parser.transform(file)
         fileFlowData.destination = chunk.destination
         fileFlowData.rule = chunk.rule
 
@@ -89,7 +88,7 @@ export default class Parcel {
         let files = dependencies.map((item) => item.dependency)
         files = entries.concat(files)
 
-        let otherFlowdata = await this.parser.multiCompile(files)
+        let otherFlowdata = await Parser.multiCompile(files)
         let flowdata = [fileFlowData, ...otherFlowdata]
 
         let stats = await this.flush(flowdata)

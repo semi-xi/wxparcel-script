@@ -11,7 +11,7 @@ import OptionManager from './option-manager'
 import Assets from './assets'
 import { resolve as relativeResolve } from './share/requireRelative'
 
-export default class Parser {
+export class Parser {
   _resolveRule (source, file, rule, instance) {
     let loaders = []
     if (!isEmpty(rule)) {
@@ -144,6 +144,8 @@ export default class Parser {
     return rules.find(({ test: pattern }) => pattern.test(file)) || null
   }
 }
+
+export default new Parser()
 
 class InstanceForTransform {
   constructor () {
