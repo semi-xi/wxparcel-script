@@ -74,11 +74,10 @@ export class Parser {
     return readFilePromisify(file)
       .then((source) => this._resolveRule(source, file, rule, instance))
       .then((source) => this._resolve(source, file, options, instance))
-      .then((metadata) => {
-        let dependencies = [].concat(metadata.dependencies, instance.dependencies)
-        metadata.dependencies = uniqBy(dependencies, 'dependency')
-
-        return metadata
+      .then((flowdata) => {
+        let dependencies = [].concat(flowdata.dependencies, instance.dependencies)
+        flowdata.dependencies = uniqBy(dependencies, 'dependency')
+        return flowdata
       })
   }
 
@@ -96,14 +95,12 @@ export class Parser {
 
     let rule = this.matchRule(file, options.rules)
     let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
-    let rollup = (metadata) => {
-      let { source, dependencies, ...otherData } = metadata
-      chunk.update({ dependencies, rule })
+    let rollup = (flowdata) => {
+      let { source, dependencies } = flowdata
+      chunk.update({ content: source, dependencies, rule })
 
-      let destination = chunk.destination || ''
-      let flowdata = { source, dependencies, ...otherData, rule, destination }
       if (!Array.isArray(dependencies) || dependencies.length === 0) {
-        return flowdata
+        return chunk
       }
 
       let files = []
@@ -117,11 +114,11 @@ export class Parser {
       })
 
       if (!Array.isArray(files) || files.length === 0) {
-        return flowdata
+        return chunk
       }
 
-      return this.multiCompile(files, options).then((subFlowdata) => {
-        return [flowdata].concat(subFlowdata)
+      return this.multiCompile(files, options).then((chunks) => {
+        return [chunk].concat(chunks)
       })
     }
 
@@ -134,9 +131,9 @@ export class Parser {
     }
 
     let promises = files.map((file) => this.compile(file, options))
-    return Promise.all(promises).then((flowdata) => {
-      flowdata = flattenDeep(flowdata).filter((item) => item)
-      return flowdata
+    return Promise.all(promises).then((chunks) => {
+      chunks = flattenDeep(chunks).filter((chunk) => chunk)
+      return chunks
     })
   }
 

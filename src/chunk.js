@@ -10,17 +10,24 @@ export class Chunk {
     }
 
     if (!fs.existsSync(file)) {
-      throw new Error(`File ${file} is not found`)
+      if (!options.content) {
+        throw new Error(`File ${file} is not found`)
+      }
     }
 
     this.file = file
     this.dependencies = options.dependencies || []
+    this.content = Buffer.from(options.content || '')
 
     let { rootDir, srcDir, outDir, npmDir, staticDir } = optionManager
     let { rule, destination } = this.options = options
 
-    rule = this.rule = rule || {}
-    destination = this.destination = destination || ''
+    /**
+     * 重置 rule 值再赋值
+     * 下面 rule 需要默认值来使用
+     */
+    this.rule = rule = rule || {}
+    this.destination = destination || ''
 
     if (destination) {
       if (rule.extname) {
@@ -70,6 +77,14 @@ export class Chunk {
 
     if (props.hasOwnProperty('destination') && typeof props.destination === 'string') {
       this.destination = props.destination
+    }
+
+    if (props.hasOwnProperty('content')) {
+      if (typeof props.content === 'string') {
+        this.content = Buffer.from(props.content)
+      } else if (props.content instanceof Buffer) {
+        this.content = props.content
+      }
     }
   }
 

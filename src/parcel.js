@@ -47,8 +47,8 @@ export default class Parcel {
       let entries = this.findEntries()
       entries = entries.concat([appConfigFile, projectConfigFile])
 
-      let flowdata = await Parser.multiCompile(entries, OptionManager)
-      let stats = await this.flush(flowdata)
+      let chunks = await Parser.multiCompile(entries, OptionManager)
+      let stats = await this.flush(chunks)
       stats.spendTime = Printer.timeEnd()
       this.printStats(stats)
     } catch (error) {
@@ -70,20 +70,20 @@ export default class Parcel {
         this.running = true
         Printer.time()
 
-        let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file)
-        let fileFlowData = await Parser.transform(file)
-        fileFlowData.destination = chunk.destination
-        fileFlowData.rule = chunk.rule
+        let rule = Parser.matchRule(file, OptionManager.rules)
+        let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
+        let flowdata = await Parser.transform(file)
+        let { source, dependencies } = flowdata
+        chunk.update({ content: source, dependencies, rule })
 
         let entries = this.findEntries()
-        let dependencies = fileFlowData.dependencies || []
         let files = dependencies.map((item) => item.dependency)
         files = entries.concat(files)
 
-        let otherFlowdata = await Parser.multiCompile(files)
-        let flowdata = [fileFlowData, ...otherFlowdata]
+        let chunks = await Parser.multiCompile(files)
+        chunks = [chunk].concat(chunks)
 
-        let stats = await this.flush(flowdata)
+        let stats = await this.flush(chunks)
         stats.spendTime = Printer.timeEnd()
         this.printStats(stats)
       } catch (error) {
@@ -175,16 +175,16 @@ export default class Parcel {
     }
   }
 
-  flush (flowdata) {
-    if (!Array.isArray(flowdata) || flowdata.length === 0) {
-      return Promise.reject(new TypeError('Flowdata is not a array or not be provided or be empty'))
+  flush (chunks) {
+    if (!Array.isArray(chunks) || chunks.length === 0) {
+      return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
     }
 
-    let promises = flowdata.map(({ destination, source }) => {
+    let promises = chunks.map(({ destination, content }) => {
       return new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, source),
+          fs.writeFile.bind(fs, destination, content),
           fs.stat.bind(fs, destination)
         ]
 
