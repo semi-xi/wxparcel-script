@@ -3,20 +3,15 @@ import colors from 'colors'
 import ip from 'ip'
 import Finalhandler from 'finalhandler'
 import ServeStatic from 'serve-static'
+import defaultsDeep from 'lodash/defaultsDeep'
 
 export default class DevServerPlugin {
   constructor (options = {}) {
     this.options = Object.assign({ port: 3000 }, options)
   }
 
-  async apply (hook, options, printer) {
-    if (hook === 'async') {
-      return this.applyAsync(options, printer)
-    }
-  }
-
   async applyAsync (options, printer) {
-    options = options.connect(this.options)
+    options = defaultsDeep(options, this.options)
     let { staticDir, pubPath, port } = options
 
     let serve = ServeStatic(staticDir)

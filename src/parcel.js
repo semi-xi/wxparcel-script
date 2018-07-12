@@ -3,13 +3,14 @@ import path from 'path'
 import colors from 'colors'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
+import promisifyWaterfall from 'promise-waterfall'
 import map from 'lodash/map'
 import flatten from 'lodash/flatten'
 import forEach from 'lodash/forEach'
 import capitalize from 'lodash/capitalize'
 import pathToRegexp from 'path-to-regexp'
 import OptionManager from './option-manager'
-import Assets from './assets'
+import Assets, { Assets as AssetsInstance } from './assets'
 import Parser from './parser'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
@@ -21,13 +22,16 @@ const JS_REGEXP = /\.js$/
 const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
 
+const HOOK_TYPES = {
+  async: 'applyAsync',
+  before: 'applyBefore',
+  beforeTransform: 'applyBeforeTransform'
+}
+
 export default class Parcel {
   constructor () {
     this.running = false
     this.paddingTask = null
-    this.plugins = OptionManager.plugins.filter((plugin) => {
-      return 'apply' in plugin && typeof plugin.apply === 'function'
-    })
   }
 
   async run () {
@@ -40,14 +44,19 @@ export default class Parcel {
       this.running = true
       Printer.time()
 
-      this.hook('async')
-      await this.hook('before')
+      this.hook('async')()
+      await this.hook('before')()
+
+      let instance = new AssetsInstance()
+      await this.hook('beforeTransform')(instance)
 
       let { appConfigFile, projectConfigFile } = OptionManager
       let entries = this.findEntries()
       entries = entries.concat([appConfigFile, projectConfigFile])
 
       let chunks = await Parser.multiCompile(entries, OptionManager)
+      chunks = instance.chunks.concat(chunks)
+
       let stats = await this.flush(chunks)
       stats.spendTime = Printer.timeEnd()
       this.printStats(stats)
@@ -69,6 +78,9 @@ export default class Parcel {
       try {
         this.running = true
         Printer.time()
+
+        let instance = new AssetsInstance()
+        await this.hook('beforeTransform')(instance)
 
         let rule = Parser.matchRule(file, OptionManager.rules)
         let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
@@ -124,6 +136,13 @@ export default class Parcel {
         return
       }
 
+      let entries = this.findEntries()
+      if (entries.indexOf(file) !== -1) {
+        Printer.info(`${message}, it's a entry-file, compile...`)
+        transform(file)
+        return
+      }
+
       Printer.info(`${message}, but it's not be required, ignore...`)
     }
 
@@ -150,6 +169,7 @@ export default class Parcel {
       ignoreInitial: true
     })
 
+    watcher.on('add', handleFileChanged)
     watcher.on('change', handleFileChanged)
     watcher.on('unlink', handleFileUnlink)
 
@@ -168,19 +188,14 @@ export default class Parcel {
     process.on('SIGINT', handleProcessSigint)
   }
 
-  excutePaddingTask () {
-    if (typeof this.paddingTask === 'function') {
-      this.paddingTask()
-      this.paddingTask = undefined
-    }
-  }
-
   flush (chunks) {
     if (!Array.isArray(chunks) || chunks.length === 0) {
       return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
     }
 
-    let promises = chunks.map(({ destination, content }) => {
+    let promises = chunks.map((chunk) => {
+      let { destination, content } = chunk.flush()
+
       return new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
@@ -199,12 +214,81 @@ export default class Parcel {
     return Promise.all(promises)
   }
 
-  hook (hook) {
-    let promises = this.plugins.map((plugin) => {
-      return plugin.apply(hook, OptionManager, Printer)
-    })
+  /**
+   * 触发钩子
+   *
+   * @param {Menu} type 钩子类型 ['async', 'before']
+   * @return {Promise}
+   */
+  hook (type) {
+    switch (type) {
+      case 'async':
+        return function () {
+          let promises = []
+          OptionManager.plugins.forEach((plugin) => {
+            let fn = HOOK_TYPES[type]
+            if (!(fn in plugin && typeof plugin[fn] === 'function')) {
+              return
+            }
 
-    return Promise.all(promises)
+            let options = OptionManager.connect({})
+            let promise = plugin[fn](options, Printer)
+            promises.push(promise)
+          })
+
+          return Promise.all(promises)
+        }
+
+      case 'before':
+        return function () {
+          let promises = []
+          OptionManager.plugins.forEach((plugin) => {
+            let fn = HOOK_TYPES[type]
+            if (!(fn in plugin && typeof plugin[fn] === 'function')) {
+              return
+            }
+
+            promises.push(async () => {
+              await plugin[fn](OptionManager, Printer)
+              return Promise.resolve()
+            })
+          })
+
+          return promisifyWaterfall(promises)
+        }
+
+      case 'beforeTransform':
+        return function (assets = new AssetsInstance()) {
+          if (!(assets instanceof AssetsInstance)) {
+            throw new TypeError('Params assets is not instanceof Assets')
+          }
+
+          let promises = []
+          OptionManager.plugins.forEach((plugin) => {
+            let fn = HOOK_TYPES[type]
+            if (!(fn in plugin && typeof plugin[fn] === 'function')) {
+              return
+            }
+
+            promises.push(async () => {
+              let options = OptionManager.connect({})
+              await plugin[fn](assets, options, Printer)
+
+              assets.size > 0 && Assets.chunks.push(...assets.chunks)
+              return Promise.resolve()
+            })
+          })
+
+          return promisifyWaterfall(promises)
+        }
+    }
+  }
+
+  excutePaddingTask () {
+    if (typeof this.paddingTask === 'function') {
+      this.paddingTask()
+      this.paddingTask = undefined
+    }
   }
 
   findEntries () {

@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import path from 'path'
 import isPlainObject from 'lodash/isPlainObject'
+import omit from 'lodash/omit'
 import optionManager from './option-manager'
 
 export class Chunk {
@@ -15,6 +16,7 @@ export class Chunk {
       }
     }
 
+    this.flushed = false
     this.file = file
     this.dependencies = options.dependencies || []
     this.content = Buffer.from(options.content || '')
@@ -86,6 +88,14 @@ export class Chunk {
         this.content = props.content
       }
     }
+
+    this.flushed = false
+  }
+
+  flush () {
+    let metadata = omit(this, ['flush'])
+    this.flushed = true
+    return metadata
   }
 
   destory () {

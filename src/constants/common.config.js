@@ -1,5 +1,5 @@
 import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
-// import SpritesmithPlugin from '../plugins/spritesmith-wxparcel-plugin'
+import SpritesmithPlugin from '../plugins/spritesmith-wxparcel-plugin'
 
 export let JSRule = {
   test: /\.js$/,
@@ -56,8 +56,8 @@ export let Rules = [JSRule, CSSRule, HTMLRule, WXSRule]
 export let Plugins = [
   new CleanerPlugin({
     alisas: ['outDir', 'staticDir', 'tmplDir']
-  })
-  // new SpritesmithPlugin()
+  }),
+  new SpritesmithPlugin()
 ]
 
 export default {

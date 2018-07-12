@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import colors from 'colors'
 import template from 'lodash/template'
+import defaultsDeep from 'lodash/defaultsDeep'
 
 const remove = fs.remove.bind(fs)
 
@@ -9,14 +10,8 @@ export default class CleanPlugin {
     this.options = options || {}
   }
 
-  async apply (hook, options, printer) {
-    if (hook === 'before') {
-      return this.applyBefore(options, printer)
-    }
-  }
-
   async applyBefore (options, printer) {
-    options = options.connect(this.options)
+    options = defaultsDeep(options, this.options)
 
     let alisas = options.alisas || []
     let files = []

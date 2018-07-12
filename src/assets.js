@@ -1,6 +1,10 @@
 import { Chunk } from './chunk'
 
 export class Assets {
+  get size () {
+    return this.chunks.length
+  }
+
   constructor () {
     this.chunks = []
   }
@@ -27,7 +31,7 @@ export class Assets {
 
   del (file) {
     let index = this.index(file)
-    index !== -1 && this.splice(index, 1)
+    index !== -1 && this.chunks.splice(index, 1)
   }
 
   exists (file) {
