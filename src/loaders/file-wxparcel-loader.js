@@ -20,9 +20,9 @@ const genFileSync = function (file) {
   return gen(source)
 }
 
-const WXML_IMAGE_REGEXP = /<image[^>]+.*?src=["']?([^"'\s]+)["']?.*?\s*(\/>|><\/image>)/ig
-const WXSS_IMAGE_REGEXP = /url\(["']?([^"'\s]+)["']?\)/ig
-const REQUIRE_REGEXP = /require\(["']?([^"'\s]+)["']?\)/ig
+const WXML_IMAGE_REGEXP = /<image[^>]+.*?src=["']?([^"'\s]+)["']?.*?\s*(\/>|><\/image>)/i
+const WXSS_IMAGE_REGEXP = /url\(["']?([^"'\s]+)["']?\)/i
+const REQUIRE_REGEXP = /require\(["']?([^"'\s]+)["']?\)/i
 const FILE_REGEXPS = {
   '.html': WXML_IMAGE_REGEXP,
   '.wxml': WXML_IMAGE_REGEXP,
@@ -40,8 +40,8 @@ const FILE_REGEXPS = {
 
 export default function fileLoader (source, options, instance) {
   return new Promise((resolve) => {
-    let { file, rules } = options
-    let fileRegexp = Object.assign({}, rules, FILE_REGEXPS)
+    let { file, fileOptions } = options
+    let fileRegexp = Object.assign({}, FILE_REGEXPS, fileOptions)
     let extname = path.extname(file)
     let regexp = fileRegexp[extname]
 

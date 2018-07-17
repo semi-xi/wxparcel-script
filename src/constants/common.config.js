@@ -12,6 +12,14 @@ export let JSRule = {
     {
       use: require.resolve('../loaders/file-wxparcel-loader'),
       options: {}
+    },
+    {
+      use: require.resolve('../loaders/envify-wxparcel-loader'),
+      options: {
+        env: {
+          NODE_ENV: 'production'
+        }
+      }
     }
   ]
 }

@@ -15,18 +15,13 @@ import Parser from './parser'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
 import Package from '../package.json'
+import HOOK_TYPES from './constants/hooks'
 
 const IGORE_FILES_REGEXP = IgnoreFiles.map((pattern) => pathToRegexp(pattern))
 const JSON_REGEXP = /\.json$/
 const JS_REGEXP = /\.js$/
 const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
-
-const HOOK_TYPES = {
-  async: 'applyAsync',
-  before: 'applyBefore',
-  beforeTransform: 'applyBeforeTransform'
-}
 
 export default class Parcel {
   constructor () {
@@ -182,6 +177,7 @@ export default class Parcel {
 
       handleProcessExit = undefined
       handleProcessSigint = undefined
+      watcher = undefined
     }
 
     process.on('exit', handleProcessExit)

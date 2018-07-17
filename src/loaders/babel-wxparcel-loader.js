@@ -2,16 +2,16 @@ import fs from 'fs'
 import path from 'path'
 import { transform } from 'babel-core'
 
-export default function abelLoader (source, options) {
+export default function babelLoader (source, options) {
   return new Promise((resolve) => {
+    let { options: babelOptions } = options
     let babelRcFile = path.join(options.rootDir, '.babelrc')
-    let babelOptions = {}
 
     if (fs.existsSync(babelRcFile)) {
-      babelOptions = Object.assign({}, babelOptions, {
+      babelOptions = Object.assign({
         extends: babelRcFile,
         babelrc: true
-      })
+      }, babelOptions)
     }
 
     let { code } = transform(source, babelOptions)

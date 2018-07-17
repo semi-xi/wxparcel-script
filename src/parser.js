@@ -34,7 +34,8 @@ export class Parser {
       let transformer = require(loader.use)
       transformer = transformer.default || transformer
 
-      let options = OptionManager.connect({ file, rule })
+      let loaderOptions = loader.options || {}
+      let options = OptionManager.connect({ file, rule, options: loaderOptions })
       return transformer(source.toString(), options, instance)
     })
 

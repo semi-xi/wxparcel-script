@@ -8,9 +8,9 @@ const DEFAULTS_OPTIONS = {
 
 export default function sassLoader (source, options) {
   return new Promise((resolve, reject) => {
-    let { file, rule } = options
+    let { file, options: SassOptions } = options
     let params = { file, data: source }
-    options = Object.assign({}, DEFAULTS_OPTIONS, rule.options, params)
+    options = Object.assign({}, DEFAULTS_OPTIONS, SassOptions, params)
 
     render(options, (error, source) => {
       if (error) {
