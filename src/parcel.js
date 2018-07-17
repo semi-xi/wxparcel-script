@@ -288,6 +288,11 @@ export default class Parcel {
   }
 
   findEntries () {
+    let entry = path.join(OptionManager.srcDir, 'app.js')
+    if (!fs.existsSync(entry)) {
+      throw new Error('App.js is not found, Mini Program cantnot be regiestered. https://developers.weixin.qq.com/miniprogram/dev/framework/app-service/app.html')
+    }
+
     let pages = this.findAllPages()
     let components = pages.map(({ files }) => {
       let file = files.find((file) => JSON_REGEXP.test(file))
@@ -298,13 +303,18 @@ export default class Parcel {
 
     let entries = [].concat(pages, components)
     let files = entries.map((entry) => entry.files)
+    files = flatten(files)
 
-    return flatten(files)
+    return [entry].concat(files)
   }
 
   findAllPages () {
     let pages = OptionManager.appConfig.pages || []
+    let subPackages = OptionManager.appConfig.subPackages || []
+    let subPages = subPackages.map((item) => item.pages || [])
+    subPages = flatten(subPages)
 
+    pages = pages.concat(subPages)
     pages = pages.map((page) => {
       page = path.join(OptionManager.srcDir, page)
 
