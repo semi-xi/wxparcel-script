@@ -30,12 +30,12 @@ export default class DevServerPlugin {
   async applyAsync (options, printer) {
     options = defaultsDeep(options, this.options)
     let { staticDir, pubPath, port } = options
-
-    let serve = ServeStatic(staticDir, {
+    let serverOptions = Object.assign({
       index: false,
       setHeaders: this.setHeaders.bind(this)
-    })
+    }, options)
 
+    let serve = ServeStatic(staticDir, serverOptions)
     let server = http.createServer((request, response) => {
       serve(request, response, Finalhandler(request, response))
     })
