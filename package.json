@@ -11,11 +11,16 @@
     ]
   },
   "scripts": {
-    "eslint": "eslint --config .eslintrc.js --ext .js --fix './src/**/*.js'",
-    "lint": "npm run eslint",
     "precommit": "lint-staged",
-    "develop": "babel ./src --out-dir ./libs --watch",
-    "product": "babel ./src --out-dir ./libs",
+    "yamllint": "yamllint ./*.yml",
+    "eslint": "eslint --config .eslintrc.js --ext .js --fix './src/**/*.js'",
+    "lint": "npm run yamllint && npm run eslint",
+    "mocha": "mocha --require babel-core/register ./test/*.spec.js",
+    "coverage": "rimraf ./coverage && nyc --reporter=text --reporter=lcov --report-dir=./coverage/cli npm run mocha",
+    "coveralls": "npm run coverage && babel-node ./src/coveralls.js",
+    "test": "npm run lint && npm run mocha",
+    "develop": "rimraf ./libs && babel ./src --out-dir ./libs --watch",
+    "release": "rimraf ./libs && babel ./src --out-dir ./libs",
     "start": "npm run develop"
   },
   "dependencies": {
@@ -45,6 +50,7 @@
     "babel-eslint": "^8.2.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.7.0",
+    "chai": "^4.1.2",
     "eslint": "^4.14.0",
     "eslint-config-standard": "^11.0.0-beta.0",
     "eslint-plugin-import": "^2.8.0",
@@ -52,6 +58,10 @@
     "eslint-plugin-promise": "^3.6.0",
     "eslint-plugin-standard": "^3.0.1",
     "husky": "^0.14.3",
-    "lint-staged": "^7.2.0"
+    "lint-staged": "^7.2.0",
+    "mocha": "^5.2.0",
+    "nyc": "^12.0.2",
+    "rimraf": "^2.6.2",
+    "yaml-lint": "^1.2.4"
   }
 }
