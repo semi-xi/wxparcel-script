@@ -5,7 +5,6 @@ import './commander/parcel'
 program
   .version(version, '-v, --version')
   .option('--quiet', '不打印任何信息')
-
   .on('--help', () => {
     console.log('')
     console.log('  Examples:')

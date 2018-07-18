@@ -5,11 +5,17 @@ import defaultsDeep from 'lodash/defaultsDeep'
 import OptionManager from '../option-manager'
 import Parcel from '../parcel'
 
-const run = async function (options) {
+/**
+ * 执行编译流程
+ *
+ * @param {Object} [options={}] 配置
+ * @param {String} options.config 配置文件
+ */
+const run = async function (options = {}) {
   let { config: configFile } = options
 
   if (!configFile) {
-    throw new TypeError('找不到配置文件配置')
+    throw new TypeError('Config file is not provided')
   }
 
   if (!path.isAbsolute(configFile)) {
@@ -17,7 +23,7 @@ const run = async function (options) {
   }
 
   if (!fs.existsSync(configFile)) {
-    throw new Error(`配置文件不存在, 请检查配置文件, ${configFile}`)
+    throw new Error(`Config file is not found, please ensure config file exists. ${configFile}`)
   }
 
   let babelrc = path.join(OptionManager.rootDir, './.babelrc')
@@ -34,6 +40,9 @@ const run = async function (options) {
   let parcel = new Parcel()
   await parcel.run()
 
+  /**
+   * 是否监听文件
+   */
   if (options.watch) {
     OptionManager.watching = true
     parcel.watch()
@@ -42,10 +51,12 @@ const run = async function (options) {
 
 program
   .command('development')
-  .description('构建微信小程序(开发模式)')
-  .option('-c, --config <config>', '设置配置文件')
-  .option('-w, --watch <watch>', '监听文件变更')
+  .description('Compile mini progam in developmenet mode')
+  .option('-c, --config <config>', 'Setting config file')
+  .option('-w, --watch <watch>', 'Watch file changed')
   .action(function (options) {
+    process.env.NODE_ENV = 'development'
+
     if (options.hasOwnProperty('watch')) {
       options.watch = options.watch === 'true'
     }
@@ -60,9 +71,11 @@ program
 
 program
   .command('production')
-  .description('构建微信小程序(生产模式)')
+  .description('Compile mini program in production mode')
   .option('-c, --config', '设置配置文件')
   .action(function (options) {
+    process.env.NODE_ENV = 'production'
+
     options = defaultsDeep({}, options, {
       config: path.join(__dirname, '../constants/production.config.js')
     })
