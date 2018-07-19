@@ -2,6 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import get from 'lodash/get'
 import flatten from 'lodash/flatten'
+import forEach from 'lodash/forEach'
 import isPlainObject from 'lodash/isPlainObject'
 import { Resolver } from './resolver'
 
@@ -10,7 +11,7 @@ const JS_REGEXP = /\.js$/
 const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
 
-export class AppConfResolver extends Resolver {
+export class JsonResolver extends Resolver {
   resolve (source, file) {
     let config = {}
 
@@ -61,13 +62,13 @@ export class AppConfResolver extends Resolver {
   }
 
   resolveComponents (config = {}, file) {
-    let usingComponents = config.usingComponents || []
+    let usingComponents = config.usingComponents || {}
     let relativePath = path.dirname(file)
     let components = []
 
-    usingComponents.forEach((component) => {
-      let folder = path.dirname(component)
-      folder = this.resolveRelative(folder, [relativePath, this.options.srcDir])
+    forEach(usingComponents, (component) => {
+      let realtiveFolder = path.dirname(component)
+      let folder = this.resolveRelative(realtiveFolder, [relativePath, this.options.srcDir])
 
       if (folder) {
         let name = path.basename(component)
@@ -103,7 +104,7 @@ export class AppConfResolver extends Resolver {
       throw new Error('Paths is not a array or not be provided')
     }
 
-    for (let i = paths.length; i--;) {
+    for (let i = 0, l = paths.length; i < l; i++) {
       let dir = paths[i]
       let target = path.join(dir, file)
 

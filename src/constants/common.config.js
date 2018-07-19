@@ -3,7 +3,6 @@ import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
 export let JSRule = {
   test: /\.js$/,
   extname: '.js',
-  exclude: ['./src/services/hiido/**/*', './src/services/udb/**/*'],
   loaders: [
     {
       use: require.resolve('../loaders/babel-wxparcel-loader')

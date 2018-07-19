@@ -8,7 +8,7 @@ import map from 'lodash/map'
 import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
-import { AppConfResolver } from './resolver/app-conf-resolver'
+import { JsonResolver } from './resolver/json-resolver'
 import Parser from './parser'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
@@ -18,6 +18,7 @@ import HOOK_TYPES from './constants/hooks'
 export default class Parcel {
   constructor (options = OptionManager) {
     this.options = options
+    this.resolver = new JsonResolver(this.options)
     this.running = false
     this.paddingTask = null
   }
@@ -38,7 +39,12 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let chunks = await Parser.compile(this.options.appConfigFile)
+      let { projectConfigFile, srcDir } = this.options
+      let module = this.resolver.findModule('app', srcDir)
+      let entries = module.files
+      entries.unshift(projectConfigFile)
+
+      let chunks = await Parser.multiCompile(entries)
       let stats = await this.flush(chunks)
       stats.spendTime = Printer.timeEnd()
 
@@ -282,8 +288,7 @@ export default class Parcel {
 
   findEntries () {
     let { appConfig, appConfigFile } = this.options
-    let resolver = new AppConfResolver(this.options)
-    let chunk = resolver.resolve(appConfig, appConfigFile)
+    let chunk = this.resolver.resolve(appConfig, appConfigFile)
     let files = chunk.dependencies.map((item) => item.dependency)
     return [chunk.file].concat(files)
   }

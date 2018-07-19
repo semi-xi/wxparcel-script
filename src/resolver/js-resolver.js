@@ -5,7 +5,9 @@ import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
 
-export class JSResolver extends Resolver {
+const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
+
+export class JsResolver extends Resolver {
   constructor (options = OptionManager) {
     super(options)
 
@@ -33,7 +35,7 @@ export class JSResolver extends Resolver {
     let dependencies = []
 
     while (true) {
-      let match = /require\(['"]([\w\d_\-./]+)['"]\)/.exec(code)
+      let match = REQUIRE_REGEXP.exec(code)
       if (!match) {
         break
       }

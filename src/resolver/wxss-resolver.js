@@ -1,17 +1,14 @@
 import path from 'path'
 import findIndex from 'lodash/findIndex'
+import stripCssComments from 'strip-css-comments'
 import { Resolver } from './resolver'
 
-const WXS_REGEPX = /<wxs\s*(?:.+?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.+?)\s*(?:\/>|><\/wxs>)/
-const TEMPLATE_REGEPX = /<import\s*(?:.+?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|><\/import>)/
+const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([\w\d_\-./]+)['"];/
 
-export class WxmlResolver extends Resolver {
+export class WxssResolver extends Resolver {
   resolve (source = '', file, instance) {
     let relativeTo = path.dirname(file)
-
-    let wxsDeps = this.resolveDependencies(WXS_REGEPX, source, file, relativeTo)
-    let tmplDeps = this.resolveDependencies(TEMPLATE_REGEPX, source, file, relativeTo)
-    let dependencies = wxsDeps.concat(tmplDeps)
+    let dependencies = this.resolveDependencies(source, file, relativeTo)
 
     dependencies.forEach((item) => {
       let { file, destination, dependency, required } = item
@@ -22,14 +19,14 @@ export class WxmlResolver extends Resolver {
     return { file, source, dependencies }
   }
 
-  resolveDependencies (regexp, code, file, relativeTo) {
+  resolveDependencies (code, file, relativeTo) {
     if (code) {
-      code = code.replace(/<!--[\s\S]*?(?:-->)/g, '')
+      code = stripCssComments(code)
     }
 
     let dependencies = []
     while (true) {
-      let match = regexp.exec(code)
+      let match = IMPORT_REGEXP.exec(code)
       if (!match) {
         break
       }
