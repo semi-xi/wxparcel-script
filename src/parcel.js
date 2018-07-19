@@ -1,30 +1,23 @@
 import fs from 'fs-extra'
-import path from 'path'
 import colors from 'colors'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
 import promisifyWaterfall from 'promise-waterfall'
+import minimatch from 'minimatch'
 import map from 'lodash/map'
-import flatten from 'lodash/flatten'
-import forEach from 'lodash/forEach'
 import capitalize from 'lodash/capitalize'
-import pathToRegexp from 'path-to-regexp'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
+import { AppConfResolver } from './resolver/app-conf-resolver'
 import Parser from './parser'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
 import Package from '../package.json'
 import HOOK_TYPES from './constants/hooks'
 
-const IGORE_FILES_REGEXP = IgnoreFiles.map((pattern) => pathToRegexp(pattern))
-const JSON_REGEXP = /\.json$/
-const JS_REGEXP = /\.js$/
-const WXML_REGEXP = /\.wxml$/
-const WXSS_REGEXP = /\.wxss$/
-
 export default class Parcel {
-  constructor () {
+  constructor (options = OptionManager) {
+    this.options = options
     this.running = false
     this.paddingTask = null
   }
@@ -45,15 +38,10 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let { appConfigFile, projectConfigFile } = OptionManager
-      let entries = this.findEntries()
-      entries = entries.concat([appConfigFile, projectConfigFile])
-
-      let chunks = await Parser.multiCompile(entries, OptionManager)
-      chunks = instance.chunks.concat(chunks)
-
+      let chunks = await Parser.compile(this.options.appConfigFile)
       let stats = await this.flush(chunks)
       stats.spendTime = Printer.timeEnd()
+
       this.printStats(stats)
     } catch (error) {
       Printer.error(error)
@@ -63,10 +51,10 @@ export default class Parcel {
   }
 
   watch () {
-    let { rootDir, appConfigFile, projectConfigFile } = OptionManager
+    let { rootDir, appConfigFile, projectConfigFile } = this.options
 
     const ignoreFile = (file) => {
-      return IGORE_FILES_REGEXP.findIndex((pattern) => pattern.test(file)) !== -1
+      return IgnoreFiles.findIndex((pattern) => minimatch(file, pattern)) !== -1
     }
 
     const transform = async (file) => {
@@ -77,16 +65,13 @@ export default class Parcel {
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
 
-        let rule = Parser.matchRule(file, OptionManager.rules)
+        let rule = Parser.matchRule(file, this.options.rules)
         let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
-        let flowdata = await Parser.transform(file)
+        let flowdata = await Parser.convert(file)
         let { source, dependencies } = flowdata
         chunk.update({ content: source, dependencies, rule })
 
-        let entries = this.findEntries()
         let files = dependencies.map((item) => item.dependency)
-        files = entries.concat(files)
-
         let chunks = await Parser.multiCompile(files)
         chunks = [chunk].concat(chunks)
 
@@ -112,7 +97,7 @@ export default class Parcel {
       if (appConfigFile === file) {
         Printer.info(`${message}, resolve and compile...`)
 
-        OptionManager.resolveWXAppConf(file)
+        this.options.resolveWXAppConf(file)
         transform(file)
         return
       }
@@ -120,7 +105,7 @@ export default class Parcel {
       if (projectConfigFile === file) {
         Printer.info(`${message}, resolve and compile...`)
 
-        OptionManager.resolveWXAppConf(file)
+        this.options.resolveWXAppConf(file)
         transform(file)
         return
       }
@@ -159,7 +144,7 @@ export default class Parcel {
      * 监听文件变化
      * Docs: https://github.com/paulmillr/chokidar#api
      */
-    let watcher = chokidar.watch(OptionManager.srcDir, {
+    let watcher = chokidar.watch(this.options.srcDir, {
       // 初始化不执行 add 事件
       ignoreInitial: true
     })
@@ -219,15 +204,15 @@ export default class Parcel {
   hook (type) {
     switch (type) {
       case 'async':
-        return function () {
+        return () => {
           let promises = []
-          OptionManager.plugins.forEach((plugin) => {
+          this.options.plugins.forEach((plugin) => {
             let fn = HOOK_TYPES[type]
             if (!(fn in plugin && typeof plugin[fn] === 'function')) {
               return
             }
 
-            let options = OptionManager.connect({})
+            let options = this.options.connect({})
             let promise = plugin[fn](options, Printer)
             promises.push(promise)
           })
@@ -236,38 +221,42 @@ export default class Parcel {
         }
 
       case 'before':
-        return function () {
+        return () => {
           let promises = []
-          OptionManager.plugins.forEach((plugin) => {
+          this.options.plugins.forEach((plugin) => {
             let fn = HOOK_TYPES[type]
             if (!(fn in plugin && typeof plugin[fn] === 'function')) {
               return
             }
 
             promises.push(async () => {
-              await plugin[fn](OptionManager, Printer)
+              await plugin[fn](this.options, Printer)
               return Promise.resolve()
             })
           })
 
-          return promisifyWaterfall(promises)
+          if (promises.length > 0) {
+            return promisifyWaterfall(promises)
+          }
+
+          return Promise.resolve()
         }
 
       case 'beforeTransform':
-        return function (assets = new AssetsInstance()) {
+        return (assets = new AssetsInstance()) => {
           if (!(assets instanceof AssetsInstance)) {
             throw new TypeError('Params assets is not instanceof Assets')
           }
 
           let promises = []
-          OptionManager.plugins.forEach((plugin) => {
+          this.options.plugins.forEach((plugin) => {
             let fn = HOOK_TYPES[type]
             if (!(fn in plugin && typeof plugin[fn] === 'function')) {
               return
             }
 
             promises.push(async () => {
-              let options = OptionManager.connect({})
+              let options = this.options.connect({})
               await plugin[fn](assets, options, Printer)
 
               assets.size > 0 && Assets.chunks.push(...assets.chunks)
@@ -275,7 +264,11 @@ export default class Parcel {
             })
           })
 
-          return promisifyWaterfall(promises)
+          if (promises.length > 0) {
+            return promisifyWaterfall(promises)
+          }
+
+          return Promise.resolve()
         }
     }
   }
@@ -288,125 +281,15 @@ export default class Parcel {
   }
 
   findEntries () {
-    let entry = path.join(OptionManager.srcDir, 'app.js')
-    if (!fs.existsSync(entry)) {
-      throw new Error('App.js is not found, Mini Program cantnot be regiestered. https://developers.weixin.qq.com/miniprogram/dev/framework/app-service/app.html')
-    }
-
-    let pages = this.findAllPages()
-    let components = pages.map(({ files }) => {
-      let file = files.find((file) => JSON_REGEXP.test(file))
-      return this.findAllComponents(file)
-    })
-
-    components = flatten(components)
-
-    let entries = [].concat(pages, components)
-    let files = entries.map((entry) => entry.files)
-    files = flatten(files)
-
-    return [entry].concat(files)
+    let { appConfig, appConfigFile } = this.options
+    let resolver = new AppConfResolver(this.options)
+    let chunk = resolver.resolve(appConfig, appConfigFile)
+    let files = chunk.dependencies.map((item) => item.dependency)
+    return [chunk.file].concat(files)
   }
 
-  findAllPages () {
-    let pages = OptionManager.appConfig.pages || []
-    let subPackages = OptionManager.appConfig.subPackages || []
-    let subPages = subPackages.map((item) => item.pages || [])
-    subPages = flatten(subPages)
-
-    pages = pages.concat(subPages)
-    pages = pages.map((page) => {
-      page = path.join(OptionManager.srcDir, page)
-
-      let folder = path.dirname(page)
-      if (!fs.existsSync(folder)) {
-        throw new Error(`查找不到文件夹 ${folder}`)
-      }
-
-      let name = path.basename(page)
-      return this.findModule(name, folder)
-    })
-
-    return pages
-  }
-
-  findAllComponents (file) {
-    if (!fs.existsSync(file)) {
-      throw new Error(`File ${file} is not found or not be provided`)
-    }
-
-    let relativePath = path.dirname(file)
-    let config = fs.readJSONSync(file)
-    let components = []
-
-    forEach(config.usingComponents, (component) => {
-      let folder = path.dirname(component)
-      folder = this.resolveRelativePath(folder, [relativePath, OptionManager.srcDir])
-      if (!folder) {
-        return
-      }
-
-      let name = path.basename(component)
-      components.push(this.findModule(name, folder))
-    })
-
-    return components
-  }
-
-  findModule (name, folder) {
-    if (!folder) {
-      throw new TypeError('Folder is not provided')
-    }
-
-    if (!fs.statSync(folder).isDirectory()) {
-      throw new Error(`Folder ${folder} is not found or not a folder`)
-    }
-
-    let files = fs.readdirSync(folder)
-    let regexp = new RegExp(name)
-
-    files = files.filter((file) => {
-      if (!regexp.test(path.basename(file))) {
-        return false
-      }
-
-      let tester = [JSON_REGEXP, JS_REGEXP, WXML_REGEXP, WXSS_REGEXP]
-      let index = tester.findIndex((regexp) => regexp.test(file))
-      if (index !== -1) {
-        return true
-      }
-
-      if (Array.isArray(OptionManager.rules)) {
-        let index = OptionManager.rules.findIndex((rule) => rule.test.test(file))
-        if (index !== -1) {
-          return true
-        }
-      }
-    })
-
-    files = files.map((file) => path.join(folder, file))
-    return { name, dir: folder, files }
-  }
-
-  resolveRelativePath (file, paths) {
-    if (!Array.isArray(paths) || paths.length === 0) {
-      throw new Error('Paths is not a array or not be provided')
-    }
-
-    for (let i = paths.length; i--;) {
-      let dir = paths[i]
-      let target = path.join(dir, file)
-
-      if (fs.existsSync(target)) {
-        return target
-      }
-    }
-
-    return false
-  }
-
-  printStats (stats, watching = OptionManager.watching) {
-    let { rootDir, srcDir } = OptionManager
+  printStats (stats, watching = this.options.watching) {
+    let { rootDir, srcDir } = this.options
 
     let statsFormatter = stats.map(({ assets, size }) => {
       assets = assets.replace(rootDir, '.')

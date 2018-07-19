@@ -1,11 +1,13 @@
 import { Chunk } from './chunk'
+import OptionManager from './option-manager'
 
 export class Assets {
   get size () {
     return this.chunks.length
   }
 
-  constructor () {
+  constructor (options = OptionManager) {
+    this.options = options
     this.chunks = []
   }
 
@@ -13,15 +15,15 @@ export class Assets {
     return this.chunks.findIndex((chunk) => chunk.file === file)
   }
 
-  add (file, options = {}) {
-    let chunk = new Chunk(file, options)
+  add (file, state = {}) {
+    let chunk = new Chunk(file, state, this.options)
     this.chunks.push(chunk)
     return chunk
   }
 
-  update (file, options = {}) {
+  update (file, state = {}) {
     let chunk = this.get(file)
-    chunk && chunk.update(options)
+    chunk && chunk.update(state)
   }
 
   get (file) {

@@ -5,24 +5,25 @@ import omit from 'lodash/omit'
 import optionManager from './option-manager'
 
 export class Chunk {
-  constructor (file, options = {}) {
+  constructor (file, state = {}, options = optionManager) {
     if (!file) {
       throw new TypeError('File is invalid or not be provied')
     }
 
     if (!fs.existsSync(file)) {
-      if (!options.content) {
+      if (!state.content) {
         throw new Error(`File ${file} is not found`)
       }
     }
 
+    this.options = options
     this.flushed = false
     this.file = file
-    this.dependencies = options.dependencies || []
-    this.content = Buffer.from(options.content || '')
+    this.dependencies = state.dependencies || []
+    this.content = Buffer.from(state.content || '')
 
-    let { rootDir, srcDir, outDir, npmDir, staticDir } = optionManager
-    let { rule, destination } = this.options = options
+    let { rootDir, srcDir, outDir, npmDir, staticDir } = this.options
+    let { rule, destination } = this.state = state
 
     /**
      * 重置 rule 值再赋值
@@ -101,7 +102,7 @@ export class Chunk {
   destory () {
     this.file = undefined
     this.dependencies = undefined
-    this.options = undefined
+    this.state = undefined
     this.rule = undefined
     this.destination = undefined
   }

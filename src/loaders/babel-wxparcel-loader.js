@@ -5,11 +5,11 @@ import { transform } from 'babel-core'
 export default function babelLoader (source, options) {
   return new Promise((resolve) => {
     let { options: babelOptions } = options
-    let babelRcFile = path.join(options.rootDir, '.babelrc')
+    let babelrc = path.join(options.rootDir, '.babelrc')
 
-    if (fs.existsSync(babelRcFile)) {
+    if (fs.existsSync(babelrc)) {
       babelOptions = Object.assign({
-        extends: babelRcFile,
+        extends: babelrc,
         babelrc: true
       }, babelOptions)
     }

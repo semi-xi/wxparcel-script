@@ -26,7 +26,7 @@ const run = async function (options = {}) {
     throw new Error(`Config file is not found, please ensure config file exists. ${configFile}`)
   }
 
-  let babelrc = path.join(OptionManager.rootDir, './.babelrc')
+  let babelrc = path.join(OptionManager.execDir, './.babelrc')
   if (fs.existsSync(babelrc)) {
     let babelConfig = fs.readJSONSync(babelrc)
     require('babel-register')(babelConfig || {})

@@ -1,88 +1,33 @@
 import fs from 'fs-extra'
 import path from 'path'
+import minimatch from 'minimatch'
 import omit from 'lodash/omit'
 import uniqBy from 'lodash/uniqBy'
-import findIndex from 'lodash/findIndex'
 import isEmpty from 'lodash/isEmpty'
 import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'promise-waterfall'
-import stripComments from 'strip-comments'
 import OptionManager from './option-manager'
 import Assets from './assets'
-import { resolve as relativeResolve } from './share/requireRelative'
+import Resolver from './resolver'
 
 export class Parser {
-  _resolveRule (source, file, rule, instance) {
-    let loaders = []
-    if (!isEmpty(rule)) {
-      loaders = rule.loaders || []
+  constructor (options = OptionManager) {
+    this.options = options
+  }
+
+  multiCompile (files) {
+    if (!Array.isArray(files) || files.length === 0) {
+      return Promise.resolve([])
     }
 
-    if (loaders.length === 0) {
-      return Promise.resolve(source)
-    }
-
-    let taskQueue = loaders.map((loader) => (source) => {
-      if (!loader.hasOwnProperty('use')) {
-        return Promise.reject(new Error('Params use is not provided from loader'))
-      }
-
-      if (typeof loader.use !== 'string') {
-        return Promise.reject(new Error('Params use is not a stirng'))
-      }
-
-      let transformer = require(loader.use)
-      transformer = transformer.default || transformer
-
-      let loaderOptions = loader.options || {}
-      let options = OptionManager.connect({ file, rule, options: loaderOptions })
-      return transformer(source.toString(), options, instance)
+    let promises = files.map((file) => this.compile(file))
+    return Promise.all(promises).then((chunks) => {
+      chunks = flattenDeep(chunks).filter((chunk) => chunk)
+      return chunks
     })
-
-    taskQueue.unshift(() => Promise.resolve(source))
-    return waterfall(taskQueue)
   }
 
-  _resolveJs (source, file, options = OptionManager, instance) {
-    let relativeTo = path.dirname(file)
-    let dependencies = resolveDependencies(source.toString(), file, relativeTo, options)
-
-    dependencies.forEach((item) => {
-      let { file, destination, dependency, required } = item
-      instance.emitFile(file, destination, dependency, required)
-    })
-
-    source = Buffer.from(source)
-    return { file, source, dependencies }
-  }
-
-  _resolve (source, file, options = OptionManager, instance) {
-    if (/\.js$/.test(file)) {
-      return this._resolveJs(source, file, options, instance)
-    }
-
-    source = Buffer.from(source)
-    return { file, source, dependencies: [] }
-  }
-
-  transform (file, rule, options = OptionManager) {
-    if (!rule) {
-      rule = this.matchRule(file, options.rules)
-    }
-
-    let instance = new InstanceForTransform()
-
-    return readFilePromisify(file)
-      .then((source) => this._resolveRule(source, file, rule, instance))
-      .then((source) => this._resolve(source, file, options, instance))
-      .then((flowdata) => {
-        let dependencies = [].concat(flowdata.dependencies, instance.dependencies)
-        flowdata.dependencies = uniqBy(dependencies, 'dependency')
-        return flowdata
-      })
-  }
-
-  compile (file, options = OptionManager) {
+  compile (file) {
     let chunkOptions = {}
 
     if (typeof file === 'object') {
@@ -94,7 +39,7 @@ export class Parser {
       return Promise.resolve()
     }
 
-    let rule = this.matchRule(file, options.rules)
+    let rule = this.matchRule(file, this.options.rules)
     let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
     let rollup = (flowdata) => {
       let { source, dependencies } = flowdata
@@ -118,24 +63,69 @@ export class Parser {
         return chunk
       }
 
-      return this.multiCompile(files, options).then((chunks) => {
+      return this.multiCompile(files).then((chunks) => {
         return [chunk].concat(chunks)
       })
     }
 
-    return this.transform(file, rule, options).then(rollup)
+    return this.convert(file, rule).then(rollup)
   }
 
-  multiCompile (files, options = OptionManager) {
-    if (!Array.isArray(files) || files.length === 0) {
-      return Promise.resolve([])
+  convert (file, rule) {
+    if (!rule) {
+      rule = this.matchRule(file, this.options.rules) || {}
     }
 
-    let promises = files.map((file) => this.compile(file, options))
-    return Promise.all(promises).then((chunks) => {
-      chunks = flattenDeep(chunks).filter((chunk) => chunk)
-      return chunks
+    let instance = new InstanceForTransform()
+    return readFilePromisify(file)
+      .then((source) => this.transform(source, file, rule, instance))
+      .then((source) => Resolver.resolve(source, file, instance))
+      .then((flowdata) => {
+        let dependencies = [].concat(flowdata.dependencies, instance.dependencies)
+        flowdata.dependencies = uniqBy(dependencies, 'dependency')
+        return flowdata
+      })
+  }
+
+  transform (source, file, rule, instance) {
+    let loaders = []
+    if (!isEmpty(rule)) {
+      loaders = rule.loaders || []
+    }
+
+    if (loaders.length === 0) {
+      return Promise.resolve(source)
+    }
+
+    let exclude = rule.exclude || []
+    for (let i = exclude.length; i--;) {
+      let pattern = exclude[i]
+      pattern = path.join(this.options.rootDir, pattern)
+
+      if (minimatch(file, pattern)) {
+        return Promise.resolve(source)
+      }
+    }
+
+    let taskQueue = loaders.map((loader) => (source) => {
+      if (!loader.hasOwnProperty('use')) {
+        return Promise.reject(new Error('Params use is not provided from loader'))
+      }
+
+      if (typeof loader.use !== 'string') {
+        return Promise.reject(new Error('Params use is not a stirng'))
+      }
+
+      let transformer = require(loader.use)
+      transformer = transformer.default || transformer
+
+      let loaderOptions = loader.options || {}
+      let options = this.options.connect({ file, rule, options: loaderOptions })
+      return transformer(source.toString(), options, instance)
     })
+
+    taskQueue.unshift(() => Promise.resolve(source))
+    return waterfall(taskQueue)
   }
 
   matchRule (file, rules = []) {
@@ -169,66 +159,6 @@ class InstanceForTransform {
 
     this.dependencies.push({ file, destination, dependency, required })
   }
-}
-
-const resolveDestination = function (file, options) {
-  let { rootDir, srcDir, outDir } = options
-
-  /**
-   * windows 下 path 存在多个反斜杠
-   * 因此需要 escape 才能进行 search
-   * 这里可以直接使用 indexOf 进行查询
-   */
-  return file.indexOf(srcDir) !== -1
-    ? file.replace(srcDir, outDir)
-    : file.replace(rootDir, outDir)
-}
-
-const resolveDependencies = function (code, file, relativeTo, options) {
-  if (code) {
-    code = stripComments(code, { sourceType: 'module' })
-  }
-
-  let dependencies = []
-
-  while (true) {
-    let match = /require\(['"]([\w\d_\-./]+)['"]\)/.exec(code)
-    if (!match) {
-      break
-    }
-
-    let [all, required] = match
-    code = code.replace(all, '')
-
-    let dependency = relativeResolve(required, relativeTo)
-    if (findIndex(dependencies, { file, dependency, required }) === -1) {
-      let destination = resolveDestination(dependency, options)
-      dependencies.push({ file, dependency, destination, required })
-    }
-  }
-
-  return filterDependencies(dependencies)
-}
-
-const filterDependencies = function (dependencies) {
-  return dependencies.filter(({ dependency, destination }) => {
-    let extname = path.extname(destination)
-    /**
-     * 过滤没有后缀的文件
-     */
-    if (extname !== '' && !/\.js/.test(extname)) {
-      return false
-    }
-
-    /**
-     * 过滤系统依赖
-     */
-    if (dependency === path.basename(dependency)) {
-      return false
-    }
-
-    return true
-  })
 }
 
 const readFilePromisify = (file) => new Promise((resolve, reject) => {

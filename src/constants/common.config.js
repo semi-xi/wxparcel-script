@@ -1,13 +1,12 @@
 import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
-import SpritesmithPlugin from '../plugins/spritesmith-wxparcel-plugin'
 
 export let JSRule = {
   test: /\.js$/,
   extname: '.js',
+  exclude: ['./src/services/hiido/**/*', './src/services/udb/**/*'],
   loaders: [
     {
-      use: require.resolve('../loaders/babel-wxparcel-loader'),
-      options: {}
+      use: require.resolve('../loaders/babel-wxparcel-loader')
     },
     {
       use: require.resolve('../loaders/file-wxparcel-loader'),
@@ -56,8 +55,7 @@ export let Rules = [JSRule, CSSRule, HTMLRule, WXSRule]
 export let Plugins = [
   new CleanerPlugin({
     alisas: ['outDir', 'staticDir', 'tmplDir']
-  }),
-  new SpritesmithPlugin()
+  })
 ]
 
 export default {
