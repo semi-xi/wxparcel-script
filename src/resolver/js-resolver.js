@@ -17,9 +17,31 @@ export class JsResolver extends Resolver {
   resolve (source, file, instance) {
     let relativeTo = path.dirname(file)
     let dependencies = this.resolveDependencies(source.toString(), file, relativeTo, this.options)
+    let destination = this.resolveDestination(file)
+    let directory = path.dirname(destination)
 
     dependencies.forEach((item) => {
       let { file, destination, dependency, required } = item
+      let extname = path.extname(destination)
+      if (extname !== '' && !/\.(jsx?|babel)/.test(extname)) {
+        return
+      }
+
+      if (dependency === path.basename(dependency)) {
+        return
+      }
+
+      let relativePath = path.relative(directory, destination)
+      if (relativePath.charAt(0) !== '.') {
+        relativePath = `./${relativePath}`
+      }
+
+      let { npmDir } = this.options
+      relativePath = relativePath.replace('node_modules', npmDir)
+      let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
+      let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
+      source = source.replace(matchment, replacement)
+
       instance.emitFile(file, destination, dependency, required)
     })
 
