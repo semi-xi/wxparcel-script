@@ -1,32 +1,23 @@
 language: node_js
 sudo: false
 node_js:
-  - 6
-  - 7
-
+- 6
+- 7
 cache:
   directories:
-    - node_modules
-
+  - node_modules
 install:
-  - npm install
-  - npm install coveralls
-
+- npm install
 before_script:
-  - export DISPLAY=:99.0
-  - sh -e /etc/init.d/xvfb start
-
-script:
-  - npm run coveralls
-
+- export DISPLAY=:99.0
+- sh -e /etc/init.d/xvfb start
 before_deploy:
-  - npm run release
-
+- npm run release
 deploy:
   provider: npm
   skip_cleanup: true
   on:
     tags: true
-  email:
+  email: qowera@qq.com
   api_key:
-    secure:
+    secure: ZHdTp8tfsf/eIHTPtdsmwtouEmrsh62k3MG48jlsjgZfqU4NGDwjTY4JIacKuFLPvO2uB2toQ4ZV6dXXq2sPRtbAjBoEA6vQaa1Hu5ebJmNXOnZ75QHbIMeoSpQ+ycCMuACIdG59kz/h0BcSmLqV1Td+7EdQk1lrmmP0OReLvMgF47TPhxGH37U1j1dSyUSGOLGV82+14cu8WkL7/rnLLXR6XXTk91sbLjWoMdmaUFX4ofp41dMWlof7MhUMRdabjOuXowwqElXVEhEmT4T4G2Zj9LKU5/FN8rEuxMw0X+K3Phr+d78BUYUIQ2Q7Qi6VLFPZjx3l8ikopFiBx4BF6kzQ8FO0iGYG5QTJiptw9s+QL7OMD388YEetRlxLQdsKhq93YXh6nndmeklIfuX1dd1CXMabuejHJT5p5RCPXhtn/faIBlK1hP1PdHNgm6nM3eKDSPzg0n9iXOcEONjcKrxEjDnJ6TZfKBRPlugqmZdcRqoHvOqvxqog74/IkNkSs9li1n5hv19TFDz8TqcOeDetSIKlFWN9F0coqMTWNfSyLf1FEnpwVFlIGKH0MoLDBPLKN0fhdPrrS6aBLD53zpSrYjeU/+NqRJjnMapteGOajf71bX2OJMLARwrsqDwp28Qhd/StFkAg+TEhVEaSJrS5DjVJ4diA4u6OhIR9Yyo=
