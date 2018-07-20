@@ -54,18 +54,18 @@ export class JsResolver extends Resolver {
   }
 
   resolveRelative (requested, relativeTo) {
+    /**
+     * 兼容 require('not-a-system-dependency') 的情况
+     * 若无法通过正常方式获取, 则尝试使用相对定位寻找该文件
+     */
     try {
-      let root = this.resolveModule(relativeTo)
-      return Module._resolveFilename(requested, root)
-    } catch (error) {
-      /**
-       * 兼容 require('not-a-system-dependency') 的情况
-       * 若无法通过正常方式获取, 则尝试使用相对定位寻找该文件
-       */
+      let file = path.join(relativeTo, requested)
+      return require.resolve(file)
+    } catch (err) {
       try {
-        let file = path.join(relativeTo, requested)
-        return require.resolve(file)
-      } catch (err) {
+        let root = this.resolveModule(relativeTo)
+        return Module._resolveFilename(requested, root)
+      } catch (error) {
         throw new Error(error)
       }
     }
