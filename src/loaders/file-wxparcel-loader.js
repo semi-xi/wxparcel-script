@@ -118,7 +118,11 @@ export default function fileLoader (source, options, instance) {
         instance.emitFile(file, destination, dependency, match[1])
       }
 
-      let url = trimEnd(pubPath, '/') + '/' + trimStart(destination.replace(staticDir, ''), '/')
+      /**
+       * 这里使用 `/` 而非 `path.sep`, 但必须要过滤 `path.sep`
+       * 以防 windows 路径与 web 路径不统一
+       */
+      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(destination.replace(staticDir, ''), path.sep)
       source = replacement(source, string, url, regexp)
     }
 
