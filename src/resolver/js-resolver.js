@@ -71,6 +71,24 @@ export class JsResolver extends Resolver {
     }
   }
 
+  resolveDestination (file) {
+    let { rootDir, srcDir, outDir, npmDir } = this.options
+
+    /**
+     * windows 下 path 存在多个反斜杠
+     * 因此需要 escape 才能进行 search
+     * 这里可以直接使用 indexOf 进行查询
+     */
+    let relativePath = file.indexOf(srcDir) !== -1
+      ? path.dirname(file).replace(srcDir, '')
+      : /[\\/]node_modules[\\/]/.test(file)
+        ? path.dirname(file).replace(path.join(rootDir, 'node_modules'), npmDir)
+        : path.dirname(file).replace(rootDir, '')
+
+    let filename = path.basename(file)
+    return path.join(outDir, relativePath, filename)
+  }
+
   resolveModule (directive) {
     let rootPath = directive ? path.resolve(directive) : process.cwd()
     let rootName = path.join(rootPath, '@root')
