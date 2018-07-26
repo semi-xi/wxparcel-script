@@ -1,9 +1,11 @@
 import fs from 'fs-extra'
 import path from 'path'
 import program from 'commander'
-import defaultsDeep from 'lodash/defaultsDeep'
+import colors from 'colors'
+import PrettyError from 'pretty-error'
 import OptionManager from '../option-manager'
 import Parcel from '../parcel'
+import Package from '../../package.json'
 
 /**
  * 执行编译流程
@@ -44,41 +46,39 @@ const run = async function (options = {}) {
    * 是否监听文件
    */
   if (options.watch) {
+    PrettyError.start()
+
     OptionManager.watching = true
     parcel.watch()
   }
 }
 
 program
-  .command('development')
-  .description('Compile mini progam in developmenet mode')
-  .option('-c, --config <config>', 'Setting config file')
-  .option('-w, --watch <watch>', 'Watch file changed')
-  .action(function (options) {
-    process.env.NODE_ENV = 'development'
-
-    if (options.hasOwnProperty('watch')) {
-      options.watch = options.watch === 'true'
-    }
-
-    options = defaultsDeep({}, options, {
-      config: path.join(__dirname, '../constants/development.config.js'),
-      watch: true
-    })
-
-    run(options)
+  .command('start')
+  .description('start the compilation process')
+  .option('-c, --config <config>', 'setting configuration file')
+  .option('-w, --watch', 'open the listener for file changes ')
+  .on('--help', () => {
+    console.log('')
+    console.log('  Examples:')
+    console.log('')
+    console.log('    $ wxparcel-script start --config path/to/config.js --watch')
+    console.log('')
   })
+  .action(async function (options) {
+    try {
+      if (!options.config || !fs.existsSync(options.config)) {
+        throw new Error(`Config file is not found. you can type \`${Package.name} start --help\` to learn more detail.`)
+      }
 
-program
-  .command('production')
-  .description('Compile mini program in production mode')
-  .option('-c, --config', '设置配置文件')
-  .action(function (options) {
-    process.env.NODE_ENV = 'production'
+      options.watch = options.hasOwnProperty('watch')
 
-    options = defaultsDeep({}, options, {
-      config: path.join(__dirname, '../constants/production.config.js')
-    })
+      await run(options)
+    } catch (error) {
+      let pe = new PrettyError()
+      error.message = colors.red(error.message)
 
-    run(options)
+      let message = pe.render(error)
+      console.log(message)
+    }
   })

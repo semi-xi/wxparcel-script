@@ -14,6 +14,8 @@ export class Resolver {
   }
 
   resolve (source, file, instance) {
+    source = source.toString()
+
     if (/\.json$/.test(file)) {
       return this.jsonResolver.resolve(source, file, instance)
     }
