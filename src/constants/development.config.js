@@ -5,6 +5,7 @@ JSRule.loaders.push({
   use: require.resolve('../loaders/envify-wxparcel-loader'),
   options: {
     env: {
+
       NODE_ENV: 'development'
     }
   }
