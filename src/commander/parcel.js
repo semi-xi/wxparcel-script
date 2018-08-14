@@ -61,7 +61,7 @@ program
   .command('start')
   .description('start the compilation process')
   .option('-c, --config <config>', 'setting configuration file')
-  .option('-w, --watch <watch>', 'open the listener for file changes')
+  .option('-w, --watch', 'open the listener for file changes')
   .option('--publicPath <publicPath>', 'set public path of static resources')
   .on('--help', () => {
     console.log('')
