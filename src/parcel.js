@@ -1,4 +1,5 @@
 import fs from 'fs-extra'
+import path from 'path'
 import colors from 'colors'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
@@ -39,9 +40,14 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let { projectConfigFile, srcDir } = this.options
+      let { rootDir, srcDir } = this.options
       let module = this.resolver.findModule('app', srcDir)
       let entries = module.files
+      let projectConfigFile = path.join(rootDir, './project.config.json')
+      if (!fs.existsSync(projectConfigFile)) {
+        throw new Error(`${projectConfigFile} is not provided`)
+      }
+
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
