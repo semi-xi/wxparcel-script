@@ -1,13 +1,14 @@
 import http from 'http'
 import colors from 'colors'
 import ip from 'ip'
+import ipPortRegex from 'ip-port-regex'
 import Finalhandler from 'finalhandler'
 import ServeStatic from 'serve-static'
 import defaultsDeep from 'lodash/defaultsDeep'
 
 export default class DevServerPlugin {
   constructor (options = {}) {
-    this.options = Object.assign({ port: 3000 }, options)
+    this.options = Object.assign({}, options)
   }
 
   enableCors (response) {
@@ -29,7 +30,7 @@ export default class DevServerPlugin {
 
   async applyAsync (options, printer) {
     options = defaultsDeep(options, this.options)
-    let { staticDir, pubPath, port } = options
+    let { staticDir, pubPath } = options
     let serverOptions = Object.assign({
       index: false,
       setHeaders: this.setHeaders.bind(this)
@@ -40,11 +41,12 @@ export default class DevServerPlugin {
       serve(request, response, Finalhandler(request, response))
     })
 
+    let match = ipPortRegex.parts(pubPath) || {}
+    console.log(match)
+    let port = options.port || match.port
     server.listen(port, '0.0.0.0')
 
-    server.on('error', (error) => {
-      printer.error(error)
-    })
+    server.on('error', (error) => printer.error(error))
 
     server.once('listening', () => {
       printer.layze(`Static server is running at ${colors.cyan.bold(`${ip.address()}:${port}`)}`)

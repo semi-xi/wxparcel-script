@@ -1,6 +1,7 @@
 import ip from 'ip'
 import fs from 'fs-extra'
 import path from 'path'
+import portscanner from 'portscanner'
 import isEmpty from 'lodash/isEmpty'
 import mapValues from 'lodash/mapValues'
 import Printer from './printer'
@@ -13,12 +14,14 @@ export class OptionManager {
     !isEmpty(options) && this.resolve(options)
   }
 
-  resolve (options = {}) {
+  async resolve (options = {}) {
+    let idlePort = await portscanner.findAPortNotInUse(50000, 60000)
+
     this.srcDir = path.join(this.rootDir, options.src || 'src')
     this.outDir = path.join(this.rootDir, options.output || 'app')
     this.staticDir = path.join(this.rootDir, options.static || 'static')
     this.tmplDir = path.join(this.rootDir, options.tmpl || '.temporary')
-    this.pubPath = options.publicPath || `http://${ip.address()}:3000`
+    this.pubPath = options.publicPath || `http://${ip.address()}:${idlePort}`
     this.npmDir = options.nodeModuleDirectoryName || 'npm'
     this.rules = options.rules || []
     this.plugins = options.plugins || []
@@ -35,9 +38,6 @@ export class OptionManager {
     if (valid !== true) {
       throw new TypeError(valid)
     }
-
-    let wxConfFile = path.join(this.srcDir, './project.config.json')
-    this.resolveWXProjectConf(wxConfFile)
 
     let wxAppConfFile = path.join(this.srcDir, './app.json')
     this.resolveWXAppConf(wxAppConfFile)
@@ -81,24 +81,6 @@ export class OptionManager {
     }
 
     return true
-  }
-
-  resolveWXProjectConf (file) {
-    if (!fs.existsSync(file)) {
-      let message = `File ${file} is not found, please ensure ${file} is valid.`
-      Printer.error(message)
-      throw new Error(message)
-    }
-
-    try {
-      this.projectConfig = fs.readJSONSync(file)
-    } catch (error) {
-      let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
-      Printer.error(message)
-      throw new Error(message)
-    }
-
-    this.projectConfigFile = file
   }
 
   resolveWXAppConf (file) {

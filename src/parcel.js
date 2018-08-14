@@ -39,10 +39,9 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let { projectConfigFile, srcDir } = this.options
+      let { srcDir } = this.options
       let module = this.resolver.findModule('app', srcDir)
       let entries = module.files
-      entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
       let stats = await this.flush(chunks)
@@ -57,7 +56,7 @@ export default class Parcel {
   }
 
   watch () {
-    let { rootDir, appConfigFile, projectConfigFile } = this.options
+    let { rootDir, appConfigFile } = this.options
 
     const ignoreFile = (file) => {
       return IgnoreFiles.findIndex((pattern) => minimatch(file, pattern)) !== -1
@@ -101,14 +100,6 @@ export default class Parcel {
       let message = `File ${colors.bold(relativePath)} has been changed`
 
       if (appConfigFile === file) {
-        Printer.info(`${message}, resolve and compile...`)
-
-        this.options.resolveWXAppConf(file)
-        transform(file)
-        return
-      }
-
-      if (projectConfigFile === file) {
         Printer.info(`${message}, resolve and compile...`)
 
         this.options.resolveWXAppConf(file)
