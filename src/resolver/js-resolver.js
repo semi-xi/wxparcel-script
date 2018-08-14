@@ -15,8 +15,10 @@ export class JsResolver extends Resolver {
   }
 
   resolve (source, file, instance) {
+    source = source.toString()
+
     let relativeTo = path.dirname(file)
-    let dependencies = this.resolveDependencies(source.toString(), file, relativeTo, this.options)
+    let dependencies = this.resolveDependencies(source, file, relativeTo, this.options)
     let destination = this.resolveDestination(file)
     let directory = path.dirname(destination)
 

@@ -13,8 +13,17 @@ export class Resolver {
     this.wxssResolver = new WxssResolver(this.options)
   }
 
+  /**
+   * 解析文件
+   *
+   * @param {Buffer} source 文件内容
+   * @param {String} file 文件名称
+   * @param {Object} instance 编译器实例
+   */
   resolve (source, file, instance) {
-    source = source.toString()
+    if (/\.(png|jpeg|jpg|gif)$/.test(file)) {
+      return { file, source, dependencies: [] }
+    }
 
     if (/\.json$/.test(file)) {
       return this.jsonResolver.resolve(source, file, instance)
@@ -32,7 +41,6 @@ export class Resolver {
       return this.wxmlResolver.resolve(source, file, instance)
     }
 
-    source = Buffer.from(source)
     return { file, source, dependencies: [] }
   }
 }

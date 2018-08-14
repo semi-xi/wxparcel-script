@@ -14,7 +14,7 @@ export default function babelLoader (source, options) {
       }, babelOptions)
     }
 
-    let { code } = transform(source, babelOptions)
+    let { code } = transform(source.toString(), babelOptions)
     let regexp = /require\(["'\s]+(.+?)["'\s]+\)/g
     let surplus = code
     let match = null
@@ -26,6 +26,6 @@ export default function babelLoader (source, options) {
       code = code.replace(all, `require('${path.replace(/\\/g, '/')}')`)
     }
 
-    resolve(code)
+    resolve(Buffer.from(code))
   })
 }

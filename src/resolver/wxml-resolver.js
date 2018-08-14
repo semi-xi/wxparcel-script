@@ -7,8 +7,9 @@ const TEMPLATE_REGEPX = /<import\s*(?:.+?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>
 
 export class WxmlResolver extends Resolver {
   resolve (source = '', file, instance) {
-    let relativeTo = path.dirname(file)
+    source = source.toString()
 
+    let relativeTo = path.dirname(file)
     let wxsDeps = this.resolveDependencies(WXS_REGEPX, source, file, relativeTo)
     let tmplDeps = this.resolveDependencies(TEMPLATE_REGEPX, source, file, relativeTo)
     let dependencies = wxsDeps.concat(tmplDeps)

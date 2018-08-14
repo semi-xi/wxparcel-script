@@ -6,7 +6,9 @@ import { Resolver } from './resolver'
 const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([\w\d_\-./]+)['"];/
 
 export class WxssResolver extends Resolver {
-  resolve (source = '', file, instance) {
+  resolve (source, file, instance) {
+    source = source.toString()
+
     let relativeTo = path.dirname(file)
     let dependencies = this.resolveDependencies(source, file, relativeTo)
 
@@ -15,8 +17,7 @@ export class WxssResolver extends Resolver {
       instance.emitFile(file, destination, dependency, required)
     })
 
-    source = Buffer.from(source)
-    return { file, source, dependencies }
+    return { file, source: Buffer.from(source), dependencies }
   }
 
   resolveDependencies (code, file, relativeTo) {

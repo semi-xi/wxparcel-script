@@ -7,6 +7,8 @@ const DEFAULTS_OPTIONS = {
 }
 
 export default function sassLoader (source, options) {
+  source = source.toString()
+
   return new Promise((resolve, reject) => {
     let { file, options: SassOptions } = options
     let params = { file, data: source }
@@ -19,7 +21,7 @@ export default function sassLoader (source, options) {
       }
 
       let { css: code } = source
-      resolve(code)
+      resolve(Buffer.from(code))
     })
   })
 }

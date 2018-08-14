@@ -50,6 +50,8 @@ export default function fileLoader (source, options, instance) {
       return
     }
 
+    source = source.toString()
+
     let { srcDir, rootDir, pubPath, staticDir } = options
     let directory = path.dirname(file)
     let dependencies = []
@@ -126,6 +128,6 @@ export default function fileLoader (source, options, instance) {
       source = replacement(source, string, url, regexp)
     }
 
-    resolve(source)
+    resolve(Buffer.from(source))
   })
 }

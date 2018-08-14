@@ -1,9 +1,9 @@
 {
   "name": "wxparcel-script",
-  "version": "1.0.0-alpha.2.0",
+  "version": "1.0.0-alpha.3.0",
   "license": "MIT",
   "bin": "./bin/cli",
-  "main": "./libs/index.js",
+  "main": "./libs/parcel.js",
   "lint-staged": {
     "*.js": [
       "npm run lint",

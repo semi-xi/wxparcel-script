@@ -17,6 +17,12 @@ export class JsonResolver extends Resolver {
 
     if (isPlainObject(source)) {
       config = source
+
+      try {
+        source = JSON.stringify(source)
+      } catch (error) {
+        throw new Error(`File ${file} is invalid json, please check the json corrected.\n${error}`)
+      }
     } else {
       try {
         config = JSON.parse(source)
@@ -36,7 +42,7 @@ export class JsonResolver extends Resolver {
       return { file, dependency, destination, required: '' }
     })
 
-    return { file, source, dependencies }
+    return { file, source: Buffer.from(source), dependencies }
   }
 
   resolvePages (config = {}) {
