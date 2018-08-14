@@ -17,12 +17,6 @@ export class JsonResolver extends Resolver {
 
     if (isPlainObject(source)) {
       config = source
-
-      try {
-        source = JSON.stringify(source)
-      } catch (error) {
-        throw new Error(`File ${file} is invalid json, please check the json corrected.\n${error}`)
-      }
     } else {
       try {
         config = JSON.parse(source)
@@ -42,7 +36,17 @@ export class JsonResolver extends Resolver {
       return { file, dependency, destination, required: '' }
     })
 
+    config = this.resolveProjectConf(config)
+    source = JSON.stringify(config, null, 2)
     return { file, source: Buffer.from(source), dependencies }
+  }
+
+  resolveProjectConf (config = {}) {
+    if (config.hasOwnProperty('miniprogramRoot')) {
+      config.miniprogramRoot = './'
+    }
+
+    return config
   }
 
   resolvePages (config = {}) {
