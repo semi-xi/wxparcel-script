@@ -63,7 +63,7 @@ export default class Parcel {
   }
 
   watch () {
-    let { rootDir, appConfigFile, projectConfigFile } = this.options
+    let { rootDir, appConfigFile } = this.options
 
     const ignoreFile = (file) => {
       return IgnoreFiles.findIndex((pattern) => minimatch(file, pattern)) !== -1
@@ -110,12 +110,6 @@ export default class Parcel {
         Printer.info(`${message}, resolve and compile...`)
 
         this.options.resolveWXAppConf(file)
-        transform(file)
-        return
-      }
-
-      if (projectConfigFile === file) {
-        Printer.info(`${message}, compile...`)
         transform(file)
         return
       }
