@@ -42,7 +42,6 @@ export default class DevServerPlugin {
     })
 
     let match = ipPortRegex.parts(pubPath) || {}
-    console.log(match)
     let port = options.port || match.port
     server.listen(port, '0.0.0.0')
 
