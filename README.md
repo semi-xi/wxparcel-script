@@ -5,6 +5,10 @@
 ## 使用
 
 ```
-$ wxparcel-script development # process.env.NODE_ENV === 'development'
-$ wxparcel-script production  # process.env.NODE_ENV === 'production'
+# run in default config
+$ wxparcel-script start --config development
+$ wxparcel-script start --config production
+
+# run in custom config file
+$ wxparcel-script start --config /path/to/development.config.js
 ```
