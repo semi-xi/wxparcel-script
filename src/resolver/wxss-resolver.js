@@ -3,7 +3,7 @@ import { Resolver } from './resolver'
 
 const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([\w\d_\-./]+)['"];/
 
-export class WxssResolver extends Resolver {
+export default class WXSSResolver extends Resolver {
   resolve () {
     this.source = this.source.toString()
     this.source = stripCssComments(this.source)

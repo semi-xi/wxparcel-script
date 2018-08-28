@@ -8,7 +8,7 @@ import OptionManager from '../option-manager'
 
 const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
 
-export class JsResolver extends Resolver {
+export default class JSResolver extends Resolver {
   constructor (source, file, instance, options = OptionManager) {
     super(source, file, instance, options)
 

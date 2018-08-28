@@ -11,7 +11,7 @@ const JS_REGEXP = /\.js$/
 const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
 
-export class JsonResolver extends Resolver {
+export default class JSONResolver extends Resolver {
   resolve () {
     let config = {}
 

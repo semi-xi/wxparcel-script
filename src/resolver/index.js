@@ -1,12 +1,26 @@
-import { JsonResolver } from './json-resolver'
-import { JsResolver } from './js-resolver'
-import { WxmlResolver } from './wxml-resolver'
-import { WxssResolver } from './wxss-resolver'
+import JSONResolver from './json-resolver'
+import JSResolver from './js-resolver'
+import WXMLResolver from './wxml-resolver'
+import WXSSResolver from './wxss-resolver'
 import OptionManager from '../option-manager'
 
 export class Resolver {
   constructor (options = OptionManager) {
     this.options = options
+    this.resolvers = []
+
+    this.register(/\.json$/, JSONResolver)
+    this.register(/\.js$/, JSResolver)
+    this.register(/\.wxss$/, WXSSResolver)
+    this.register(/\.wxml$/, WXMLResolver)
+  }
+
+  register (regexp, resolver) {
+    if (typeof resolver === 'string') {
+      resolver = require(resolver)
+    }
+
+    this.resolvers.push({ regexp, resolver })
   }
 
   /**
@@ -17,28 +31,15 @@ export class Resolver {
    * @param {Object} instance 编译器实例
    */
   resolve (source, file, instance) {
-    if (/\.(png|jpeg|jpg|gif)$/.test(file)) {
-      return { file, source, dependencies: [] }
-    }
+    let { resolvers } = this
 
-    if (/\.json$/.test(file)) {
-      let resolver = new JsonResolver(source, file, instance, this.options)
-      return resolver.resolve()
-    }
+    for (let i = 0, l = resolvers.length; i < l; i++) {
+      let { regexp, resolver: Resolver } = resolvers[i]
 
-    if (/\.js$/.test(file)) {
-      let resolver = new JsResolver(source, file, instance, this.options)
-      return resolver.resolve()
-    }
-
-    if (/\.wxss$/.test(file)) {
-      let resolver = new WxssResolver(source, file, instance, this.options)
-      return resolver.resolve()
-    }
-
-    if (/\.wxml$/.test(file)) {
-      let resolver = new WxmlResolver(source, file, instance, this.options)
-      return resolver.resolve()
+      if (regexp.test(file)) {
+        let resolver = new Resolver(source, file, instance, this.options)
+        return resolver.resolve()
+      }
     }
 
     return { file, source, dependencies: [] }

@@ -15,6 +15,10 @@ export class Resolver {
     this.options = options
   }
 
+  resolve () {
+    return { file: this.file, source: this.source, dependencies: [] }
+  }
+
   resolveDependencies (regexp, options = {}) {
     options = defaults({}, options, {
       convertDependencyPath: this.convertDependencyPath.bind(this),

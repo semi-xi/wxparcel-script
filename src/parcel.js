@@ -9,7 +9,7 @@ import map from 'lodash/map'
 import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
-import { JsonResolver } from './resolver/json-resolver'
+import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
@@ -19,7 +19,7 @@ import HOOK_TYPES from './constants/hooks'
 export default class Parcel {
   constructor (options = OptionManager) {
     this.options = options
-    this.resolver = new JsonResolver(this.options)
+    this.resolver = new JSONResolver(this.options)
     this.running = false
     this.paddingTask = null
   }
