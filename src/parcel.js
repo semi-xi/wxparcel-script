@@ -184,7 +184,7 @@ export default class Parcel {
       return new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, content),
+          fs.writeFile.bind(fs, destination, stripBOM(content), 'utf8'),
           fs.stat.bind(fs, destination)
         ]
 
@@ -323,4 +323,29 @@ export default class Parcel {
 
     Printer.flush()
   }
+}
+
+/**
+ * strip utf-8 with BOM
+ *
+ * some editor or nodeJS in windows will prepend
+ * 0xFEFF to the code it will change to utf8 BOM
+ *
+ * @param {String|Buffer} content
+ * @return {String|Buffer}
+ */
+function stripBOM (content) {
+  if (Buffer.isBuffer(content)) {
+    if (content[0] === 0xEF && content[1] === 0xBB && content[2] === 0xBF) {
+      return content.slice(3)
+    }
+
+    return content
+  }
+
+  if (content.charCodeAt(0) === 0xFEFF) {
+    return content.slice(1)
+  }
+
+  return content
 }

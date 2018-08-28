@@ -2,8 +2,8 @@ import path from 'path'
 import findIndex from 'lodash/findIndex'
 import { Resolver } from './resolver'
 
-const WXS_REGEPX = /<wxs\s*(?:.+?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.+?)\s*(?:\/>|><\/wxs>)/
-const TEMPLATE_REGEPX = /<import\s*(?:.+?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|><\/import>)/
+const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
+const TEMPLATE_REGEPX = /<import\s*(?:.+?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
 
 export class WxmlResolver extends Resolver {
   resolve (source = '', file, instance) {
