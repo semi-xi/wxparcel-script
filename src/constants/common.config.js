@@ -6,10 +6,6 @@ export let JSRule = {
   loaders: [
     {
       use: require.resolve('../loaders/babel-wxparcel-loader')
-    },
-    {
-      use: require.resolve('../loaders/file-wxparcel-loader'),
-      options: {}
     }
   ]
 }
@@ -21,35 +17,11 @@ export let CSSRule = {
     {
       use: require.resolve('../loaders/sass-wxparcel-loader'),
       options: {}
-    },
-    {
-      use: require.resolve('../loaders/file-wxparcel-loader'),
-      options: {}
     }
   ]
 }
 
-export let HTMLRule = {
-  test: /\.wxml$/,
-  loaders: [
-    {
-      use: require.resolve('../loaders/file-wxparcel-loader'),
-      options: {}
-    }
-  ]
-}
-
-export let WXSRule = {
-  test: /\.wxs$/,
-  loaders: [
-    {
-      use: require.resolve('../loaders/file-wxparcel-loader'),
-      options: {}
-    }
-  ]
-}
-
-export let Rules = [JSRule, CSSRule, HTMLRule, WXSRule]
+export let Rules = [JSRule, CSSRule]
 
 export let Plugins = [
   new CleanerPlugin({

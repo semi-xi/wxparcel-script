@@ -12,33 +12,35 @@ const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
 
 export class JsonResolver extends Resolver {
-  resolve (source, file) {
+  resolve () {
     let config = {}
 
-    if (isPlainObject(source)) {
-      config = source
+    if (isPlainObject(this.source)) {
+      config = this.source
     } else {
       try {
-        config = JSON.parse(source)
+        config = JSON.parse(this.source)
       } catch (error) {
-        throw new Error(`File ${file} is invalid json, please check the json corrected.\n${error}`)
+        throw new Error(`File ${this.file} is invalid json, please check the json corrected.\n${error}`)
       }
     }
 
-    let pages = this.resolvePages(config, file, this.options)
-    let components = this.resolveComponents(config, file, this.options)
+    let pages = this.resolvePages(config)
+    let components = this.resolveComponents(config)
     let files = pages.concat(components).map((item) => item.files)
     files = flatten(files)
 
-    let images = this.resolveImages(config, file, this.options)
+    let images = this.resolveImages(config)
     let dependencies = files.concat(images).map((dependency) => {
-      let destination = this.resolveDestination(dependency, this.options)
-      return { file, dependency, destination, required: '' }
+      let destination = this.convertDestination(dependency, this.options)
+      return { file: this.file, dependency, destination, required: '' }
     })
 
     config = this.resolveProjectConf(config)
-    source = JSON.stringify(config, null, 2)
-    return { file, source: Buffer.from(source), dependencies }
+    this.source = JSON.stringify(config, null, 2)
+
+    this.source = Buffer.from(this.source)
+    return { file: this.file, source: this.source, dependencies }
   }
 
   resolveProjectConf (config = {}) {
@@ -71,14 +73,14 @@ export class JsonResolver extends Resolver {
     return pages
   }
 
-  resolveComponents (config = {}, file) {
+  resolveComponents (config = {}) {
     let usingComponents = config.usingComponents || {}
-    let relativePath = path.dirname(file)
+    let relativePath = path.dirname(this.file)
     let components = []
 
     forEach(usingComponents, (component) => {
       let realtiveFolder = path.dirname(component)
-      let folder = this.resolveRelative(realtiveFolder, [relativePath, this.options.srcDir])
+      let folder = this.convertRelative(realtiveFolder, [relativePath, this.options.srcDir])
 
       if (folder) {
         let name = path.basename(component)
@@ -89,10 +91,10 @@ export class JsonResolver extends Resolver {
     return components
   }
 
-  resolveImages (config = {}, file) {
+  resolveImages (config = {}) {
     let tabs = get(config, 'tabBar.list', [])
     let images = []
-    let basePath = path.dirname(file)
+    let basePath = path.dirname(this.file)
 
     tabs.forEach(({ iconPath, selectedIconPath }) => {
       if (iconPath) {
@@ -109,7 +111,7 @@ export class JsonResolver extends Resolver {
     return images
   }
 
-  resolveRelative (file, paths) {
+  convertRelative (file, paths) {
     if (!Array.isArray(paths) || paths.length === 0) {
       throw new Error('Paths is not a array or not be provided')
     }

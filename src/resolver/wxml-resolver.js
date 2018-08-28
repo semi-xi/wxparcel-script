@@ -1,51 +1,55 @@
 import path from 'path'
-import findIndex from 'lodash/findIndex'
 import stripComments from 'strip-comment'
+import trimEnd from 'lodash/trimEnd'
+import trimStart from 'lodash/trimStart'
 import { Resolver } from './resolver'
 
+const IMAGE_REGEXP = /<image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/image>)/
 const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
-const TEMPLATE_REGEPX = /<import\s*(?:.+?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
+const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
 
 export class WxmlResolver extends Resolver {
-  resolve (source = '', file, instance) {
-    source = source.toString()
+  resolve () {
+    const { staticDir, pubPath } = this.options
 
-    let relativeTo = path.dirname(file)
-    let wxsDeps = this.resolveDependencies(WXS_REGEPX, source, file, relativeTo)
-    let tmplDeps = this.resolveDependencies(TEMPLATE_REGEPX, source, file, relativeTo)
-    let dependencies = wxsDeps.concat(tmplDeps)
+    this.source = this.source.toString()
+    this.source = stripComments(this.source)
 
-    dependencies.forEach((item) => {
-      let { file, destination, dependency, required } = item
-      instance.emitFile(file, destination, dependency, required)
+    let wxsDeps = this.resolveDependencies(WXS_REGEPX)
+    let templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
+    let imageDeps = this.resolveDependencies(IMAGE_REGEXP, {
+      convertDestination: this.convertAssetsDestination.bind(this)
     })
 
-    source = Buffer.from(source)
-    return { file, source, dependencies }
+    let dependencies = [].concat(wxsDeps, templateDeps, imageDeps)
+    dependencies = dependencies.map((item) => {
+      let { match, file, destination, dependency, required } = item
+      let [holder] = match
+
+      let relativePath = destination.replace(staticDir, '')
+      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
+
+      this.source = replacement(this.source, holder, url, IMAGE_REGEXP)
+      this.instance.emitFile(file, destination, dependency, required)
+
+      return { file, destination, dependency, required }
+    })
+
+    this.source = Buffer.from(this.source)
+    return { file: this.file, source: this.source, dependencies }
   }
+}
 
-  resolveDependencies (regexp, code, file, relativeTo) {
-    if (code) {
-      code = stripComments(code)
-    }
+function escapeRegExp (source) {
+  return source.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&')
+}
 
-    let dependencies = []
-    while (true) {
-      let match = regexp.exec(code)
-      if (!match) {
-        break
-      }
+function replacement (source, string, url, regexp) {
+  source = source.replace(new RegExp(escapeRegExp(string), 'g'), () => {
+    return string.replace(regexp, (string, file) => {
+      return string.replace(file, url)
+    })
+  })
 
-      let [all, required] = match
-      code = code.replace(all, '')
-
-      let dependency = path.join(relativeTo, required)
-      if (findIndex(dependencies, { file, dependency, required }) === -1) {
-        let destination = this.resolveDestination(dependency, this.options)
-        dependencies.push({ file, dependency, destination, required })
-      }
-    }
-
-    return dependencies
-  }
+  return source
 }

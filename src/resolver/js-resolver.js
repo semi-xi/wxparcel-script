@@ -1,6 +1,7 @@
 import path from 'path'
 import Module from 'module'
-import findIndex from 'lodash/findIndex'
+import trimEnd from 'lodash/trimEnd'
+import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
@@ -8,76 +9,65 @@ import OptionManager from '../option-manager'
 const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
 
 export class JsResolver extends Resolver {
-  constructor (options = OptionManager) {
-    super(options)
+  constructor (source, file, instance, options = OptionManager) {
+    super(source, file, instance, options)
 
     this.modules = {}
   }
 
-  resolve (source, file, instance) {
-    source = source.toString()
+  resolve () {
+    const { staticDir, npmDir, pubPath } = this.options
 
-    let relativeTo = path.dirname(file)
-    let dependencies = this.resolveDependencies(source, file, relativeTo, this.options)
-    let destination = this.resolveDestination(file)
+    this.source = this.source.toString()
+    this.source = stripComments(this.source)
+
+    let destination = this.convertDestination(this.file)
     let directory = path.dirname(destination)
 
-    dependencies.forEach((item) => {
-      let { file, destination, dependency, required } = item
-      let extname = path.extname(destination)
-      if (extname !== '' && !/\.(jsx?|babel)/.test(extname)) {
-        return
-      }
-
-      if (dependency === path.basename(dependency)) {
-        return
-      }
-
-      let relativePath = path.relative(directory, destination)
-      if (relativePath.charAt(0) !== '.') {
-        relativePath = `./${relativePath}`
-      }
-
-      let { npmDir } = this.options
-      relativePath = relativePath.replace('node_modules', npmDir)
-      let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
-      let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
-      source = source.replace(matchment, replacement)
-
-      instance.emitFile(file, destination, dependency, required)
+    let dependencies = this.resolveDependencies(REQUIRE_REGEXP, {
+      convertDependencyPath: this.convertRelative.bind(this),
+      convertDestination: this.convertDestination.bind(this)
     })
 
-    source = Buffer.from(source)
-    return { file, source, dependencies }
-  }
+    dependencies = this.filterDependencies(dependencies)
+    dependencies = dependencies.map((item) => {
+      let { match, file, destination, dependency, required } = item
 
-  resolveDependencies (code, file, relativeTo) {
-    if (code) {
-      code = stripComments(code, { sourceType: 'module' })
-    }
+      let extname = path.extname(destination)
+      if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
+        let relativePath = path.relative(directory, destination)
+        if (relativePath.charAt(0) !== '.') {
+          relativePath = `./${relativePath}`
+        }
 
-    let dependencies = []
+        relativePath = relativePath.replace('node_modules', npmDir)
 
-    while (true) {
-      let match = REQUIRE_REGEXP.exec(code)
-      if (!match) {
-        break
+        let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
+        let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
+
+        this.source = this.source.replace(matchment, replacement)
+        this.instance.emitFile(file, destination, dependency, required)
+
+        return { file, destination, dependency, required }
       }
 
-      let [all, required] = match
-      code = code.replace(all, '')
+      destination = this.convertAssetsDestination(dependency)
 
-      let dependency = this.resolveRelative(required, relativeTo)
-      if (findIndex(dependencies, { file, dependency, required }) === -1) {
-        let destination = this.resolveDestination(dependency, this.options)
-        dependencies.push({ file, dependency, destination, required })
-      }
-    }
+      let [holder] = match
+      let relativePath = destination.replace(staticDir, '')
+      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-    return this.filterDependencies(dependencies)
+      this.source = replacement(this.source, holder, url, REQUIRE_REGEXP)
+      this.instance.emitFile(file, destination, dependency, required)
+
+      return { file, destination, dependency, required }
+    })
+
+    this.source = Buffer.from(this.source)
+    return { file: this.file, source: this.source, dependencies }
   }
 
-  resolveRelative (requested, relativeTo) {
+  convertRelative (requested, relativeTo) {
     /**
      * 兼容 require('not-a-system-dependency') 的情况
      * 若无法通过正常方式获取, 则尝试使用相对定位寻找该文件
@@ -87,7 +77,7 @@ export class JsResolver extends Resolver {
       return require.resolve(file)
     } catch (err) {
       try {
-        let root = this.resolveModule(relativeTo)
+        let root = this.convertModule(relativeTo)
         return Module._resolveFilename(requested, root)
       } catch (error) {
         throw new Error(error)
@@ -95,7 +85,7 @@ export class JsResolver extends Resolver {
     }
   }
 
-  resolveDestination (file) {
+  convertDestination (file) {
     let { rootDir, srcDir, outDir, npmDir } = this.options
 
     /**
@@ -113,7 +103,7 @@ export class JsResolver extends Resolver {
     return path.join(outDir, relativePath, filename)
   }
 
-  resolveModule (directive) {
+  convertModule (directive) {
     let rootPath = directive ? path.resolve(directive) : process.cwd()
     let rootName = path.join(rootPath, '@root')
     let root = this.modules[rootName]
@@ -129,15 +119,7 @@ export class JsResolver extends Resolver {
   }
 
   filterDependencies (dependencies) {
-    return dependencies.filter(({ dependency, destination }) => {
-      let extname = path.extname(destination)
-      /**
-       * 过滤没有后缀的文件
-       */
-      if (extname !== '' && !/\.js/.test(extname)) {
-        return false
-      }
-
+    return dependencies.filter(({ dependency }) => {
       /**
        * 过滤系统依赖
        */
@@ -148,4 +130,18 @@ export class JsResolver extends Resolver {
       return true
     })
   }
+}
+
+function escapeRegExp (source) {
+  return source.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&')
+}
+
+function replacement (source, string, url, regexp) {
+  source = source.replace(new RegExp(escapeRegExp(string), 'g'), () => {
+    return string.replace(regexp, (string, file) => {
+      return string.replace(file, url)
+    })
+  })
+
+  return source
 }

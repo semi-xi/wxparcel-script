@@ -7,10 +7,6 @@ import OptionManager from '../option-manager'
 export class Resolver {
   constructor (options = OptionManager) {
     this.options = options
-    this.jsonResolver = new JsonResolver(this.options)
-    this.jsResolver = new JsResolver(this.options)
-    this.wxmlResolver = new WxmlResolver(this.options)
-    this.wxssResolver = new WxssResolver(this.options)
   }
 
   /**
@@ -26,19 +22,23 @@ export class Resolver {
     }
 
     if (/\.json$/.test(file)) {
-      return this.jsonResolver.resolve(source, file, instance)
+      let resolver = new JsonResolver(source, file, instance, this.options)
+      return resolver.resolve()
     }
 
     if (/\.js$/.test(file)) {
-      return this.jsResolver.resolve(source, file, instance)
+      let resolver = new JsResolver(source, file, instance, this.options)
+      return resolver.resolve()
     }
 
     if (/\.wxss$/.test(file)) {
-      return this.wxssResolver.resolve(source, file, instance)
+      let resolver = new WxssResolver(source, file, instance, this.options)
+      return resolver.resolve()
     }
 
     if (/\.wxml$/.test(file)) {
-      return this.wxmlResolver.resolve(source, file, instance)
+      let resolver = new WxmlResolver(source, file, instance, this.options)
+      return resolver.resolve()
     }
 
     return { file, source, dependencies: [] }
