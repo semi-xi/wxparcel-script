@@ -1,5 +1,6 @@
 import path from 'path'
 import findIndex from 'lodash/findIndex'
+import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
 
 const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
@@ -25,7 +26,7 @@ export class WxmlResolver extends Resolver {
 
   resolveDependencies (regexp, code, file, relativeTo) {
     if (code) {
-      code = code.replace(/<!--[\s\S]*?(?:-->)/g, '')
+      code = stripComments(code)
     }
 
     let dependencies = []

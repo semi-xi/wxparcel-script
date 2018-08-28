@@ -82,20 +82,17 @@ export default function fileLoader (source, options, instance) {
       let [string, relativePath] = match
       code = code.replace(new RegExp(escapeRegExp(string), 'g'), '')
 
+      // base64 source
       if (/^data:([\w/]+?);base64,/.test(relativePath)) {
         continue
       }
 
+      // remote source
       if (/^https?:\/\//.test(relativePath)) {
         continue
       }
 
-      let filename = path.basename(relativePath)
-      let extname = path.extname(filename)
-      if (!extname || fileRegexp.hasOwnProperty(extname)) {
-        continue
-      }
-
+      // alisa path source
       let dependency = ''
       switch (relativePath.charAt(0)) {
         case '~':
@@ -111,6 +108,26 @@ export default function fileLoader (source, options, instance) {
           continue
       }
 
+      // js source
+      let filename = path.basename(dependency)
+      let extname = path.extname(filename)
+
+      // js extname source
+      if (['.js', 'es6', ''].indexOf(extname) !== -1) {
+        dependencies.push(dependency)
+        continue
+      }
+
+      // ingore extname source and check the file exists
+      if (extname && !fileRegexp.hasOwnProperty(extname)) {
+        let truthyDependency = dependency + '.js'
+        if (fs.existsSync(truthyDependency)) {
+          dependencies.push(truthyDependency)
+          continue
+        }
+      }
+
+      // others valid files
       let basename = path.basename(filename).replace(extname, '')
       filename = basename + '.' + genFileSync(dependency) + extname
 
