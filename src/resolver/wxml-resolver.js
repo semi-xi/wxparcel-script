@@ -1,12 +1,12 @@
 import path from 'path'
-import stripComments from 'strip-comment'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
+import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
 
-const IMAGE_REGEXP = /<image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/image>)/
 const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
 const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
+const IMAGE_REGEXP = /<image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/image>)/
 
 export default class WXMLResolver extends Resolver {
   resolve () {

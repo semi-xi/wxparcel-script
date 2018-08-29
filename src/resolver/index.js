@@ -10,9 +10,9 @@ export class Resolver {
     this.resolvers = []
 
     this.register(/\.json$/, JSONResolver)
-    this.register(/\.js$/, JSResolver)
-    this.register(/\.wxss$/, WXSSResolver)
-    this.register(/\.wxml$/, WXMLResolver)
+    this.register(/\.(jsx?|babel|es6)$/, JSResolver)
+    this.register(/\.(wxss|scss|sass)$/, WXSSResolver)
+    this.register(/\.(wxml|html)$/, WXMLResolver)
   }
 
   register (regexp, resolver) {
