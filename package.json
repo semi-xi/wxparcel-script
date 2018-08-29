@@ -19,6 +19,8 @@
     "coverage": "rimraf ./coverage && nyc --reporter=text --reporter=lcov --report-dir=./coverage/cli npm run mocha",
     "coveralls": "npm run coverage && babel-node ./src/coveralls.js",
     "docs:esdoc": "rimraf ./gh-pages/esdoc && esdoc -c ./.esdoc.json",
+    "docs": "npm run docs:esdoc",
+    "gh-pages": "rimraf gh-pages && npm run docs",
     "test": "npm run lint && npm run mocha",
     "develop": "rimraf ./libs && babel ./src --out-dir ./libs --watch",
     "release": "rimraf ./libs && babel ./src --out-dir ./libs",
