@@ -1,0 +1,19 @@
+{
+  "source": "./src",
+  "destination": "./gh-pages/esdoc",
+  "debug": false,
+  "index": "./README.md",
+  "package": "./package.json",
+  "plugins": [
+    {
+      "name": "esdoc-standard-plugin"
+    },
+    {
+      "name": "esdoc-ecmascript-proposal-plugin",
+      "option": {
+        "classProperties": true,
+        "objectRestSpread": true
+      }
+    }
+  ]
+}

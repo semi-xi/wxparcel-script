@@ -11,7 +11,19 @@ const JS_REGEXP = /\.js$/
 const WXML_REGEXP = /\.wxml$/
 const WXSS_REGEXP = /\.wxss$/
 
+/**
+ * JSON 解析器
+ *
+ * @export
+ * @class JSONResolver
+ * @extends {Resolver}
+ */
 export default class JSONResolver extends Resolver {
+  /**
+   * 解析, 并返回文件,代码,依赖等信息
+   *
+   * @return {Object} 包括文件, 代码, 依赖
+   */
   resolve () {
     let config = {}
 
@@ -43,6 +55,12 @@ export default class JSONResolver extends Resolver {
     return { file: this.file, source: this.source, dependencies }
   }
 
+  /**
+   * 解析项目配置
+   *
+   * @param {Object} [config={}] 配置
+   * @return {Object} 配置
+   */
   resolveProjectConf (config = {}) {
     if (config.hasOwnProperty('miniprogramRoot')) {
       config.miniprogramRoot = './'
@@ -51,6 +69,12 @@ export default class JSONResolver extends Resolver {
     return config
   }
 
+  /**
+   * 解析页面配置
+   *
+   * @param {Object} [config={}] 配置
+   * @return {Array} 页面集合
+   */
   resolvePages (config = {}) {
     let pages = config.pages || []
     let subPackages = config.subPackages || []
@@ -73,6 +97,12 @@ export default class JSONResolver extends Resolver {
     return pages
   }
 
+  /**
+   * 解析组件配置
+   *
+   * @param {Object} [config={}] 配置
+   * @return {Array} 组件结合
+   */
   resolveComponents (config = {}) {
     let usingComponents = config.usingComponents || {}
     let relativePath = path.dirname(this.file)
@@ -91,6 +121,12 @@ export default class JSONResolver extends Resolver {
     return components
   }
 
+  /**
+   * 解析配置需要的图片
+   *
+   * @param {Object} [config={}] 配置
+   * @return {Array} 图片集合
+   */
   resolveImages (config = {}) {
     let tabs = get(config, 'tabBar.list', [])
     let images = []
@@ -111,6 +147,15 @@ export default class JSONResolver extends Resolver {
     return images
   }
 
+  /**
+   * 转换相对路径, 用于查找文件是否存在
+   * 通过传入路径 paths, 查找相对路径的 file
+   * 在某一路径是否存在, 存在返回路径地址, 不存在返回  false
+   *
+   * @param {String} file 文件路径
+   * @param {Array} paths 路径集合
+   * @return {String|Boolean} 路径地址或 false
+   */
   convertRelative (file, paths) {
     if (!Array.isArray(paths) || paths.length === 0) {
       throw new Error('Paths is not a array or not be provided')
@@ -128,6 +173,16 @@ export default class JSONResolver extends Resolver {
     return false
   }
 
+  /**
+   * 查找模块
+   * 这里的模块是指 微信小程序 指定的 page, component 等
+   * 拥有相对规范的一个组合; 通过此方法可以查找到配置对应的
+   * Page, component 的路径与所包含对应的文件集合
+   *
+   * @param {String} name 模块名称
+   * @param {String} folder 路径
+   * @return {Options} 包括模块名称,模块路径,模块所包含符合要求的文件
+   */
   findModule (name, folder) {
     if (!folder) {
       throw new TypeError('Folder is not provided')

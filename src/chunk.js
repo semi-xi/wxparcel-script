@@ -4,7 +4,20 @@ import isPlainObject from 'lodash/isPlainObject'
 import omit from 'lodash/omit'
 import optionManager from './option-manager'
 
+/**
+ * 代码片段
+ * 用于管理代码文件, 包括其状态, 代码块等
+ *
+ * @export
+ * @class Chunk
+ */
 export class Chunk {
+  /**
+   * Creates an instance of Chunk.
+   * @param {String} file 文件名
+   * @param {Object} [state={}] 状态
+   * @param {OptionManager} [options=OptionManager] 配置管理器
+   */
   constructor (file, state = {}, options = optionManager) {
     if (!file) {
       throw new TypeError('File is invalid or not be provied')
@@ -16,20 +29,58 @@ export class Chunk {
       }
     }
 
+    /**
+     * 配置管理器
+     *
+     * @type {OptionManager}
+     */
     this.options = options
+
+    /**
+     * 是否已经释放掉
+     *
+     * @type {Boolean}
+     */
     this.flushed = false
+
+    /**
+     * 文件路径
+     *
+     * @type {String}
+     */
     this.file = file
+
+    /**
+     * 依赖集合
+     *
+     * @type {Array}
+     */
     this.dependencies = state.dependencies || []
+
+    /**
+     * 代码内容
+     *
+     * @type {Buffer}
+     */
     this.content = Buffer.from(state.content || '')
 
     let { rootDir, srcDir, outDir, npmDir, staticDir } = this.options
     let { rule, destination } = this.state = state
 
     /**
+     * 加载规则
      * 重置 rule 值再赋值
      * 下面 rule 需要默认值来使用
+     *
+     * @type {Object}
      */
     this.rule = rule = rule || {}
+
+    /**
+     * 保存的目的地路径
+     *
+     * @type {String}
+     */
     this.destination = destination || ''
 
     if (destination) {
@@ -65,6 +116,11 @@ export class Chunk {
     }
   }
 
+  /**
+   * 更新状态
+   *
+   * @param {Object} [props={}] 属性
+   */
   update (props = {}) {
     if (props.hasOwnProperty('file') && typeof props.file === 'string') {
       this.file = props.file
@@ -93,12 +149,21 @@ export class Chunk {
     this.flushed = false
   }
 
+  /**
+   * 释放
+   *
+   * @return {object} metadata 元数据
+   */
   flush () {
     let metadata = omit(this, ['flush'])
     this.flushed = true
     return metadata
   }
 
+  /**
+   * 销毁对象
+   *
+   */
   destory () {
     this.file = undefined
     this.dependencies = undefined

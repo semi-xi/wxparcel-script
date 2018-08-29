@@ -2,7 +2,15 @@ import fs from 'fs'
 import path from 'path'
 import { transform } from 'babel-core'
 
-export default function babelLoader (source, options) {
+/**
+ * Babel 加载器
+ *
+ * @export
+ * @param {String|Buffer} source 代码片段
+ * @param {Object} options 配置, 配置参考 require('babel-core').transform 中的配置, https://babeljs.io/docs/en/next/babel-core.html
+ * @return {Promise}
+ */
+export default function BabelLoader (source, options) {
   return new Promise((resolve) => {
     let { options: babelOptions } = options
     let babelrc = path.join(options.rootDir, '.babelrc')

@@ -6,7 +6,15 @@ const DEFAULTS_OPTIONS = {
   sourceMap: false
 }
 
-export default function sassLoader (source, options) {
+/**
+ * Sass 加载器
+ *
+ * @export
+ * @param {String} source 代码块
+ * @param {Object} [options={}] 配置, 可参考 require('node-sass').redner 中的配置: https://github.com/sass/node-sass#options
+ * @return {Promise}
+ */
+export default function SassLoader (source, options) {
   source = source.toString()
 
   return new Promise((resolve, reject) => {

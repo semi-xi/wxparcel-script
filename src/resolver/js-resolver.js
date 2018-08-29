@@ -5,16 +5,42 @@ import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
+import { replacement } from './share'
 
 const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
 
+/**
+ * JS 解析器
+ *
+ * @export
+ * @class JSResolver
+ * @extends {Resolver}
+ */
 export default class JSResolver extends Resolver {
+  /**
+   * Creates an instance of JSResolver.
+   * @param {String} source 代码
+   * @param {String} file 文件名
+   * @param {Object} instance 实例
+   * @param {OptionManager} [options=OptionManager] 配置管理器
+   * @memberof JSResolver
+   */
   constructor (source, file, instance, options = OptionManager) {
     super(source, file, instance, options)
 
+    /**
+     * 模块集合
+     *
+     * @type {Object}
+     */
     this.modules = {}
   }
 
+  /**
+   * 解析, 并返回文件,代码,依赖等信息
+   *
+   * @return {Object} 包括文件, 代码, 依赖
+   */
   resolve () {
     const { staticDir, npmDir, pubPath } = this.options
 
@@ -67,6 +93,14 @@ export default class JSResolver extends Resolver {
     return { file: this.file, source: this.source, dependencies }
   }
 
+  /**
+   * 转换路径
+   * 根据路径往上查找依赖文件
+   *
+   * @param {String} requested 请求路径
+   * @param {String} relativeTo 被依赖文件所在文件夹路径
+   * @return {String} 文件路径
+   */
   convertRelative (requested, relativeTo) {
     /**
      * 兼容 require('not-a-system-dependency') 的情况
@@ -85,6 +119,12 @@ export default class JSResolver extends Resolver {
     }
   }
 
+  /**
+   * 转换存放的目的地路径
+   *
+   * @param {String} file 文件路径
+   * @return {String} 目的地文件路径
+   */
   convertDestination (file) {
     let { rootDir, srcDir, outDir, npmDir } = this.options
 
@@ -103,6 +143,13 @@ export default class JSResolver extends Resolver {
     return path.join(outDir, relativePath, filename)
   }
 
+  /**
+   * 模块转换
+   * 根据 NodeJS 的查找方式往上查找依赖, 直到根目录为止
+   *
+   * @param {String} directive 起始的查找路径
+   * @return {String} 匹配到的路径
+   */
   convertModule (directive) {
     let rootPath = directive ? path.resolve(directive) : process.cwd()
     let rootName = path.join(rootPath, '@root')
@@ -118,6 +165,12 @@ export default class JSResolver extends Resolver {
     return root
   }
 
+  /**
+   * 筛选系统依赖
+   *
+   * @param {Array} dependencies 依赖
+   * @return {Array}
+   */
   filterDependencies (dependencies) {
     return dependencies.filter(({ dependency }) => {
       /**
@@ -130,18 +183,4 @@ export default class JSResolver extends Resolver {
       return true
     })
   }
-}
-
-function escapeRegExp (source) {
-  return source.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&')
-}
-
-function replacement (source, string, url, regexp) {
-  source = source.replace(new RegExp(escapeRegExp(string), 'g'), () => {
-    return string.replace(regexp, (string, file) => {
-      return string.replace(file, url)
-    })
-  })
-
-  return source
 }

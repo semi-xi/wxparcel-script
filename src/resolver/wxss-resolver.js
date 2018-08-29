@@ -3,11 +3,24 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripCssComments from 'strip-css-comments'
 import { Resolver } from './resolver'
+import { replacement } from './share'
 
 const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([\w\d_\-./]+)['"];/
 const IMAGE_REGEXP = /url\(["']?([^"'\s]+?)["']?\)/i
 
+/**
+ * WXSS解析器
+ *
+ * @export
+ * @class WXSSResolver
+ * @extends {Resolver}
+ */
 export default class WXSSResolver extends Resolver {
+  /**
+   * 解析, 并返回文件,代码,依赖等信息
+   *
+   * @return {Object} 包括文件, 代码, 依赖
+   */
   resolve () {
     const { staticDir, pubPath } = this.options
 
@@ -36,18 +49,4 @@ export default class WXSSResolver extends Resolver {
     this.source = Buffer.from(this.source)
     return { file: this.file, source: this.source, dependencies }
   }
-}
-
-function escapeRegExp (source) {
-  return source.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&')
-}
-
-function replacement (source, string, url, regexp) {
-  source = source.replace(new RegExp(escapeRegExp(string), 'g'), () => {
-    return string.replace(regexp, (string, file) => {
-      return string.replace(file, url)
-    })
-  })
-
-  return source
 }

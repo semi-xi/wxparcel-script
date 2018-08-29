@@ -27,14 +27,19 @@ import Resolver from './resolver'
 export class Parser {
   /**
    * Creates an instance of Parser.
-   * @param {OptionManager} [options=OptionManager]
+   * @param {OptionManager} [options=OptionManager] 配置管理器
    */
   constructor (options = OptionManager) {
+    /**
+     * 配置管理器
+     *
+     * @type {OptionManager}
+     */
     this.options = options
   }
 
   /**
-   * 编译多个文件
+   * 编译多个文件
    *
    * @param {Array} files 需要编译的文件
    */
@@ -237,11 +242,32 @@ export class Parser {
 
 export default new Parser()
 
+/**
+ * 编译实例
+ *
+ * @class InstanceForTransform
+ */
 class InstanceForTransform {
+  /**
+   * Creates an instance of InstanceForTransform.
+   */
   constructor () {
+    /**
+     * 依赖集合
+     *
+     * @type {Array}
+     */
     this.dependencies = []
   }
 
+  /**
+   * 提交文件
+   *
+   * @param {String} file 被依赖的文件路径
+   * @param {String} destination 文件编译后存放的目的地
+   * @param {String} dependency 依赖文件路径
+   * @param {String} required 匹配到依赖的字符串
+   */
   emitFile (file, destination, dependency, required) {
     if (typeof file !== 'string') {
       throw new TypeError('File is not a string or not be provided')
@@ -263,6 +289,12 @@ class InstanceForTransform {
   }
 }
 
+/**
+ * 读取文件的 promise 形式
+ *
+ * @param {String} file 文件路径
+ * @return {Promise}
+ */
 const readFilePromisify = (file) => new Promise((resolve, reject) => {
   fs.readFile(file, (error, source) => error ? reject(error) : resolve(source))
 })

@@ -16,13 +16,46 @@ import IgnoreFiles from './constants/ingore-files'
 import Package from '../package.json'
 import HOOK_TYPES from './constants/hooks'
 
+/**
+ * Parcel
+ * 构建工具入口
+ *
+ * @export
+ * @class Parcel
+ */
 export default class Parcel {
+  /**
+   * Creates an instance of Parcel.
+   * @param {OptionManager} [options=OptionManager] 配置管理器
+   */
   constructor (options = OptionManager) {
+    /**
+     * 配置管理器
+     *
+     * @type {OptionManager}
+     */
     this.options = options
+
+    /**
+     * 是否在运行
+     *
+     * @type {Boolean}
+     */
     this.running = false
+
+    /**
+     * 阻塞的任务队列
+     *
+     * @type {Array}
+     */
     this.paddingTask = null
   }
 
+  /**
+   * 运行
+   *
+   * @return {Promise}
+   */
   async run () {
     if (this.running === true) {
       Printer.warn(`WXParcel is running, you can enter ${colors.bold('Ctrl + C')} to exit.`)
@@ -62,6 +95,10 @@ export default class Parcel {
     }
   }
 
+  /**
+   * 监听文件
+   *
+   */
   watch () {
     let { rootDir, appConfigFile } = this.options
 
@@ -173,6 +210,12 @@ export default class Parcel {
     process.on('SIGINT', handleProcessSigint)
   }
 
+  /**
+   * 释放/保存文件
+   *
+   * @param {Array} chunks Chunk 集合
+   * @return {Promise}
+   */
   flush (chunks) {
     if (!Array.isArray(chunks) || chunks.length === 0) {
       return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
@@ -277,6 +320,10 @@ export default class Parcel {
     }
   }
 
+  /**
+   * 执行 padding 中的任务
+   *
+   */
   excutePaddingTask () {
     if (typeof this.paddingTask === 'function') {
       this.paddingTask()
@@ -284,6 +331,13 @@ export default class Parcel {
     }
   }
 
+  /**
+   * 查找入口
+   * 微信入口都是通过 `app.config.json` 文件配置,
+   * 因此可以通过读取该文件找到对应的入口文件
+   *
+   * @return {Array} 文件集合
+   */
   findEntries () {
     let { appConfig, appConfigFile } = this.options
     let resolver = new JSONResolver(appConfig, appConfigFile)
@@ -292,6 +346,12 @@ export default class Parcel {
     return [chunk.file].concat(files)
   }
 
+  /**
+   * 打印 stats
+   *
+   * @param {Object} stats 状态
+   * @param {Boolean} [watching=this.options.watching] 是否在监听
+   */
   printStats (stats, watching = this.options.watching) {
     let { rootDir, srcDir } = this.options
 

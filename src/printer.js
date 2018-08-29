@@ -2,11 +2,44 @@ import path from 'path'
 import colors from 'colors'
 import columnify from 'columnify'
 
+/**
+ * 打印器
+ *
+ * @export
+ * @class Printer
+ */
 export class Printer {
+  /**
+   * Creates an instance of Printer.
+   */
   constructor () {
+    /**
+     * 是否不做任何打印
+     *
+     * @type {Boolean}
+     */
     this.silence = process.argv.findIndex((argv) => argv === '--quiet') !== -1
+
+    /**
+     * 信息集合
+     *
+     * @type {Array}
+     */
     this.messages = []
+
+    /**
+     * 延迟的信息集合
+     *
+     * @type {Array}
+     */
     this.layzedMessages = []
+
+    /**
+     * 起始时间
+     *
+     * @type {Number}
+     */
+    this.startTime = NaN
   }
 
   /**

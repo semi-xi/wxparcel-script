@@ -4,9 +4,33 @@ import WXMLResolver from './wxml-resolver'
 import WXSSResolver from './wxss-resolver'
 import OptionManager from '../option-manager'
 
+/**
+ * 解析器
+ * 通过注册的解析器解析各种文件, 并修改其中内容或者
+ * 添加依赖
+ *
+ * @export
+ * @class Resolver
+ */
 export class Resolver {
+  /**
+   * Creates an instance of Resolver.
+   * @param {OptionManager} [options=OptionManager] 配置管理器
+   * @memberof Resolver
+   */
   constructor (options = OptionManager) {
+    /**
+     * 配置管理器
+     *
+     * @type {OptionManager}
+     */
     this.options = options
+
+    /**
+     * 解析器结合
+     *
+     * @type {Array}
+     */
     this.resolvers = []
 
     /**
@@ -20,6 +44,13 @@ export class Resolver {
     this.register(/\.(wxml|html)$/, WXMLResolver)
   }
 
+  /**
+   * 注册解析器
+   *
+   * @param {RegExp} regexp 匹配正则
+   * @param {Resolver} resolver 解析器类
+   * @memberof Resolver
+   */
   register (regexp, resolver) {
     if (typeof resolver === 'string') {
       resolver = require(resolver)
