@@ -9,9 +9,14 @@ export class Resolver {
     this.options = options
     this.resolvers = []
 
+    /**
+     * resolver 比 loader 要延后,
+     * 因此这里后缀为未编译的文件都是编译后
+     * 才 resolve 的
+     */
     this.register(/\.json$/, JSONResolver)
     this.register(/\.(jsx?|babel|es6)$/, JSResolver)
-    this.register(/\.(wxss|scss|sass)$/, WXSSResolver)
+    this.register(/\.(wxss|css|scss|sass)$/, WXSSResolver)
     this.register(/\.(wxml|html)$/, WXMLResolver)
   }
 

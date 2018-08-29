@@ -19,7 +19,6 @@ import HOOK_TYPES from './constants/hooks'
 export default class Parcel {
   constructor (options = OptionManager) {
     this.options = options
-    this.resolver = new JSONResolver(this.options)
     this.running = false
     this.paddingTask = null
   }
@@ -41,7 +40,8 @@ export default class Parcel {
       await this.hook('beforeTransform')(instance)
 
       let { rootDir, srcDir } = this.options
-      let module = this.resolver.findModule('app', srcDir)
+      let resolver = new JSONResolver()
+      let module = resolver.findModule('app', srcDir)
       let entries = module.files
       let projectConfigFile = path.join(rootDir, './project.config.json')
       if (!fs.existsSync(projectConfigFile)) {
@@ -286,7 +286,8 @@ export default class Parcel {
 
   findEntries () {
     let { appConfig, appConfigFile } = this.options
-    let chunk = this.resolver.resolve(appConfig, appConfigFile)
+    let resolver = new JSONResolver(appConfig, appConfigFile)
+    let chunk = resolver.resolve(appConfig, appConfigFile)
     let files = chunk.dependencies.map((item) => item.dependency)
     return [chunk.file].concat(files)
   }
