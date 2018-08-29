@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # setup repo info
-git='DavidKk/qiniu-uploader'
+git='wxparcel/wxparcel-script'
 git_url="git@github.com:$git.git"
 finish_path="https://doc.esdoc.org/github.com/$git/.finish.json"
 
