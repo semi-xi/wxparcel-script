@@ -15,7 +15,6 @@
     ]
   },
   "scripts": {
-    "precommit": "lint-staged",
     "docs:esdoc": "rimraf ./gh-pages/esdoc && esdoc -c ./.esdoc.json",
     "docs:used": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
     "docs:used:server": "concurrently \"cpx './README.md' ./documents --watch\" \"docsify serve ./documents\"",
@@ -25,8 +24,8 @@
     "eslint": "eslint --config .eslintrc.js --ext .js --fix './src/**/*.js'",
     "lint": "npm run yamllint && npm run eslint",
     "mocha": "mocha --require babel-core/register ./test/*.spec.js",
-    "coverage": "rimraf ./coverage && nyc --reporter=text --reporter=lcov --report-dir=./coverage/cli npm run mocha",
-    "coveralls": "npm run coverage && babel-node ./coveralls.js",
+    "coverage": "rimraf ./coverage && nyc --reporter=text --reporter=lcov --report-dir=./coverage npm run mocha",
+    "coveralls": "npm run coverage && node ./node_modules/coveralls/bin/coveralls.js < ./coverage/lcov.info",
     "test": "npm run lint && npm run mocha",
     "develop": "rimraf ./libs && babel ./src --out-dir ./libs --watch",
     "release": "rimraf ./libs && babel ./src --out-dir ./libs",
