@@ -9,18 +9,18 @@ cache:
 
 install:
   - npm install
-  - npm install coveralls
 
 before_script:
   - export DISPLAY=:99.0
   - sh -e /etc/init.d/xvfb start
 
 script:
-  - npm run coveralls
-  - bash esdoc.sh
+  - npm run test
 
 before_deploy:
+  - npm install coveralls
   - npm run release
+  - npm run coveralls
   - npm run gh-pages
 
 deploy:
@@ -39,3 +39,6 @@ deploy:
     email: qowera@qq.com
     api_key:
       secure: WbiiPC0m9vf7Hxkd7xeeZmoZ4FaG3hdiSjsMiupwtQxzOo8bJOvaSZr5s/264UaXGw+gWtydY0EEoXfBduUmcYks4Drb6IJqDdjLD1pZo73DtK0txIkKkM+pARtgvID2B/A9CELqbaOBoaJ8vn29voj9Ibi9iMLwZfYWdwsNt18ZLRRyC81k7TdAhuNF2i3jVzm0+zUnh4al1ypXopl12iuaTQtuHBAncvtk5quNKB15dYWJX020Iz8hHV9SoDFaBgU/Tz0ElAb+o0ZW1NxeIryEgOH5UPgNopxrarGy2HeaxR+g4q2OkG6ePgY19Jfx+3fKVOXLSRzHwwAVRjPurBxKNfR2OVhtswg8fOGebQO0ejfHbBebFBP6JTapz11efHOtSZS7YZQdjXspx1E7dIuua/3BvdbJQS3FQWwh0NqpyVJ1/IqXxK6ZLQz5bifJxxg9CxAYhW+h1rq7n0vXeAWkzzQbpsNMY/WkMb9iy3tWzBLo7c4LIwrWM7qtBszc2ksJllNVq++1q3g3RiGB7VQ4iQF2N/aGauca+a4vcdaVOFksbyL7/L86uWzmf5inh3EO4lQVamU7BAjCzMAopJZzLz7fL+kEAXWzqYOwbOMAJZoRZv5dFQ/Pi+a2HCZfol6ERkSSr02XHhd/hfQjJb7Ed3+DFCHwUtcT7eW1NU4=
+
+after_deploy:
+  - bash esdoc.sh

@@ -26,7 +26,7 @@
     "lint": "npm run yamllint && npm run eslint",
     "mocha": "mocha --require babel-core/register ./test/*.spec.js",
     "coverage": "rimraf ./coverage && nyc --reporter=text --reporter=lcov --report-dir=./coverage/cli npm run mocha",
-    "coveralls": "npm run coverage && babel-node ./src/coveralls.js",
+    "coveralls": "npm run coverage && babel-node ./coveralls.js",
     "test": "npm run lint && npm run mocha",
     "develop": "rimraf ./libs && babel ./src --out-dir ./libs --watch",
     "release": "rimraf ./libs && babel ./src --out-dir ./libs",
