@@ -3,7 +3,10 @@
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com)
 
 [![Build Status](https://travis-ci.org/wxparcel/wxparcel-script.svg?branch=master)](https://travis-ci.org/wxparcel/wxparcel-script)
+[![Build status](https://ci.appveyor.com/api/projects/status/s49av8k4l12hqt7n?svg=true)](https://ci.appveyor.com/project/DavidKk/wxparcel-script)
 [![Document](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script/badge.svg?t=0)](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script)
+
+[![Coverage Status](https://coveralls.io/repos/github/wxparcel/wxparcel-script/badge.svg?branch=master)](https://coveralls.io/github/wxparcel/wxparcel-script?branch=master)
 [![Dependency Status](https://dependencyci.com/github/wxparcel/wxparcel-script/badge)](https://dependencyci.com/github/wxparcel/wxparcel-script)
 
 
@@ -33,3 +36,16 @@ $ wxparcel-script start --config /path/to/config.js --watch
 # set public path in static folder
 $ wxparcel-script start --config development --publicPath "https://github.com"
 ```
+
+## 功能
+
+- 支持编译 babel 文件 (自带)
+  - babel 配置根据根目录下 .babelrc 文件来配置, 需要如何修改可以手动添加
+  - 支持 导入 node_modules
+  - 支持 require('path/to/static.custom')
+  - 支持 alias 路径 { ~: srcDir, /: rootDir, .: relativeDir }
+- 支持编译 scss/sass 文件 (自带)
+  - 支持 background-image: url('path/to/static.custom')
+- 支持编译 环境变量替换
+- 支持 本地开发静态服务
+- 支持 可扩展插件(Plugins)与加载器(Loaders)
