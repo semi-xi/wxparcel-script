@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import path from 'path'
 import get from 'lodash/get'
+import uniq from 'lodash/uniq'
 import flatten from 'lodash/flatten'
 import forEach from 'lodash/forEach'
 import isPlainObject from 'lodash/isPlainObject'
@@ -37,13 +38,41 @@ export default class JSONResolver extends Resolver {
       }
     }
 
-    let pages = this.resolvePages(config)
-    let components = this.resolveComponents(config)
-    let files = pages.concat(components).map((item) => item.files)
-    files = flatten(files)
+    /**
+     * 小程序页面配置关键属性
+     * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/config.html#%E5%85%A8%E5%B1%80%E9%85%8D%E7%BD%AE
+     */
+    let pages = config.pages || []
+  
+    /**
+     * 微信小程序分包加载配置关键属性
+     * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html
+     */
+    let subPackages = config.subPackages || []
+    let usingComponents = config.usingComponents || {}
 
-    let images = this.resolveImages(config)
-    let dependencies = files.concat(images).map((dependency) => {
+    /**
+     * 微信小程序插件配置关键属性
+     * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/plugin/development.html
+     */
+    let publicComponents = config.publicComponents || {}
+    let tabs = get(config, 'tabBar.list', [])
+
+    let subPages = subPackages.map((item) => item.pages || [])
+    subPages = flatten(subPages)
+    pages = pages.concat(subPages)
+
+    let pageModules = this.resolvePages(pages)
+    let usingComponentModules = this.resolveComponents(usingComponents)
+    let publicComponentModules = this.resolveComponents(publicComponents)
+    let images = this.resolveTabs(tabs)
+
+
+    let files = pageModules.concat(usingComponentModules, publicComponentModules).map((item) => item.files)
+    files = flatten(files)
+    files = uniq(files).concat(images)
+
+    let dependencies = files.map((dependency) => {
       let destination = this.convertDestination(dependency, this.options)
       return { file: this.file, dependency, destination, required: '' }
     })
@@ -75,13 +104,7 @@ export default class JSONResolver extends Resolver {
    * @param {Object} [config={}] 配置
    * @return {Array} 页面集合
    */
-  resolvePages (config = {}) {
-    let pages = config.pages || []
-    let subPackages = config.subPackages || []
-    let subPages = subPackages.map((item) => item.pages || [])
-    subPages = flatten(subPages)
-
-    pages = pages.concat(subPages)
+  resolvePages (pages) {
     pages = pages.map((page) => {
       page = path.join(this.options.srcDir, page)
 
@@ -103,22 +126,21 @@ export default class JSONResolver extends Resolver {
    * @param {Object} [config={}] 配置
    * @return {Array} 组件结合
    */
-  resolveComponents (config = {}) {
-    let usingComponents = config.usingComponents || {}
+  resolveComponents (components) {
     let relativePath = path.dirname(this.file)
-    let components = []
+    let outputs = []
 
-    forEach(usingComponents, (component) => {
+    forEach(components, (component) => {
       let realtiveFolder = path.dirname(component)
       let folder = this.convertRelative(realtiveFolder, [relativePath, this.options.srcDir])
 
       if (folder) {
         let name = path.basename(component)
-        components.push(this.findModule(name, folder))
+        outputs.push(this.findModule(name, folder))
       }
     })
 
-    return components
+    return outputs
   }
 
   /**
@@ -127,8 +149,7 @@ export default class JSONResolver extends Resolver {
    * @param {Object} [config={}] 配置
    * @return {Array} 图片集合
    */
-  resolveImages (config = {}) {
-    let tabs = get(config, 'tabBar.list', [])
+  resolveTabs (tabs) {
     let images = []
     let basePath = path.dirname(this.file)
 
