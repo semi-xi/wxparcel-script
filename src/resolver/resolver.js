@@ -86,17 +86,17 @@ export class Resolver {
         break
       }
 
-      let [holder, required] = match
-      code = code.replace(holder, '')
+      let [all, required] = match
+      code = code.replace(all, '')
 
       let dependency = convertDependencyPath(required, relativeTo)
       if (dependency === false) {
         break
       }
 
-      if (findIndex(dependencies, { file: this.file, dependency, required }) === -1) {
+      if (findIndex(dependencies, { file: this.file, dependency, required, code: all }) === -1) {
         let destination = convertDestination(dependency, this.options)
-        let item = { match, file: this.file, dependency, destination, required }
+        let item = { file: this.file, dependency, destination, required, code: all }
         dependencies.push(item)
       }
     }
