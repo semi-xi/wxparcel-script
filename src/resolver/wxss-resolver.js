@@ -34,13 +34,11 @@ export default class WXSSResolver extends Resolver {
 
     let dependencies = [].concat(importDeps, imageDeps)
     dependencies = dependencies.map((item) => {
-      let { match, file, destination, dependency, required } = item
-      let [holder] = match
-
+      let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, holder, url, IMAGE_REGEXP)
+      this.source = replacement(this.source, code, url, IMAGE_REGEXP)
       this.instance.emitFile(file, destination, dependency, required)
 
       return { file, destination, dependency, required }

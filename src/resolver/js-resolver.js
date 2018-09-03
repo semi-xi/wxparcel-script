@@ -57,7 +57,7 @@ export default class JSResolver extends Resolver {
 
     dependencies = this.filterDependencies(dependencies)
     dependencies = dependencies.map((item) => {
-      let { match, file, destination, dependency, required } = item
+      let { file, destination, dependency, required, code } = item
 
       let extname = path.extname(destination)
       if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
@@ -79,11 +79,10 @@ export default class JSResolver extends Resolver {
 
       destination = this.convertAssetsDestination(dependency)
 
-      let [holder] = match
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, holder, url, REQUIRE_REGEXP)
+      this.source = replacement(this.source, code, url, REQUIRE_REGEXP)
       this.instance.emitFile(file, destination, dependency, required)
 
       return { file, destination, dependency, required }
