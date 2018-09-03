@@ -8,6 +8,7 @@ import OptionManager from '../option-manager'
 import { replacement } from './share'
 
 const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
+const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([\w\d_\-./]+)['"]\)/
 
 /**
  * JS 解析器
@@ -50,11 +51,16 @@ export default class JSResolver extends Resolver {
     let destination = this.convertDestination(this.file)
     let directory = path.dirname(destination)
 
-    let dependencies = this.resolveDependencies(REQUIRE_REGEXP, {
+    let jsDependencies = this.resolveDependencies(REQUIRE_REGEXP, {
       convertDependencyPath: this.convertRelative.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })
 
+    let workerDependencies = this.resolveDependencies(WORKER_REQUIRE_REGEXP, {
+      convertDependencyPath: this.convertWorkerRelative.bind(this)
+    })
+
+    let dependencies = [].concat(jsDependencies, workerDependencies)
     dependencies = this.filterDependencies(dependencies)
     dependencies = dependencies.map((item) => {
       let { file, destination, dependency, required, code } = item
@@ -90,6 +96,27 @@ export default class JSResolver extends Resolver {
 
     this.source = Buffer.from(this.source)
     return { file: this.file, source: this.source, dependencies }
+  }
+  
+  /**
+   * 转换路径
+   * 根据路径往上查找依赖文件
+   * 
+   * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/workers.html
+   * 
+   * @param {String} requested 请求路径
+   * @param {String} relativeTo 被依赖文件所在文件夹路径
+   * @return {String} 文件路径
+   */
+  convertWorkerRelative (requested) {
+    const { srcDir, appConfig } = this.options || {}
+    const { workers } = appConfig || {}
+    const workerFolder = requested.split('/').shift()
+    if (workers !== workerFolder) {
+      throw new Error(`Worker folder ${workerFolder} is not defined in app.config.json. Please check config with docs https://developers.weixin.qq.com/miniprogram/dev/framework/workers.html`)
+    }
+
+    return path.join(srcDir, requested)
   }
 
   /**
