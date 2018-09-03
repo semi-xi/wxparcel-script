@@ -65,19 +65,19 @@ export default class JSONResolver extends Resolver {
     let pageModules = this.resolvePages(pages)
     let usingComponentModules = this.resolveComponents(usingComponents)
     let publicComponentModules = this.resolveComponents(publicComponents)
-    let images = this.resolveTabs(tabs)
-
+    let tabImageFiles = this.resolveTabs(tabs)
+    let confDependedFiles = this.resolveProjectConf(config)
 
     let files = pageModules.concat(usingComponentModules, publicComponentModules).map((item) => item.files)
     files = flatten(files)
-    files = uniq(files).concat(images)
+    files = uniq(files).concat(tabImageFiles, confDependedFiles)
 
     let dependencies = files.map((dependency) => {
       let destination = this.convertDestination(dependency, this.options)
       return { file: this.file, dependency, destination, required: '' }
     })
 
-    config = this.resolveProjectConf(config)
+    config = this.convertProjectConf(config)
     this.source = JSON.stringify(config, null, 2)
 
     this.source = Buffer.from(this.source)
@@ -90,7 +90,7 @@ export default class JSONResolver extends Resolver {
    * @param {Object} [config={}] 配置
    * @return {Object} 配置
    */
-  resolveProjectConf (config = {}) {
+  convertProjectConf (config = {}) {
     const { outDir } = this.options
     let name = path.basename(outDir)
 
@@ -105,6 +105,28 @@ export default class JSONResolver extends Resolver {
     }
 
     return config
+  }
+
+  resolveProjectConf (config) {
+    const { srcDir } = this.options
+
+    let files = []
+    if (config.hasOwnProperty('pluginRoot')) {
+      const { pluginRoot } = config
+      const file = path.join(srcDir, pluginRoot, 'plugin.json')
+      fs.existsSync(file) && files.push(file)
+    }
+
+    if (config.hasOwnProperty('main')) {
+      const { projectConfig } = this.options
+      if (projectConfig.hasOwnProperty('pluginRoot')) {
+        const { pluginRoot } = projectConfig
+        const file = path.join(srcDir, pluginRoot, config.main)
+        fs.existsSync(file) && files.push(file)
+      }
+    }
+
+    return files
   }
 
   /**
