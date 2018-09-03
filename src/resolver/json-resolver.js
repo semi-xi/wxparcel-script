@@ -91,8 +91,17 @@ export default class JSONResolver extends Resolver {
    * @return {Object} 配置
    */
   resolveProjectConf (config = {}) {
+    const { outDir } = this.options
+    let name = path.basename(outDir)
+
     if (config.hasOwnProperty('miniprogramRoot')) {
-      config.miniprogramRoot = './'
+      let folder = config.miniprogramRoot.replace(name, '')
+      config.miniprogramRoot = path.join('./', folder)
+    }
+
+    if (config.hasOwnProperty('pluginRoot')) {
+      let folder = config.pluginRoot.replace(name, '')
+      config.pluginRoot = path.join('./', folder)
     }
 
     return config

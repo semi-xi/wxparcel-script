@@ -119,11 +119,35 @@ export class OptionManager {
     this.silence = options.silence || process.argv.indexOf('--quiet') !== -1
 
     /**
+     * 微信小程序 project.config.json 文件配置
+     *
+     * @type {Object}
+     */
+    this.projectConfig = {}
+
+    /**
+     * 微信小程序 project.config.json 文件
+     * 
+     * @type {String}
+     */
+    this.projectConfigFile = ''
+
+    let wxProjConfFile = path.join(this.rootDir, './project.config.json')
+    this.resolveWXProjConf(wxProjConfFile)
+
+    /**
      * 微信小程序 app.config.json 文件配置
      *
      * @type {Object}
      */
     this.appConfig = {}
+
+    /**
+     * 微信小程序 app.config.json 文件
+     *
+     * @type {String}
+     */
+    this.appConfigFile = ''
 
     if (!/https?:\/\//.test(this.pubPath)) {
       throw new TypeError(`publicPath 为 ${this.pubPath}, 微信小程序并不能访问非远程的静态资源`)
@@ -182,6 +206,24 @@ export class OptionManager {
     }
 
     return true
+  }
+
+  resolveWXProjConf (file) {
+    if (!fs.existsSync(file)) {
+      let message = `File ${file} is not found, please ensure ${file} is valid.`
+      Printer.error(message)
+      throw new Error(message)
+    }
+
+    try {
+      this.projectConfig = fs.readJSONSync(file)
+    } catch (error) {
+      let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
+      Printer.error(message)
+      throw new Error(message)
+    }
+
+    this.projectConfigFile = file
   }
 
   /**
