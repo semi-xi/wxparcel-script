@@ -61,6 +61,9 @@ export default class DevServerPlugin {
    */
   async applyAsync (options, printer) {
     options = defaultsDeep(options, this.options)
+    if (options.watching === false) {
+      return Promise.resolve()
+    }
 
     let { staticDir, pubPath } = options
     let serverOptions = Object.assign({
