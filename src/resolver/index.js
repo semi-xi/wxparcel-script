@@ -1,3 +1,4 @@
+import path from 'path'
 import JSONResolver from './json-resolver'
 import JSResolver from './js-resolver'
 import WXMLResolver from './wxml-resolver'
@@ -34,14 +35,12 @@ export class Resolver {
     this.resolvers = []
 
     /**
-     * resolver 比 loader 要延后,
-     * 因此这里后缀为未编译的文件都是编译后
-     * 才 resolve 的
+     * 这里的正则匹配为结果文件的后缀
      */
     this.register(/\.json$/, JSONResolver)
-    this.register(/\.(jsx?|babel|es6)$/, JSResolver)
-    this.register(/\.(wxss|css|scss|sass)$/, WXSSResolver)
-    this.register(/\.(wxml|html)$/, WXMLResolver)
+    this.register(/\.js$/, JSResolver)
+    this.register(/\.wxss$/, WXSSResolver)
+    this.register(/\.wxml$/, WXMLResolver)
   }
 
   /**
@@ -66,12 +65,13 @@ export class Resolver {
    * @param {String} file 文件名称
    * @param {Object} instance 编译器实例
    */
-  resolve (source, file, instance) {
-    let { resolvers } = this
+  resolve (source, file, rule, instance) {
+    const { resolvers } = this
+    const extname = rule.extname || '.' + path.extname(file)
+
     for (let i = 0, l = resolvers.length; i < l; i ++) {
       let { regexp, resolver: Resolver } = resolvers[i]
-
-      if (regexp.test(file)) {
+      if (regexp.test(extname)) {
         let resolver = new Resolver(source, file, instance, this.options)
         return resolver.resolve()
       }
