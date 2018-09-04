@@ -68,8 +68,7 @@ export class Resolver {
    */
   resolve (source, file, instance) {
     let { resolvers } = this
-
-    for (let i = 0, l = resolvers.length; i < l; i++) {
+    for (let i = 0, l = resolvers.length; i < l; i ++) {
       let { regexp, resolver: Resolver } = resolvers[i]
 
       if (regexp.test(file)) {
