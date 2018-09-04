@@ -124,7 +124,7 @@ export class Parser {
     let instance = new InstanceForTransform()
     return readFilePromisify(file)
       .then((buffer) => this.transform(buffer, file, rule, instance))
-      .then((buffer) => Resolver.resolve(buffer, file, instance))
+      .then((buffer) => Resolver.resolve(buffer, file, rule, instance))
       .then((flowdata) => {
         let dependencies = [].concat(flowdata.dependencies, instance.dependencies)
         flowdata.dependencies = uniqBy(dependencies, 'dependency')

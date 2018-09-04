@@ -39,8 +39,6 @@ export default class WXSSResolver extends Resolver {
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
       this.source = replacement(this.source, code, url, IMAGE_REGEXP)
-      this.instance.emitFile(file, destination, dependency, required)
-
       return { file, destination, dependency, required }
     })
 

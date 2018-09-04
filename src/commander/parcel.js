@@ -41,6 +41,7 @@ const run = async function (options = {}) {
     parcelOptions.publicPath = options.publicPath
   }
 
+  Object.assign(parcelOptions, options)
   await OptionManager.resolve(parcelOptions)
 
   let parcel = new Parcel()
@@ -82,6 +83,11 @@ program
             case 'development':
               process.env.NODE_ENV = 'development'
               options.config = path.join(__dirname, '../constants/development.config.js')
+              break
+
+            case 'prerelease':
+              process.env.NODE_ENV = 'prerelease'
+              options.config = path.join(__dirname, '../constants/prerelease.config.js')
               break
 
             case 'production':
