@@ -75,8 +75,8 @@ export class Parser {
     let rule = this.matchRule(file, this.options.rules)
     let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
     let rollup = (flowdata) => {
-      let { source, dependencies } = flowdata
-      chunk.update({ content: source, dependencies, rule })
+      let { type, source, dependencies } = flowdata
+      chunk.update({ type, content: source, dependencies, rule })
 
       if (!Array.isArray(dependencies) || dependencies.length === 0) {
         return chunk
@@ -88,8 +88,8 @@ export class Parser {
           return
         }
 
-        let { dependency, destination } = item
-        files.push({ file: dependency, destination })
+        let { type, dependency, destination } = item
+        files.push({ type, file: dependency, destination })
       })
 
       if (!Array.isArray(files) || files.length === 0) {

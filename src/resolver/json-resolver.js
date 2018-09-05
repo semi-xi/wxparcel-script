@@ -136,7 +136,7 @@ export default class JSONResolver extends Resolver {
    * @return {Array} 页面集合
    */
   resolvePages (pages) {
-    pages = pages.map((page) => {
+    return pages.map((page) => {
       page = path.join(this.options.srcDir, page)
 
       let folder = path.dirname(page)
@@ -147,8 +147,6 @@ export default class JSONResolver extends Resolver {
       let name = path.basename(page)
       return this.findModule(name, folder)
     })
-
-    return pages
   }
 
   /**

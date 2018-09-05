@@ -51,6 +51,13 @@ export class Chunk {
     this.file = file
 
     /**
+     * 分片类型 [bundle|entry]
+     *
+     * @type {Menu}
+     */
+    this.type = state.type || 'entry'
+
+    /**
      * 依赖集合
      *
      * @type {Array}
@@ -124,6 +131,10 @@ export class Chunk {
   update (props = {}) {
     if (props.hasOwnProperty('file') && typeof props.file === 'string') {
       this.file = props.file
+    }
+
+    if (props.hasOwnProperty('type') && typeof props.type === 'string') {
+      this.type = props.type
     }
 
     if (props.hasOwnProperty('dependencies') && Array.isArray(props.dependencies)) {

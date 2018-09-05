@@ -78,7 +78,7 @@ export default class JSResolver extends Resolver {
         let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
 
         this.source = this.source.replace(matchment, replacement)
-        return { file, destination, dependency, required }
+        return { type: 'bundle', file, destination, dependency, required }
       }
 
       destination = this.convertAssetsDestination(dependency)
@@ -87,7 +87,7 @@ export default class JSResolver extends Resolver {
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
       this.source = replacement(this.source, code, url, REQUIRE_REGEXP)
-      return { file, destination, dependency, required }
+      return { type: 'bundle', file, destination, dependency, required }
     })
 
     this.source = Buffer.from(this.source)
