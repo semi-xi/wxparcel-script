@@ -28,7 +28,7 @@ export class Resolver {
     this.options = options
 
     /**
-     * 解析器结合
+     * 解析器集合
      *
      * @type {Array}
      */

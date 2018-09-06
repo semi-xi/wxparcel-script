@@ -295,6 +295,8 @@ class InstanceForTransform {
  * @param {String} file 文件路径
  * @return {Promise}
  */
-const readFilePromisify = (file) => new Promise((resolve, reject) => {
-  fs.readFile(file, (error, source) => error ? reject(error) : resolve(source))
-})
+function readFilePromisify (file) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(file, (error, source) => error ? reject(error) : resolve(source))
+  })
+}

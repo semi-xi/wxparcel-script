@@ -153,7 +153,7 @@ export default class JSONResolver extends Resolver {
    * 解析组件配置
    *
    * @param {Object} [config={}] 配置
-   * @return {Array} 组件结合
+   * @return {Array} 组件集合
    */
   resolveComponents (components) {
     let relativePath = path.dirname(this.file)
