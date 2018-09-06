@@ -11,6 +11,7 @@ import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
 import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
+import Packager from './packager'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
 import Package from '../package.json'
@@ -84,7 +85,9 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
-      let stats = await this.flush(chunks)
+      let bundles = Packager.bundle(chunks)
+
+      let stats = await this.flush(bundles)
       stats.spendTime = Printer.timeEnd()
 
       this.printStats(stats)

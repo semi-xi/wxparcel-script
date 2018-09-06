@@ -1,4 +1,9 @@
+import map from 'lodash/map'
+import flatten from 'lodash/flatten'
+import without from 'lodash/without'
+import filter from 'lodash/filter'
 import JSPackager from './js-packager'
+import OptionManager from '../option-manager'
 
 export class Packager {
   /**
@@ -38,6 +43,28 @@ export class Packager {
     }
 
     this.packagers.push({ regexp, packager })
+  }
+
+  bundle (chunks) {
+    chunks = [].concat(chunks)
+
+    let bundledChunks = map(this.packagers, ({ regexp, packager: Packager }) => {
+      let targetChunks = filter(chunks, (chunk) => {
+        return regexp.test(chunk.destination)
+      })
+
+      /**
+       * 已经确定的文件就不需要再次读取
+       * 这里筛选掉已匹配过的 chunks
+       */
+      chunks = without(chunks, ...targetChunks)
+
+      let packager = new Packager(targetChunks, this.options)
+      return packager.bundle()
+    })
+
+    bundledChunks = flatten(bundledChunks)
+    return [].concat(chunks, bundledChunks)
   }
 }
 
