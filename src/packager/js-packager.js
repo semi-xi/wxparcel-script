@@ -83,13 +83,13 @@ export default class JSPackager extends Packager {
   wrapModule (chunk) {
     let id = this._remember(chunk.destination)
     let code = chunk.content.toString()
-    let dependencies = []
+    let dependencies = {}
     
     forEach(chunk.dependencies, (item) => {
       const { dependency, required, destination } = item
       if (-1 !== findIndex(this.chunks, (chunk) => chunk.file === dependency)) {
         let id = this._remember(destination)
-        dependencies.push({ [required]: id })
+        dependencies[required] = id
       }
     })
 
