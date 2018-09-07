@@ -1,11 +1,7 @@
 import path from 'path'
 import Module from 'module'
-import trimEnd from 'lodash/trimEnd'
-import trimStart from 'lodash/trimStart'
-import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
-import { replacement } from './share'
 
 const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
 const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([\w\d_\-./]+)['"]\)/
@@ -43,54 +39,19 @@ export default class JSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, npmDir, pubPath } = this.options
-
-    this.source = this.source.toString()
-    this.source = stripComments(this.source)
-
-    let destination = this.convertDestination(this.file)
-    let directory = path.dirname(destination)
-
-    let jsDependencies = this.resolveDependencies(REQUIRE_REGEXP, {
+    let source = this.source.toString()
+    let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
       convertDependencyPath: this.convertRelative.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })
 
-    let workerDependencies = this.resolveDependencies(WORKER_REQUIRE_REGEXP, {
+    let workerDependencies = this.resolveDependencies(source, WORKER_REQUIRE_REGEXP, {
       convertDependencyPath: this.convertWorkerRelative.bind(this)
     })
 
     let dependencies = [].concat(jsDependencies, workerDependencies)
     dependencies = this.filterDependencies(dependencies)
-    dependencies = dependencies.map((item) => {
-      let { file, destination, dependency, required, code } = item
 
-      let extname = path.extname(destination)
-      if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
-        // let relativePath = path.relative(directory, destination)
-        // if (relativePath.charAt(0) !== '.') {
-        //   relativePath = `./${relativePath}`
-        // }
-
-        // relativePath = relativePath.replace('node_modules', npmDir)
-
-        // let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
-        // let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
-
-        // this.source = this.source.replace(matchment, replacement)
-        return { type: 'bundler', file, destination, dependency, required }
-      }
-
-      destination = this.convertAssetsDestination(dependency)
-
-      let relativePath = destination.replace(staticDir, '')
-      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
-
-      this.source = this.source.replace(code, `"${url}"`)
-      return { type: 'bundler', file, destination, dependency, required }
-    })
-
-    this.source = Buffer.from(this.source)
     return { file: this.file, source: this.source, dependencies }
   }
   

@@ -25,7 +25,7 @@ export class Resolver {
     /**
      * 代码
      *
-     * @type {String}
+     * @type {Buffer}
      */
     this.source = source
 
@@ -69,7 +69,7 @@ export class Resolver {
    * @param {Function} [options.convertDestination=this.convertDestination] 转换目标路径
    * @return {Array} 依赖
    */
-  resolveDependencies (regexp, options = {}) {
+  resolveDependencies (source, regexp, options = {}) {
     options = defaults({}, options, {
       convertDependencyPath: this.convertDependencyPath.bind(this),
       convertDestination: this.convertDestination.bind(this)
@@ -78,7 +78,7 @@ export class Resolver {
     const relativeTo = path.dirname(this.file)
     const { convertDependencyPath, convertDestination } = options
 
-    let code = this.source.toString()
+    let code = source
     let dependencies = []
     while (true) {
       let match = regexp.exec(code)
@@ -96,7 +96,7 @@ export class Resolver {
 
       if (findIndex(dependencies, { file: this.file, dependency, required, code: all }) === -1) {
         let destination = convertDestination(dependency, this.options)
-        let item = { file: this.file, dependency, destination, required, code: all }
+        let item = { type: 'bundler', file: this.file, dependency, destination, required, code: all }
         dependencies.push(item)
       }
     }

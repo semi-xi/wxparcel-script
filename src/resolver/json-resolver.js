@@ -32,7 +32,8 @@ export default class JSONResolver extends Resolver {
       config = this.source
     } else {
       try {
-        config = JSON.parse(this.source)
+        let source = this.source.toString()
+        config = JSON.parse(source)
       } catch (error) {
         throw new Error(`File ${this.file} is invalid json, please check the json corrected.\n${error}`)
       }
@@ -78,9 +79,10 @@ export default class JSONResolver extends Resolver {
     })
 
     config = this.convertProjectConf(config)
-    this.source = JSON.stringify(config, null, 2)
 
-    this.source = Buffer.from(this.source)
+    let source = JSON.stringify(config, null, 2)
+    this.source = Buffer.from(source)
+
     return { file: this.file, source: this.source, dependencies }
   }
 

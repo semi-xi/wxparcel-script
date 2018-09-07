@@ -25,12 +25,12 @@ export default class WXMLResolver extends Resolver {
   resolve () {
     const { staticDir, pubPath } = this.options
 
-    this.source = this.source.toString()
-    this.source = stripComments(this.source)
+    let source = this.source.toString()
+    source = stripComments(source)
 
-    let wxsDeps = this.resolveDependencies(WXS_REGEPX)
-    let templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
-    let imageDeps = this.resolveDependencies(IMAGE_REGEXP, {
+    let wxsDeps = this.resolveDependencies(source, WXS_REGEPX)
+    let templateDeps = this.resolveDependencies(source, TEMPLATE_REGEPX)
+    let imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, {
       convertDestination: this.convertAssetsDestination.bind(this)
     })
 
@@ -40,11 +40,11 @@ export default class WXMLResolver extends Resolver {
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, IMAGE_REGEXP)
+      source = replacement(source, code, url, IMAGE_REGEXP)
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(this.source)
+    this.source = Buffer.from(source)
     return { file: this.file, source: this.source, dependencies }
   }
 }

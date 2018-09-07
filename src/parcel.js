@@ -62,6 +62,7 @@ export default class Parcel {
       Printer.warn(`WXParcel is running, you can enter ${colors.bold('Ctrl + C')} to exit.`)
       return Promise.resolve()
     }
+    let q = Date.now()
 
     try {
       this.running = true
@@ -83,11 +84,15 @@ export default class Parcel {
       }
 
       entries.unshift(projectConfigFile)
-
+      console.log('find entries', Date.now() - q)
+      
       let chunks = await Parser.multiCompile(entries)
+      console.log('multiCompile', Date.now() - q)
       let bundles = Packager.bundle(chunks)
+      console.log('bundle', Date.now() - q)
 
       let stats = await this.flush(bundles)
+      console.log('flush', Date.now() - q)
       stats.spendTime = Printer.timeEnd()
 
       this.printStats(stats)
