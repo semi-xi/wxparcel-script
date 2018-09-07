@@ -84,7 +84,7 @@ export default class JSPackager extends Packager {
     let id = this._remember(chunk.destination)
     let code = chunk.content.toString()
     let dependencies = {}
-    
+
     forEach(chunk.dependencies, (item) => {
       const { dependency, required, destination } = item
       if (-1 !== findIndex(this.chunks, (chunk) => chunk.file === dependency)) {

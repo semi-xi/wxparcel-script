@@ -1,4 +1,5 @@
 import map from 'lodash/map'
+import find from 'lodash/find'
 import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
@@ -65,6 +66,10 @@ export class Packager {
 
     bundledChunks = flatten(bundledChunks)
     return [].concat(chunks, bundledChunks)
+  }
+
+  matchPackager (file) {
+    return find(this.packagers, ({ regexp }) => regexp.test(file))
   }
 }
 
