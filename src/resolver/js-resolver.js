@@ -1,5 +1,7 @@
 import path from 'path'
 import Module from 'module'
+import trimEnd from 'lodash/trimEnd'
+import trimStart from 'lodash/trimStart'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
 
@@ -33,12 +35,14 @@ export default class JSResolver extends Resolver {
     this.modules = {}
   }
 
+
   /**
    * 解析, 并返回文件,代码,依赖等信息
    *
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
+    const { pubPath, staticDir } = this.options
     let source = this.source.toString()
     let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
       convertDependencyPath: this.convertRelative.bind(this),
@@ -51,7 +55,23 @@ export default class JSResolver extends Resolver {
 
     let dependencies = [].concat(jsDependencies, workerDependencies)
     dependencies = this.filterDependencies(dependencies)
+    dependencies = dependencies.map((item) => {
+      let { type, file, destination, dependency, required, code } = item
+      let extname = path.extname(destination)
+      if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
+        return item
+      }
 
+      let dependencyDestination = this.convertAssetsDestination(dependency)
+      let relativePath = dependencyDestination.replace(staticDir, '')
+      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
+
+      source = source.replace(code, `"${url}"`)
+
+      return { type, file, destination: dependencyDestination, dependency, required }
+    }) 
+
+    this.source = Buffer.from(source)
     return { file: this.file, source: this.source, dependencies }
   }
   
