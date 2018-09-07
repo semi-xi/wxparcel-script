@@ -56,8 +56,9 @@ export default class JSPackager extends Packager {
     entryChunks = map(entryChunks, ({ file, content, destination, ...otherProps }) => {
       let id = this._remember(destination)
 
-      let relativePath = path.relative(destination, bundleDestination)
-      let requiredPath = relativePath.replace(new RegExp(path.sep, 'g'), '/')
+      let destFolder = path.dirname(destination)
+      let relativePath = path.relative(destFolder, bundleDestination)
+      let requiredPath = relativePath.replace(/\\/g, '/')
       let required = requiredPath.replace(path.extname(requiredPath), '')
 
       let code = `require(${this.wrapQuote(required)})(${this.wrapQuote(id)})`
