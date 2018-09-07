@@ -72,7 +72,7 @@ export default class JSPackager extends Packager {
 
   wrapBundle (chunks) {
     let modules = this.wrapModules(chunks)
-    return `([${modules}, {}])`
+    return `(${modules}, {})`
   }
 
   wrapModules (chunks) {
