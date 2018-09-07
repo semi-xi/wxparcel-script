@@ -67,18 +67,18 @@ export default class JSResolver extends Resolver {
 
       let extname = path.extname(destination)
       if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
-        let relativePath = path.relative(directory, destination)
-        if (relativePath.charAt(0) !== '.') {
-          relativePath = `./${relativePath}`
-        }
+        // let relativePath = path.relative(directory, destination)
+        // if (relativePath.charAt(0) !== '.') {
+        //   relativePath = `./${relativePath}`
+        // }
 
-        relativePath = relativePath.replace('node_modules', npmDir)
+        // relativePath = relativePath.replace('node_modules', npmDir)
 
-        let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
-        let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
+        // let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
+        // let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
 
-        this.source = this.source.replace(matchment, replacement)
-        return { type: 'bundle', file, destination, dependency, required }
+        // this.source = this.source.replace(matchment, replacement)
+        return { type: 'bundler', file, destination, dependency, required }
       }
 
       destination = this.convertAssetsDestination(dependency)
@@ -86,8 +86,8 @@ export default class JSResolver extends Resolver {
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, REQUIRE_REGEXP)
-      return { type: 'bundle', file, destination, dependency, required }
+      this.source = this.source.replace(code, `"${url}"`)
+      return { type: 'bundler', file, destination, dependency, required }
     })
 
     this.source = Buffer.from(this.source)

@@ -2,13 +2,17 @@ import fs from 'fs-extra'
 import path from 'path'
 import map from 'lodash/map'
 import filter from 'lodash/filter'
+import forEach from 'lodash/forEach'
 import trimEnd from 'lodash/trimEnd'
+import findIndex from 'lodash/findIndex'
 import Packager from './packager'
+import OptionManager from '../option-manager'
 
-const PreludeCode = fs.readFileSync(path.join(__dirname, './prelude.js'))
+const { execDir } = OptionManager
+const PreludeCode = fs.readFileSync(path.join(execDir, './builtins/prelude.js'))
 
 export default class JSPackager extends Packager {
-  constructor (chunks, options) {
+  constructor (chunks, options = OptionManager) {
     super(chunks, options)
 
     this._uid = 0
@@ -37,25 +41,26 @@ export default class JSPackager extends Packager {
 
   bundle () {
     const { outDir } = this.options
-    let code = PreludeCode + this.wrapBundle(this.chunks)
+
+    let code = PreludeCode.toString() + this.wrapBundle(this.chunks)
     let bundleContent = Buffer.from(code)
-    let bundleDestination = path.join(outDir, 'bundle.js')
-    
-    let bundledChunk = this.assets.add('bundle.js', {
-      type: 'bundle',
+    let bundleDestination = path.join(outDir, 'bundler.js')
+
+    let bundledChunk = this.assets.add('bundler.js', {
+      type: 'bundler',
       content: bundleContent,
       destination: bundleDestination
     })
-    
+
     let entryChunks = filter(this.chunks, (chunk) => chunk.type === 'entry')
     entryChunks = map(entryChunks, ({ file, content, destination, ...otherProps }) => {
-      console.log(destination)
       let id = this._remember(destination)
 
-      let relativeFile = path.relative(destination, bundleDestination)
-      let relativePath = relativeFile.replace(path.extname(relativeFile), '')
+      let relativePath = path.relative(destination, bundleDestination)
+      let requiredPath = relativePath.replace(new RegExp(path.sep, 'g'), '/')
+      let required = requiredPath.replace(path.extname(requiredPath), '')
 
-      let code = `require(${JSON.stringify(relativePath)})(${JSON.stringify(id)})`
+      let code = `require(${this.wrapQuote(required)})(${this.wrapQuote(id)})`
       let entryContent = Buffer.from(code)
 
       return this.assets.add(file, { ...otherProps, content: entryContent })
@@ -77,16 +82,24 @@ export default class JSPackager extends Packager {
   wrapModule (chunk) {
     let id = this._remember(chunk.destination)
     let code = chunk.content.toString()
-    let dependencies = map(chunk.dependencies, ({ required, destination }) => {
-      let id = this._remember(destination)
-      return { [required]: id }
+    let dependencies = []
+    
+    forEach(chunk.dependencies, (item) => {
+      const { dependency, required, destination } = item
+      if (-1 !== findIndex(this.chunks, (chunk) => chunk.file === dependency)) {
+        let id = this._remember(destination)
+        dependencies.push({ [required]: id })
+      }
     })
 
     return this.wrapCode(id, code, dependencies)
   }
 
   wrapCode (name, code, dependencies) {
-    return `${JSON.stringify(name)}: [function(require,module,exports) {\n${code}\n}, ${JSON.stringify(dependencies)}],`
+    return `${this.wrapQuote(name)}: [function(require,module,exports) {\n${code}\n}, ${JSON.stringify(dependencies)}],`
+  }
+
+  wrapQuote (str) {
+    return `"${str}"`
   }
 }
-

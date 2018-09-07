@@ -51,7 +51,7 @@ export class Chunk {
     this.file = file
 
     /**
-     * 分片类型 [bundle|entry]
+     * 分片类型 [bundler|entry]
      *
      * @type {Menu}
      */
