@@ -65,8 +65,9 @@ export class Resolver {
    * @param {String} file 文件名称
    * @param {Object} instance 编译器实例
    */
-  resolve (source, file, rule, instance) {
+  resolve (source, file, options = {}, instance = {}) {
     const { resolvers } = this
+    const { rule } = options
     const extname = rule.extname || '.' + path.extname(file)
 
     for (let i = 0, l = resolvers.length; i < l; i ++) {

@@ -1,14 +1,14 @@
 module.exports = (function (modules, caches) {
-  const ParcelRequire = function (name) {
+  function ParcelRequire (name) {
     if (caches[name]) {
       return caches[name].exports
     }
  
-    const localRequire = function (prop) {
+    function localRequire (prop) {
       return ParcelRequire(localRequire.resolve(prop))
     }
 
-    const resolve = function (prop) {
+    function resolve (prop) {
       var module = modules[name][1] || {}
       return module[prop] || prop
     }
@@ -19,7 +19,7 @@ module.exports = (function (modules, caches) {
      * 本地 require
      */
     if (modules[name]) {
-      const module = caches[name] = new ParcelRequire.Module(name)
+      var module = caches[name] = new ParcelRequire.Module(name)
       modules[name][0].call(module.exports, localRequire, module, module.exports, this)
       return module.exports
     }
@@ -36,13 +36,13 @@ module.exports = (function (modules, caches) {
     throw err
   }
 
-  const Module = function (moduleName) {
+  function Module (moduleName) {
     this.id = moduleName
     this.bundle = ParcelRequire
     this.exports = {}
   }
 
-  const register = function (id, exports) {
+  function register (id, exports) {
     modules[id] = [function (require, module) {
       module.exports = exports
     }, {}]

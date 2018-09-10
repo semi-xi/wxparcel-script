@@ -7,6 +7,7 @@ import trimEnd from 'lodash/trimEnd'
 import findIndex from 'lodash/findIndex'
 import Packager from './packager'
 import OptionManager from '../option-manager'
+import Parser from '../parser'
 
 const { execDir } = OptionManager
 const PreludeCode = fs.readFileSync(path.join(execDir, './builtins/prelude.js'))
@@ -40,16 +41,18 @@ export default class JSPackager extends Packager {
   }
 
   bundle () {
-    const { outDir } = this.options
+    const { outDir, rules } = this.options
 
     let code = PreludeCode.toString() + this.wrapBundle(this.chunks)
     let bundleContent = Buffer.from(code)
-    let bundleDestination = path.join(outDir, 'bundler.js')
+    let bundleFilename = 'bundler.js'
+    let bundleDestination = path.join(outDir, bundleFilename)
 
-    let bundledChunk = this.assets.add('bundler.js', {
+    let bundledChunk = this.assets.add(bundleFilename, {
       type: 'bundler',
       content: bundleContent,
-      destination: bundleDestination
+      destination: bundleDestination,
+      rule: Parser.matchRule(bundleDestination, rules)
     })
 
     let entryChunks = filter(this.chunks, (chunk) => chunk.type === 'entry')
@@ -64,7 +67,11 @@ export default class JSPackager extends Packager {
       let code = `require(${this.wrapQuote(required)})(${this.wrapQuote(id)})`
       let entryContent = Buffer.from(code)
 
-      return this.assets.add(file, { ...otherProps, content: entryContent })
+      return this.assets.add(file, {
+        ...otherProps,
+        content: entryContent,
+        rule: Parser.matchRule(file, rules)
+      })
     })
 
     return [bundledChunk].concat(entryChunks)

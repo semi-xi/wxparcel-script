@@ -35,7 +35,6 @@ export default class JSResolver extends Resolver {
     this.modules = {}
   }
 
-
   /**
    * 解析, 并返回文件,代码,依赖等信息
    *
@@ -67,7 +66,6 @@ export default class JSResolver extends Resolver {
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
       source = source.replace(code, `"${url}"`)
-
       return { type, file, destination: dependencyDestination, dependency, required }
     }) 
 

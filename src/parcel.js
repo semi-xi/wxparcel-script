@@ -66,7 +66,7 @@ export default class Parcel {
 
     try {
       this.running = true
-      Printer.time()
+      const timer = Printer.timer()
 
       this.hook('async')()
       await this.hook('before')()
@@ -86,10 +86,10 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
       
       let chunks = await Parser.multiCompile(entries)
-      let bundles = Packager.bundle(chunks)
-
+      let bundles = await Packager.bundle(chunks)
+      
       let stats = await this.flush(bundles)
-      stats.spendTime = Printer.timeEnd()
+      stats.spendTime = timer.end()
 
       this.printStats(stats)
     } catch (error) {
@@ -113,7 +113,7 @@ export default class Parcel {
     const transform = async (file) => {
       try {
         this.running = true
-        Printer.time()
+        const timer = Printer.timer()
 
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
@@ -137,9 +137,12 @@ export default class Parcel {
           chunks = [chunk].concat(chunks)
         }
 
+        chunks = [].concat(chunks, instance.chunks)
         let stats = await this.flush(chunks)
-        stats.spendTime = Printer.timeEnd()
+
+        stats.spendTime = timer.end()
         this.printStats(stats)
+
       } catch (error) {
         Printer.error(error)
       } finally {

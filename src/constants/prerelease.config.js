@@ -11,6 +11,7 @@ JSRule.loaders.push({
 
 JSRule.loaders.push({
   use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+  for: 'bundler',
   options: {}
 })
 

@@ -3,6 +3,7 @@ import path from 'path'
 import minimatch from 'minimatch'
 import omit from 'lodash/omit'
 import uniqBy from 'lodash/uniqBy'
+import filter from 'lodash/filter'
 import isEmpty from 'lodash/isEmpty'
 import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'promise-waterfall'
@@ -122,9 +123,10 @@ export class Parser {
      * 创建接口对象, 用于提供 loader 编译时创建新流程
      */
     let instance = new InstanceForTransform()
+    let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
     return readFilePromisify(file)
-      .then((buffer) => this.transform(buffer, file, rule, instance))
-      .then((buffer) => Resolver.resolve(buffer, file, rule, instance))
+      .then((buffer) => this.transform(buffer, file, { rule, loaders }, instance))
+      .then((buffer) => Resolver.resolve(buffer, file, { rule }, instance))
       .then((flowdata) => {
         let dependencies = [].concat(flowdata.dependencies, instance.dependencies)
         flowdata.dependencies = uniqBy(dependencies, 'dependency')
@@ -142,10 +144,10 @@ export class Parser {
    * @returns {Promise} promise
    * @returns {String} 编译后的内容
    */
-  transform (source, file, rule, instance) {
-    let loaders = []
-    if (!isEmpty(rule)) {
-      loaders = rule.loaders || []
+  transform (source, file, options, instance) {
+    let { rule, loaders } = options || {}
+    if (isEmpty(loaders)) {
+      loaders = rule ? rule.loaders || [] : []
     }
 
     /**

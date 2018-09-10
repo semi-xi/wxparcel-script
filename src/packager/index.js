@@ -5,6 +5,7 @@ import without from 'lodash/without'
 import filter from 'lodash/filter'
 import JSPackager from './js-packager'
 import OptionManager from '../option-manager'
+import Parser from '../parser'
 
 export class Packager {
   /**
@@ -46,7 +47,7 @@ export class Packager {
     this.packagers.push({ regexp, packager })
   }
 
-  bundle (chunks) {
+  async bundle (chunks) {
     chunks = [].concat(chunks)
 
     let bundledChunks = map(this.packagers, ({ regexp, packager: Packager }) => {
@@ -65,6 +66,18 @@ export class Packager {
     })
 
     bundledChunks = flatten(bundledChunks)
+
+    let tasks = bundledChunks.map((chunk) => {
+      let { file, content: source, rule } = chunk
+      let loaders = filter(rule.loaders, (loader) => loader.for === 'bundler')
+
+      return Parser.transform(source, file, { rule, loaders }).then((content) => {
+        chunk.update({ content })
+        return chunk
+      })
+    })
+
+    bundledChunks = await Promise.all(tasks)
     return [].concat(chunks, bundledChunks)
   }
 
