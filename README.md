@@ -49,3 +49,11 @@ $ wxparcel-script start --config development --publicPath "https://github.com"
 - 支持编译 环境变量替换
 - 支持 本地开发静态服务
 - 支持 可扩展插件(Plugins)与加载器(Loaders)
+
+## 开发
+
+```
+cd path/to/wxparcel-script
+npm link . # 这样就可以全局通用, 若要使用全局作用于项目, 必须把本地项目的依赖删除
+```
+
