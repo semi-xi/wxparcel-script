@@ -12,7 +12,7 @@ import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
 import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
-import Packager from './packager'
+import Bundler from './bundler'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
 import Package from '../package.json'
@@ -86,7 +86,7 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
       
       let chunks = await Parser.multiCompile(entries)
-      let bundles = await Packager.bundle(chunks)
+      let bundles = await Bundler.bundle(chunks)
       
       let stats = await this.flush(bundles)
       stats.spendTime = timer.end()
@@ -127,12 +127,12 @@ export default class Parcel {
         let files = dependencies.map((item) => item.dependency)
         let chunks = await Parser.multiCompile(files)
         
-        let { regexp, packager: MatchedPackager } = Packager.matchPackager(chunk.destination) || {}
-        if (MatchedPackager) {
+        let { regexp, bundler: MatchedBundler } = Bundler.matchBundler(chunk.destination) || {}
+        if (MatchedBundler) {
           chunks = filter(Assets.chunks, ({ destination }) => regexp.test(destination))
 
-          const packager = new MatchedPackager(chunks)
-          chunks = packager.bundle()
+          const bundler = new MatchedBundler(chunks)
+          chunks = bundler.bundle()
         } else {
           chunks = [chunk].concat(chunks)
         }

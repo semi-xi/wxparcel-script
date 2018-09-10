@@ -3,13 +3,13 @@ import find from 'lodash/find'
 import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
-import JSPackager from './js-packager'
+import JSBundler from './js-bundler'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
-export class Packager {
+export class Bundler {
   /**
-   * Creates an instance of Packager.
+   * Creates an instance of Bundler.
    * @param {OptionManager} [options=OptionManager] 配置管理器
    */
   constructor (options = OptionManager) {
@@ -25,32 +25,32 @@ export class Packager {
      *
      * @type {Array}
      */
-    this.packagers = []
+    this.bundlers = []
 
     /**
      * 这里的正则匹配为结果文件的后缀
      */
-    this.register(/\.js$/, JSPackager)
+    this.register(/\.js$/, JSBundler)
   }
 
   /**
    * 注册打包器
    *
    * @param {RegExp} regexp 匹配正则
-   * @param {Packager} packager 解析器类
+   * @param {Bundler} bundler 解析器类
    */
-  register (regexp, packager) {
-    if (typeof packager === 'string') {
-      packager = require(packager)
+  register (regexp, bundler) {
+    if (typeof bundler === 'string') {
+      bundler = require(bundler)
     }
 
-    this.packagers.push({ regexp, packager })
+    this.bundlers.push({ regexp, bundler })
   }
 
   async bundle (chunks) {
     chunks = [].concat(chunks)
 
-    let bundledChunks = map(this.packagers, ({ regexp, packager: Packager }) => {
+    let bundledChunks = map(this.bundlers, ({ regexp, bundler: Bundler }) => {
       let targetChunks = filter(chunks, (chunk) => {
         return regexp.test(chunk.destination)
       })
@@ -61,8 +61,8 @@ export class Packager {
        */
       chunks = without(chunks, ...targetChunks)
 
-      let packager = new Packager(targetChunks, this.options)
-      return packager.bundle()
+      let bundler = new Bundler(targetChunks, this.options)
+      return bundler.bundle()
     })
 
     bundledChunks = flatten(bundledChunks)
@@ -81,9 +81,9 @@ export class Packager {
     return [].concat(chunks, bundledChunks)
   }
 
-  matchPackager (file) {
-    return find(this.packagers, ({ regexp }) => regexp.test(file))
+  matchBundler (file) {
+    return find(this.bundlers, ({ regexp }) => regexp.test(file))
   }
 }
 
-export default new Packager()
+export default new Bundler()

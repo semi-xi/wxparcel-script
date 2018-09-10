@@ -1,7 +1,7 @@
 import { Assets } from '../assets'
 import OptionManager from '../option-manager'
 
-export default class Packager {
+export default class Bundler {
   constructor (chunks, options = OptionManager) {
     this.options = options
     this.assets = new Assets(options)

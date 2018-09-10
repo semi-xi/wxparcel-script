@@ -5,14 +5,14 @@ import filter from 'lodash/filter'
 import forEach from 'lodash/forEach'
 import trimEnd from 'lodash/trimEnd'
 import findIndex from 'lodash/findIndex'
-import Packager from './packager'
+import Bundler from './bundler'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
 const { execDir } = OptionManager
 const PreludeCode = fs.readFileSync(path.join(execDir, './builtins/prelude.js'))
 
-export default class JSPackager extends Packager {
+export default class JSBundler extends Bundler {
   constructor (chunks, options = OptionManager) {
     super(chunks, options)
 
