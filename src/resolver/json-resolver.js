@@ -96,12 +96,12 @@ export default class JSONResolver extends Resolver {
 
     if (config.hasOwnProperty('miniprogramRoot')) {
       let folder = config.miniprogramRoot.replace(name, '')
-      config.miniprogramRoot = path.join('.', folder).replace(/[\\\/]+/g, '/')
+      config.miniprogramRoot = path.join('.', folder).replace(/[\\/]+/g, '/')
     }
 
     if (config.hasOwnProperty('pluginRoot')) {
       let folder = config.pluginRoot.replace(name, '')
-      config.pluginRoot = path.join('.', folder).replace(/[\\\/]+/g, '/')
+      config.pluginRoot = path.join('.', folder).replace(/[\\/]+/g, '/')
     }
 
     return config
