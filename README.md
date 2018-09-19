@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/wxparcel/wxparcel-script.svg?branch=master)](https://travis-ci.org/wxparcel/wxparcel-script)
 [![Build status](https://ci.appveyor.com/api/projects/status/s49av8k4l12hqt7n?svg=true)](https://ci.appveyor.com/project/DavidKk/wxparcel-script)
 
-[![Document](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script/badge.svg?t=0)](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script/LICENSE)
+[![Document](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script/badge.svg?t=0)](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script)
 [![Coverage Status](https://coveralls.io/repos/github/wxparcel/wxparcel-script/badge.svg?branch=master)](https://coveralls.io/github/wxparcel/wxparcel-script?branch=master)
 [![Dependency Status](https://dependencyci.com/github/wxparcel/wxparcel-script/badge)](https://dependencyci.com/github/wxparcel/wxparcel-script)
 
