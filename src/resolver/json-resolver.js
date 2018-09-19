@@ -43,7 +43,7 @@ export default class JSONResolver extends Resolver {
      * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/config.html#%E5%85%A8%E5%B1%80%E9%85%8D%E7%BD%AE
      */
     let pages = config.pages || []
-  
+
     /**
      * 微信小程序分包加载配置关键属性
      * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html
@@ -96,12 +96,12 @@ export default class JSONResolver extends Resolver {
 
     if (config.hasOwnProperty('miniprogramRoot')) {
       let folder = config.miniprogramRoot.replace(name, '')
-      config.miniprogramRoot = path.join('./', folder)
+      config.miniprogramRoot = path.join('.', folder).replace(/[\\/]+/g, '/')
     }
 
     if (config.hasOwnProperty('pluginRoot')) {
       let folder = config.pluginRoot.replace(name, '')
-      config.pluginRoot = path.join('./', folder)
+      config.pluginRoot = path.join('.', folder).replace(/[\\/]+/g, '/')
     }
 
     return config
