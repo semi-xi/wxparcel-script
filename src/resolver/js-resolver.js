@@ -5,7 +5,6 @@ import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
-import { replacement } from './share'
 
 const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
 const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([\w\d_\-./]+)['"]\)/
@@ -43,13 +42,10 @@ export default class JSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, npmDir, pubPath } = this.options
+    const { staticDir, pubPath } = this.options
 
     this.source = this.source.toString()
     this.source = stripComments(this.source)
-
-    let destination = this.convertDestination(this.file)
-    let directory = path.dirname(destination)
 
     let jsDependencies = this.resolveDependencies(REQUIRE_REGEXP, {
       convertDependencyPath: this.convertRelative.bind(this),
@@ -64,42 +60,29 @@ export default class JSResolver extends Resolver {
     dependencies = this.filterDependencies(dependencies)
     dependencies = dependencies.map((item) => {
       let { file, destination, dependency, required, code } = item
-
       let extname = path.extname(destination)
       if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
-        let relativePath = path.relative(directory, destination)
-        if (relativePath.charAt(0) !== '.') {
-          relativePath = `./${relativePath}`
-        }
-
-        relativePath = relativePath.replace('node_modules', npmDir)
-
-        let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
-        let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
-
-        this.source = this.source.replace(matchment, replacement)
-        return { file, destination, dependency, required }
+        return item
       }
 
-      destination = this.convertAssetsDestination(dependency)
-
-      let relativePath = destination.replace(staticDir, '')
+      let dependencyDestination = this.convertAssetsDestination(dependency)
+      let relativePath = dependencyDestination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, REQUIRE_REGEXP)
-      return { file, destination, dependency, required }
+      this.source = this.source.replace(code, `"${url}"`)
+      return { file, destination: dependencyDestination, dependency, required }
     })
 
     this.source = Buffer.from(this.source)
     return { file: this.file, source: this.source, dependencies }
   }
-  
+
   /**
    * 转换路径
    * 根据路径往上查找依赖文件
-   * 
+   *
    * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/workers.html
-   * 
+   *
    * @param {String} requested 请求路径
    * @param {String} relativeTo 被依赖文件所在文件夹路径
    * @return {String} 文件路径

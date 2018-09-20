@@ -1,6 +1,6 @@
 {
   "name": "wxparcel-script",
-  "version": "1.0.0-alpha.8.0",
+  "version": "1.0.0-alpha.8.1",
   "license": "MIT",
   "bin": "./bin/cli",
   "main": "./libs/parcel.js",
@@ -15,6 +15,7 @@
     ]
   },
   "scripts": {
+    "precommit": "lint-staged",
     "docs:esdoc": "rimraf ./gh-pages/esdoc && esdoc -c ./.esdoc.json",
     "docs:used": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
     "docs:used:server": "concurrently \"cpx './README.md' ./documents --watch\" \"docsify serve ./documents\"",
