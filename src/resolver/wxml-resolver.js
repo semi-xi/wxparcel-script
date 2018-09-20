@@ -8,6 +8,7 @@ import { replacement } from './share'
 const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
 const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
 const IMAGE_REGEXP = /<image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/image>)/
+const COVER_IMAGE_REGEXP = /<cover-image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/cover-image>)/
 
 /**
  * WXML 解析器
@@ -28,19 +29,23 @@ export default class WXMLResolver extends Resolver {
     this.source = this.source.toString()
     this.source = stripComments(this.source)
 
-    let wxsDeps = this.resolveDependencies(WXS_REGEPX)
-    let templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
-    let imageDeps = this.resolveDependencies(IMAGE_REGEXP, {
+    const covertImageOptions = {
       convertDestination: this.convertAssetsDestination.bind(this)
-    })
+    }
 
-    let dependencies = [].concat(wxsDeps, templateDeps, imageDeps)
+    const wxsDeps = this.resolveDependencies(WXS_REGEPX)
+    const templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
+    const imageDeps = this.resolveDependencies(IMAGE_REGEXP, covertImageOptions)
+    const coverImageDeps = this.resolveDependencies(COVER_IMAGE_REGEXP, covertImageOptions)
+
+    let dependencies = [].concat(wxsDeps, templateDeps, imageDeps, coverImageDeps)
     dependencies = dependencies.map((item) => {
       let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
       this.source = replacement(this.source, code, url, IMAGE_REGEXP)
+      this.source = replacement(this.source, code, url, COVER_IMAGE_REGEXP)
       return { file, destination, dependency, required }
     })
 
