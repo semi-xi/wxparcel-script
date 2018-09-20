@@ -67,18 +67,18 @@ export default class JSResolver extends Resolver {
 
       source = source.replace(code, `"${url}"`)
       return { type, file, destination: dependencyDestination, dependency, required }
-    }) 
+    })
 
     this.source = Buffer.from(source)
     return { file: this.file, source: this.source, dependencies }
   }
-  
+
   /**
    * 转换路径
    * 根据路径往上查找依赖文件
-   * 
+   *
    * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/workers.html
-   * 
+   *
    * @param {String} requested 请求路径
    * @param {String} relativeTo 被依赖文件所在文件夹路径
    * @return {String} 文件路径
