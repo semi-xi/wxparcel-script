@@ -64,30 +64,17 @@ export default class JSResolver extends Resolver {
     dependencies = this.filterDependencies(dependencies)
     dependencies = dependencies.map((item) => {
       let { file, destination, dependency, required, code } = item
-
       let extname = path.extname(destination)
       if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
-        let relativePath = path.relative(directory, destination)
-        if (relativePath.charAt(0) !== '.') {
-          relativePath = `./${relativePath}`
-        }
-
-        relativePath = relativePath.replace('node_modules', npmDir)
-
-        let matchment = new RegExp(`require\\(['"]${required}['"]\\)`, 'gm')
-        let replacement = `require('${relativePath.replace(/\.\w+$/, '').replace(/\\/g, '/')}')`
-
-        this.source = this.source.replace(matchment, replacement)
-        return { file, destination, dependency, required }
+        return item
       }
 
-      destination = this.convertAssetsDestination(dependency)
-
-      let relativePath = destination.replace(staticDir, '')
+      let dependencyDestination = this.convertAssetsDestination(dependency)
+      let relativePath = dependencyDestination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, REQUIRE_REGEXP)
-      return { file, destination, dependency, required }
+      this.source = this.source.replace(code, `"${url}"`)
+      return { file, destination: dependencyDestination, dependency, required }
     })
 
     this.source = Buffer.from(this.source)
