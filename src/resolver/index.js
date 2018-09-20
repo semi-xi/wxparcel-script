@@ -69,7 +69,7 @@ export class Resolver {
     const { resolvers } = this
     const extname = rule.extname || '.' + path.extname(file)
 
-    for (let i = 0, l = resolvers.length; i < l; i ++) {
+    for (let i = 0, l = resolvers.length; i < l; i++) {
       let { regexp, resolver: Resolver } = resolvers[i]
       if (regexp.test(extname)) {
         let resolver = new Resolver(source, file, instance, this.options)

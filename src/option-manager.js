@@ -127,7 +127,7 @@ export class OptionManager {
 
     /**
      * 微信小程序 project.config.json 文件
-     * 
+     *
      * @type {String}
      */
     this.projectConfigFile = ''
