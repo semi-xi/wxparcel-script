@@ -1,4 +1,5 @@
 import path from 'path'
+import map from 'lodash/map'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comment'
@@ -8,6 +9,7 @@ import { replacement } from './share'
 const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
 const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
 const IMAGE_REGEXP = /<image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/image>)/
+const COVER_IMAGE_REGEXP = /<cover-image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/cover-image>)/
 
 /**
  * WXML 解析器
@@ -28,19 +30,24 @@ export default class WXMLResolver extends Resolver {
     let source = this.source.toString()
     source = stripComments(source)
 
-    let wxsDeps = this.resolveDependencies(source, WXS_REGEPX)
-    let templateDeps = this.resolveDependencies(source, TEMPLATE_REGEPX)
-    let imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, {
+    const covertImageOptions = {
       convertDestination: this.convertAssetsDestination.bind(this)
-    })
+    }
 
-    let dependencies = [].concat(wxsDeps, templateDeps, imageDeps)
-    dependencies = dependencies.map((item) => {
+    const wxsDeps = this.resolveDependencies(WXS_REGEPX)
+    const templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
+    const imageDeps = this.resolveDependencies(IMAGE_REGEXP, covertImageOptions)
+    const coverImageDeps = this.resolveDependencies(COVER_IMAGE_REGEXP, covertImageOptions)
+
+    let dependencies = [].concat(wxsDeps, templateDeps, imageDeps, coverImageDeps)
+    dependencies = map(dependencies, (item) => {
       let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
       source = replacement(source, code, url, IMAGE_REGEXP)
+      source = replacement(source, code, url, COVER_IMAGE_REGEXP)
+
       return { file, destination, dependency, required }
     })
 
