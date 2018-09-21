@@ -37,7 +37,7 @@ export default {
   _setRule (rule, callback) {
     let names = Object.keys(rule)
     let newRule = cloneDeep(callback(rule))
-    
+
     forEach(names, (name) => {
       rule[name] = undefined
     })
