@@ -236,7 +236,18 @@ export class Parser {
    * }
    */
   matchRule (file, rules = []) {
-    return rules.find(({ test: pattern }) => pattern.test(file)) || null
+    const handleFind = (rule) => {
+      const { test: pattern, ignore } = rule
+      if (pattern.test(file)) {
+        if (ignore && inMatches(file, ignore)) {
+          return null
+        }
+
+        return file
+      }
+    }
+
+    return rules.find(handleFind) || null
   }
 }
 
@@ -287,6 +298,23 @@ class InstanceForTransform {
 
     this.dependencies.push({ file, destination, dependency, required })
   }
+}
+
+/**
+ * 是否命中其中一个正则
+ *
+ * @param {String} string 字符串
+ * @param {Array[RegExp]} regexps 正则集合
+ * @returns {Boolean} 是否命中
+ */
+const inMatches = (string, regexps) => {
+  for (let i = 0, l = regexps.length; i < l; i++) {
+    if (regexps[i].test(string)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 /**

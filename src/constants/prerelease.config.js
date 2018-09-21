@@ -1,17 +1,19 @@
-import Config, { JSRule } from './common.config'
+import Config from './common.config'
 
-JSRule.loaders.push({
-  use: require.resolve('../loaders/envify-wxparcel-loader'),
-  options: {
-    env: {
-      NODE_ENV: 'prerelease'
+Config.setRule('js', (rule) => {
+  rule.loaders.push({
+    use: require.resolve('../loaders/envify-wxparcel-loader'),
+    options: {
+      env: {
+        NODE_ENV: 'prerelease'
+      }
     }
-  }
-})
+  })
 
-JSRule.loaders.push({
-  use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-  options: {}
+  rule.loaders.push({
+    use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+    options: {}
+  })
 })
 
 export default Config

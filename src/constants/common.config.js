@@ -1,6 +1,8 @@
+import forEach from 'lodash/forEach'
+import cloneDeep from 'lodash/cloneDeep'
 import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
 
-export let JSRule = {
+let jsRule = {
   test: /\.js$/,
   extname: '.js',
   loaders: [
@@ -10,7 +12,7 @@ export let JSRule = {
   ]
 }
 
-export let CSSRule = {
+let wxssRule = {
   test: /\.scss$/,
   extname: '.wxss',
   loaders: [
@@ -21,15 +23,41 @@ export let CSSRule = {
   ]
 }
 
-export let Rules = [JSRule, CSSRule]
+let rules = [jsRule, wxssRule]
 
-export let Plugins = [
+let plugins = [
   new CleanerPlugin({
     alisas: ['outDir', 'staticDir', 'tmplDir']
   })
 ]
 
 export default {
-  rules: Rules,
-  plugins: Plugins
+  rules,
+  plugins,
+  _setRule (rule, callback) {
+    let names = Object.keys(rule)
+    let newRule = cloneDeep(callback(rule))
+    
+    forEach(names, (name) => {
+      rule[name] = undefined
+    })
+
+    Object.assign(rule, newRule)
+  },
+  setRule (name, callback) {
+    switch (name) {
+      case 'js': {
+        this._setRule(jsRule, callback)
+        break
+      }
+
+      case 'wxss': {
+        this._setRule(wxssRule, callback)
+        break
+      }
+    }
+  },
+  addPlugin (plugin) {
+    plugins.push(plugin)
+  }
 }
