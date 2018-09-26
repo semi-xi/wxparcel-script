@@ -165,10 +165,15 @@ export class Parser {
     let exclude = rule.exclude || []
     for (let i = exclude.length; i--;) {
       let pattern = exclude[i]
-      pattern = path.join(this.options.rootDir, pattern)
-
-      if (minimatch(file, pattern)) {
-        return Promise.resolve(source)
+      if (pattern instanceof RegExp) {
+        if (pattern.test(file)) {
+          return Promise.resolve(source)
+        }
+      } else {
+        pattern = path.join(this.options.rootDir, pattern)
+        if (minimatch(file, pattern)) {
+          return Promise.resolve(source)
+        }
       }
     }
 

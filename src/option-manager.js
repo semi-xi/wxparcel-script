@@ -13,6 +13,18 @@ import Printer from './printer'
  * @class OptionManager
  */
 export class OptionManager {
+  get rules () {
+    const { common } = this._rules
+    const rules = this._rules[this.env] || []
+    return [...common, ...rules]
+  }
+
+  get plugins () {
+    const { common } = this._plugins
+    const plugins = this._plugins[this.env] || []
+    return [...common, ...plugins]
+  }
+
   /**
    * Creates an instance of OptionManager.
    * @param {Object} [options={}] 初始化配置
@@ -91,18 +103,25 @@ export class OptionManager {
     this.npmDir = options.nodeModuleDirectoryName || 'npm'
 
     /**
+     * 环境
+     *
+     * @type {Menu}
+     */
+    this.env = process.env.NODE_ENV || 'development'
+
+    /**
      * 规则集合
      *
      * @type {Array}
      */
-    this.rules = options.rules || []
+    this._rules = options.rules || {}
 
     /**
      * 插件集合
      *
      * @type {Array}
      */
-    this.plugins = options.plugins || []
+    this._plugins = options.plugins || {}
 
     /**
      * 是否为监听状态
