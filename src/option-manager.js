@@ -91,18 +91,25 @@ export class OptionManager {
     this.npmDir = options.nodeModuleDirectoryName || 'npm'
 
     /**
+     * 环境
+     *
+     * @type {Menu}
+     */
+    this.env = process.env.NODE_ENV || 'development'
+
+    /**
      * 规则集合
      *
      * @type {Array}
      */
-    this.rules = options.rules || []
+    this.rules = options.rules || {}
 
     /**
      * 插件集合
      *
      * @type {Array}
      */
-    this.plugins = options.plugins || []
+    this.plugins = options.plugins || {}
 
     /**
      * 是否为监听状态
@@ -175,32 +182,32 @@ export class OptionManager {
   checkRules (rules = []) {
     for (let i = rules.length; i--;) {
       let rule = rules[i]
-      let mkTips = () => {
+      let genMessage = () => {
         let tmpRule = Object.assign({}, rule)
         tmpRule.test = String(tmpRule.test)
         return `please check this rule:\n${JSON.stringify({ rule: tmpRule }, null, 2)}`
       }
 
-      if (!rule.hasOwnProperty('test') || !rule.test) {
-        return `Option test is not provided, ${mkTips()}`
+      if (!rule.hasOwnProperty('test')) {
+        return `Option test is not provided, ${genMessage()}`
       }
 
       if (!(rule.test instanceof RegExp)) {
-        return `Option test is not a regexp, ${mkTips()}`
+        return `Option test is not a regexp, ${genMessage()}`
       }
 
-      if (!rule.hasOwnProperty('loaders') || !rule.loaders) {
-        return `Option loaders is not provied, ${mkTips()}`
+      if (!rule.hasOwnProperty('loaders')) {
+        return `Option loaders is not provied, ${genMessage()}`
       }
 
-      if (!Array.isArray(rule.loaders)) {
-        return `Option loaders is not a array, ${mkTips()}`
+      if (!Array.isArray(rule.loaders) || !rule.loaders.length) {
+        return `Option loaders is not a array or empty, ${genMessage()}`
       }
 
       for (let i = rule.loaders.length; i--;) {
         let loader = rule.loaders[i]
         if (!loader.hasOwnProperty('use') || !loader.use) {
-          return `Options use is not a provided, ${mkTips()}`
+          return `Options use is not a provided, ${genMessage()}`
         }
       }
     }
