@@ -1,120 +1,86 @@
-import map from 'lodash/map'
-import flatten from 'lodash/flatten'
-import forEach from 'lodash/forEach'
-import mapKeys from 'lodash/mapKeys'
 import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
 import DevServerPlugin from '../plugins/dev-server-wxparcel-plugin'
 
-const JSRules = {
-  common: [
-    {
-      test: /\.js$/,
-      extname: '.js',
-      loaders: [
-        {
-          use: require.resolve('../loaders/babel-wxparcel-loader')
-        },
-        {
-          use: require.resolve('../loaders/envify-wxparcel-loader'),
-          options: {
-            env: {
-              NODE_ENV: process.env.NODE_ENV
-            }
+let jsRules = [
+  {
+    test: /\.js$/,
+    extname: '.js',
+    loaders: [
+      {
+        use: require.resolve('../loaders/babel-wxparcel-loader')
+      },
+      {
+        use: require.resolve('../loaders/envify-wxparcel-loader'),
+        options: {
+          env: {
+            NODE_ENV: process.env.NODE_ENV
           }
         }
-      ]
-    }
-  ],
-  prerelease: [
-    {
-      use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-      options: {}
-    }
-  ],
-  production: [
-    {
-      use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-      options: {}
-    }
-  ]
+      }
+    ]
+  }
+]
+
+let wxssRules = [
+  {
+    test: /\.scss$/,
+    extname: '.wxss',
+    loaders: [
+      {
+        use: require.resolve('../loaders/sass-wxparcel-loader'),
+        options: {}
+      }
+    ]
+  }
+]
+
+let plugins = [
+  new CleanerPlugin({
+    alisas: ['outDir', 'staticDir', 'tmplDir']
+  })
+]
+
+if (process.env.NODE_ENV === 'development') {
+  plugins.push(new DevServerPlugin())
 }
 
-const WXSSRules = {
-  common: [
-    {
-      test: /\.scss$/,
-      extname: '.wxss',
-      loaders: [
-        {
-          use: require.resolve('../loaders/sass-wxparcel-loader'),
-          options: {}
-        }
-      ]
-    }
-  ]
+if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
+  jsRules[0].loaders.push({
+    use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+    options: {}
+  })
 }
 
-const Plugins = {
-  common: [
-    new CleanerPlugin({
-      alisas: ['outDir', 'staticDir', 'tmplDir']
-    })
-  ],
-  development: [
-    new DevServerPlugin()
-  ]
-}
+export default Object.defineProperties({ setRule, addPlugin, delPlugin }, {
+  rules: {
+    get: () => [...jsRules, ...wxssRules]
+  },
+  plugins: {
+    get: () => [...plugins]
+  }
+})
 
-const names = ['common', 'development', 'prerelease', 'production']
-const rules = genReference(names, JSRules, WXSSRules)
-const plugins = genReference(names, Plugins)
-
-export default { rules, plugins, setRule, addPlugin, delPlugin }
-
-function setRule (name, callback, env = 'common') {
+function setRule (name, callback) {
   switch (name) {
     case 'js': {
-      let rules = JSRules[env] || {}
-      JSRules[env] = callback(rules)
+      let rules = jsRules || {}
+      jsRules = callback(rules)
       break
     }
 
     case 'wxss': {
-      let rules = WXSSRules[env] || {}
-      WXSSRules[env] = callback(rules)
+      let rules = wxssRules || {}
+      wxssRules = callback(rules)
       break
     }
   }
 }
 
-function addPlugin (plugin, env = 'common') {
-  let plugins = Plugins[env] || []
+function addPlugin (plugin) {
   plugins.push(plugin)
 }
 
-function delPlugin (plugin, env = 'common') {
-  let plugins = Plugins[env] || []
+function delPlugin (plugin) {
   let index = plugins.findIndex((item) => item.constructor === plugin.constructor)
   index !== -1 && plugins.splice(index, 1)
-}
-
-function genGetter (names, references) {
-  let getters = {}
-
-  forEach(names, (name) => {
-    let get = () => {
-      let collection = map(references, name).filter(item => item)
-      return flatten(collection)
-    }
-
-    getters[name] = { get }
-  })
-
-  return getters
-}
-
-function genReference (names, ...references) {
-  let output = mapKeys(names, (name) => name)
-  let getter = genGetter(names, references)
-  return Object.defineProperties(output, getter)
 }

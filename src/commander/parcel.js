@@ -78,17 +78,18 @@ program
           break
         }
 
-        case 'dev':
-        case 'develop':
-        case 'development': {
-          process.env.NODE_ENV = 'development'
-          break
-        }
-
         case 'test':
         case 'unitest':
         case 'prerelease': {
           process.env.NODE_ENV = 'prerelease'
+          break
+        }
+
+        case 'dev':
+        case 'develop':
+        case 'development':
+        default: {
+          process.env.NODE_ENV = 'development'
           break
         }
       }
