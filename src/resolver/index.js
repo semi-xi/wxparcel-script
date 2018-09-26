@@ -1,4 +1,5 @@
 import path from 'path'
+import minimatch from 'minimatch'
 import JSONResolver from './json-resolver'
 import JSResolver from './js-resolver'
 import WXMLResolver from './wxml-resolver'
@@ -68,6 +69,29 @@ export class Resolver {
   resolve (source, file, rule, instance) {
     const { resolvers } = this
     const extname = rule.extname || '.' + path.extname(file)
+
+    /**
+     * 过滤不需要编译的文件
+     * 顾虑文件实用 minimatch, 具体参考: https://github.com/isaacs/minimatch
+     *
+     * 例如: 不编译 JS 文件
+     * exclude: ['./**\/*.js']
+     */
+
+    let exclude = rule.exclude || []
+    for (let i = exclude.length; i--;) {
+      let pattern = exclude[i]
+      if (pattern instanceof RegExp) {
+        if (pattern.test(file)) {
+          return { file, source, dependencies: [] }
+        }
+      } else {
+        pattern = path.join(this.options.rootDir, pattern)
+        if (minimatch(file, pattern)) {
+          return { file, source, dependencies: [] }
+        }
+      }
+    }
 
     for (let i = 0, l = resolvers.length; i < l; i++) {
       let { regexp, resolver: Resolver } = resolvers[i]
