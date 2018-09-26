@@ -1,62 +1,57 @@
-import get from 'lodash/get'
-import set from 'lodash/set'
 import map from 'lodash/map'
 import flatten from 'lodash/flatten'
+import forEach from 'lodash/forEach'
 import mapKeys from 'lodash/mapKeys'
-import mapValues from 'lodash/mapValues'
 import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
 import DevServerPlugin from '../plugins/dev-server-wxparcel-plugin'
 
-const Rules = {
-  js: {
-    common: [
-      {
-        test: /\.js$/,
-        extname: '.js',
-        loaders: [
-          {
-            use: require.resolve('../loaders/babel-wxparcel-loader')
-          },
-          {
-            use: require.resolve('../loaders/envify-wxparcel-loader'),
-            options: {
-              env: {
-                NODE_ENV: process.env.NODE_ENV
-              }
+const JSRules = {
+  common: [
+    {
+      test: /\.js$/,
+      extname: '.js',
+      loaders: [
+        {
+          use: require.resolve('../loaders/babel-wxparcel-loader')
+        },
+        {
+          use: require.resolve('../loaders/envify-wxparcel-loader'),
+          options: {
+            env: {
+              NODE_ENV: process.env.NODE_ENV
             }
           }
-        ]
-      }
-    ],
-    prerelease: [
-      {
-        use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-        for: 'bundler',
-        options: {}
-      }
-    ],
-    production: [
-      {
-        use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-        for: 'bundler',
-        options: {}
-      }
-    ]
-  },
-  wxss: {
-    common: [
-      {
-        test: /\.scss$/,
-        extname: '.wxss',
-        loaders: [
-          {
-            use: require.resolve('../loaders/sass-wxparcel-loader'),
-            options: {}
-          }
-        ]
-      }
-    ]
-  }
+        }
+      ]
+    }
+  ],
+  prerelease: [
+    {
+      use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+      options: {}
+    }
+  ],
+  production: [
+    {
+      use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+      options: {}
+    }
+  ]
+}
+
+const WXSSRules = {
+  common: [
+    {
+      test: /\.scss$/,
+      extname: '.wxss',
+      loaders: [
+        {
+          use: require.resolve('../loaders/sass-wxparcel-loader'),
+          options: {}
+        }
+      ]
+    }
+  ]
 }
 
 const Plugins = {
@@ -70,16 +65,26 @@ const Plugins = {
   ]
 }
 
-const names = ['common', 'develop', 'release', 'product']
-const rules = genReference(names, Rules)
+const names = ['common', 'development', 'prerelease', 'production']
+const rules = genReference(names, JSRules, WXSSRules)
 const plugins = genReference(names, Plugins)
 
 export default { rules, plugins, setRule, addPlugin, delPlugin }
 
 function setRule (name, callback, env = 'common') {
-  let path = `${name}.${env}`
-  let rules = get(Rules, path, {})
-  set(Rules, path, callback(rules))
+  switch (name) {
+    case 'js': {
+      let rules = JSRules[env] || {}
+      JSRules[env] = callback(rules)
+      break
+    }
+
+    case 'wxss': {
+      let rules = WXSSRules[env] || {}
+      WXSSRules[env] = callback(rules)
+      break
+    }
+  }
 }
 
 function addPlugin (plugin, env = 'common') {
@@ -93,21 +98,23 @@ function delPlugin (plugin, env = 'common') {
   index !== -1 && plugins.splice(index, 1)
 }
 
-function genGetter (name, reference) {
-  let group = map(reference, name)
-  group = group.filter((rule) => rule)
-  return flatten(group)
-}
+function genGetter (names, references) {
+  let getters = {}
 
-function mapGetter (names, reference) {
-  let props = mapKeys(names, (name) => name)
-  return mapValues(props, (name) => {
-    let get = () => genGetter(name, reference)
-    return { get }
+  forEach(names, (name) => {
+    let get = () => {
+      let collection = map(references, name).filter(item => item)
+      return flatten(collection)
+    }
+
+    getters[name] = { get }
   })
+
+  return getters
 }
 
-function genReference (names, reference) {
-  let ref = mapKeys(names, (name) => name)
-  return Object.defineProperties(ref, mapGetter(names, reference))
+function genReference (names, ...references) {
+  let output = mapKeys(names, (name) => name)
+  let getter = genGetter(names, references)
+  return Object.defineProperties(output, getter)
 }
