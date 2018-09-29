@@ -245,12 +245,16 @@ export class OptionManager {
 
     let { miniprogramRoot } = this.projectConfig
     if (miniprogramRoot) {
-      this.miniprogramRoot = path.join(this.rootDir, miniprogramRoot)
+      let app = path.basename(this.outDir)
+      miniprogramRoot = miniprogramRoot.replace(app, '')
+      this.miniprogramRoot = path.join(this.srcDir, miniprogramRoot)
     }
 
     let { pluginRoot } = this.projectConfig
     if (pluginRoot) {
-      this.pluginRoot = path.join(this.rootDir, pluginRoot)
+      let app = path.basename(this.outDir)
+      pluginRoot = pluginRoot.replace(app, '')
+      this.pluginRoot = path.join(this.srcDir, pluginRoot)
     }
 
     this.projectConfigFile = file
