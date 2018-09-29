@@ -83,6 +83,10 @@ export class OptionManager {
      */
     this.pubPath = options.publicPath || `http://${ip.address()}:${idlePort}`
 
+    if (!/https?:\/\//.test(this.pubPath)) {
+      throw new TypeError(`publicPath 为 ${this.pubPath}, 微信小程序并不能访问非远程的静态资源`)
+    }
+
     /**
      * node_module 存放目录
      *
@@ -103,6 +107,11 @@ export class OptionManager {
      * @type {Array}
      */
     this.rules = options.rules || {}
+
+    let valid = this.checkRules(this.rules)
+    if (valid !== true) {
+      throw new TypeError(valid)
+    }
 
     /**
      * 插件集合
@@ -139,6 +148,14 @@ export class OptionManager {
      */
     this.projectConfigFile = ''
 
+    /**
+     * 小程序代码根目录
+     *
+     * @type {String}
+     */
+    this.miniprogramRoot = this.srcDir
+    this.pluginRoot = ''
+
     let wxProjConfFile = path.join(this.rootDir, './project.config.json')
     this.resolveWXProjConf(wxProjConfFile)
 
@@ -156,16 +173,7 @@ export class OptionManager {
      */
     this.appConfigFile = ''
 
-    if (!/https?:\/\//.test(this.pubPath)) {
-      throw new TypeError(`publicPath 为 ${this.pubPath}, 微信小程序并不能访问非远程的静态资源`)
-    }
-
-    let valid = this.checkRules(this.rules)
-    if (valid !== true) {
-      throw new TypeError(valid)
-    }
-
-    let wxAppConfFile = path.join(this.srcDir, './app.json')
+    let wxAppConfFile = path.join(this.miniprogramRoot, './app.json')
     this.resolveWXAppConf(wxAppConfFile)
 
     if (!(Array.isArray(this.appConfig.pages) && this.appConfig.pages.length > 0)) {
@@ -215,6 +223,11 @@ export class OptionManager {
     return true
   }
 
+  /**
+   * 解析微信 project.config.js 文件
+   *
+   * @param {String} file 文件名
+   */
   resolveWXProjConf (file) {
     if (!fs.existsSync(file)) {
       let message = `File ${file} is not found, please ensure ${file} is valid.`
@@ -228,6 +241,16 @@ export class OptionManager {
       let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
       Printer.error(message)
       throw new Error(message)
+    }
+
+    let { miniprogramRoot } = this.projectConfig
+    if (miniprogramRoot) {
+      this.miniprogramRoot = path.join(this.rootDir, miniprogramRoot)
+    }
+
+    let { pluginRoot } = this.projectConfig
+    if (pluginRoot) {
+      this.pluginRoot = path.join(this.rootDir, pluginRoot)
     }
 
     this.projectConfigFile = file
