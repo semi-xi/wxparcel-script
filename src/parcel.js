@@ -72,10 +72,17 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let { rootDir, srcDir } = this.options
-      let resolver = new JSONResolver()
-      let module = resolver.findModule('app', srcDir)
-      let entries = module.files
+      let { rootDir, miniprogramRoot, pluginRoot } = this.options
+      let entries = [
+        path.join(miniprogramRoot, 'app.json'),
+        path.join(miniprogramRoot, 'app.js')
+      ]
+
+      if (pluginRoot) {
+        entries.push(path.join(pluginRoot, 'plugin.json'))
+        entries.push(path.join(pluginRoot, 'index.js'))
+      }
+
       let projectConfigFile = path.join(rootDir, './project.config.json')
       if (!fs.existsSync(projectConfigFile)) {
         throw new Error(`${projectConfigFile} is not provided`)
