@@ -94,7 +94,7 @@ export default class JSONResolver extends Resolver {
    */
   convertProjectConf (config = {}) {
     const { outDir } = this.options
-    let name = path.basename(outDir)
+    const name = path.basename(outDir)
 
     if (config.hasOwnProperty('miniprogramRoot')) {
       let folder = config.miniprogramRoot.replace(name, '')
@@ -138,8 +138,10 @@ export default class JSONResolver extends Resolver {
    * @return {Array} 页面集合
    */
   resolvePages (pages) {
-    return pages.map((page) => {
-      page = path.join(this.options.srcDir, page)
+    const relativePath = path.dirname(this.file)
+
+    pages = pages.map((page) => {
+      page = path.join(relativePath, page)
 
       let folder = path.dirname(page)
       if (!fs.existsSync(folder)) {
@@ -149,6 +151,8 @@ export default class JSONResolver extends Resolver {
       let name = path.basename(page)
       return this.findModule(name, folder)
     })
+
+    return pages
   }
 
   /**
