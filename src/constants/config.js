@@ -1,113 +1,86 @@
-import get from 'lodash/get'
-import set from 'lodash/set'
-import map from 'lodash/map'
-import flatten from 'lodash/flatten'
-import mapKeys from 'lodash/mapKeys'
-import mapValues from 'lodash/mapValues'
 import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
 import DevServerPlugin from '../plugins/dev-server-wxparcel-plugin'
 
-const Rules = {
-  js: {
-    common: [
+let jsRules = [
+  {
+    test: /\.js$/,
+    extname: '.js',
+    loaders: [
       {
-        test: /\.js$/,
-        extname: '.js',
-        loaders: [
-          {
-            use: require.resolve('../loaders/babel-wxparcel-loader')
-          },
-          {
-            use: require.resolve('../loaders/envify-wxparcel-loader'),
-            options: {
-              env: {
-                NODE_ENV: process.env.NODE_ENV
-              }
-            }
+        use: require.resolve('../loaders/babel-wxparcel-loader')
+      },
+      {
+        use: require.resolve('../loaders/envify-wxparcel-loader'),
+        options: {
+          env: {
+            NODE_ENV: process.env.NODE_ENV
           }
-        ]
-      }
-    ],
-    prerelease: [
-      {
-        use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-        for: 'bundler',
-        options: {}
-      }
-    ],
-    production: [
-      {
-        use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-        for: 'bundler',
-        options: {}
-      }
-    ]
-  },
-  wxss: {
-    common: [
-      {
-        test: /\.scss$/,
-        extname: '.wxss',
-        loaders: [
-          {
-            use: require.resolve('../loaders/sass-wxparcel-loader'),
-            options: {}
-          }
-        ]
+        }
       }
     ]
   }
+]
+
+let wxssRules = [
+  {
+    test: /\.scss$/,
+    extname: '.wxss',
+    loaders: [
+      {
+        use: require.resolve('../loaders/sass-wxparcel-loader'),
+        options: {}
+      }
+    ]
+  }
+]
+
+let plugins = [
+  new CleanerPlugin({
+    alisas: ['outDir', 'staticDir', 'tmplDir']
+  })
+]
+
+if (process.env.NODE_ENV === 'development') {
+  plugins.push(new DevServerPlugin())
 }
 
-const Plugins = {
-  common: [
-    new CleanerPlugin({
-      alisas: ['outDir', 'staticDir', 'tmplDir']
-    })
-  ],
-  development: [
-    new DevServerPlugin()
-  ]
-}
-
-const names = ['common', 'develop', 'release', 'product']
-const rules = genReference(names, Rules)
-const plugins = genReference(names, Plugins)
-
-export default { rules, plugins, setRule, addPlugin, delPlugin }
-
-function setRule (name, callback, env = 'common') {
-  let path = `${name}.${env}`
-  let rules = get(Rules, path, {})
-  set(Rules, path, callback(rules))
-}
-
-function addPlugin (plugin, env = 'common') {
-  let plugins = Plugins[env] || []
-  plugins.push(plugin)
-}
-
-function delPlugin (plugin, env = 'common') {
-  let plugins = Plugins[env] || []
-  let index = plugins.findIndex((item) => item.constructor === plugin.constructor)
-  index !== -1 && plugins.splice(index, 1)
-}
-
-function genGetter (name, reference) {
-  let group = map(reference, name)
-  group = group.filter((rule) => rule)
-  return flatten(group)
-}
-
-function mapGetter (names, reference) {
-  let props = mapKeys(names, (name) => name)
-  return mapValues(props, (name) => {
-    let get = () => genGetter(name, reference)
-    return { get }
+if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
+  jsRules[0].loaders.push({
+    use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+    options: {}
   })
 }
 
-function genReference (names, reference) {
-  let ref = mapKeys(names, (name) => name)
-  return Object.defineProperties(ref, mapGetter(names, reference))
+export default Object.defineProperties({ setRule, addPlugin, delPlugin }, {
+  rules: {
+    get: () => [...jsRules, ...wxssRules]
+  },
+  plugins: {
+    get: () => [...plugins]
+  }
+})
+
+function setRule (name, callback) {
+  switch (name) {
+    case 'js': {
+      let rules = jsRules || {}
+      jsRules = callback(rules)
+      break
+    }
+
+    case 'wxss': {
+      let rules = wxssRules || {}
+      wxssRules = callback(rules)
+      break
+    }
+  }
+}
+
+function addPlugin (plugin) {
+  plugins.push(plugin)
+}
+
+function delPlugin (plugin) {
+  let index = plugins.findIndex((item) => item.constructor === plugin.constructor)
+  index !== -1 && plugins.splice(index, 1)
 }

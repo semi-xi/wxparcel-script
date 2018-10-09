@@ -13,18 +13,6 @@ import Printer from './printer'
  * @class OptionManager
  */
 export class OptionManager {
-  get rules () {
-    const { common } = this._rules
-    const rules = this._rules[this.env] || []
-    return [...common, ...rules]
-  }
-
-  get plugins () {
-    const { common } = this._plugins
-    const plugins = this._plugins[this.env] || []
-    return [...common, ...plugins]
-  }
-
   /**
    * Creates an instance of OptionManager.
    * @param {Object} [options={}] 初始化配置
@@ -95,6 +83,10 @@ export class OptionManager {
      */
     this.pubPath = options.publicPath || `http://${ip.address()}:${idlePort}`
 
+    if (!/https?:\/\//.test(this.pubPath)) {
+      throw new TypeError(`publicPath 为 ${this.pubPath}, 微信小程序并不能访问非远程的静态资源`)
+    }
+
     /**
      * node_module 存放目录
      *
@@ -114,14 +106,19 @@ export class OptionManager {
      *
      * @type {Array}
      */
-    this._rules = options.rules || {}
+    this.rules = options.rules || {}
+
+    let valid = this.checkRules(this.rules)
+    if (valid !== true) {
+      throw new TypeError(valid)
+    }
 
     /**
      * 插件集合
      *
      * @type {Array}
      */
-    this._plugins = options.plugins || {}
+    this.plugins = options.plugins || {}
 
     /**
      * 是否为监听状态
@@ -151,6 +148,14 @@ export class OptionManager {
      */
     this.projectConfigFile = ''
 
+    /**
+     * 小程序代码根目录
+     *
+     * @type {String}
+     */
+    this.miniprogramRoot = this.srcDir
+    this.pluginRoot = ''
+
     let wxProjConfFile = path.join(this.rootDir, './project.config.json')
     this.resolveWXProjConf(wxProjConfFile)
 
@@ -168,16 +173,7 @@ export class OptionManager {
      */
     this.appConfigFile = ''
 
-    if (!/https?:\/\//.test(this.pubPath)) {
-      throw new TypeError(`publicPath 为 ${this.pubPath}, 微信小程序并不能访问非远程的静态资源`)
-    }
-
-    let valid = this.checkRules(this.rules)
-    if (valid !== true) {
-      throw new TypeError(valid)
-    }
-
-    let wxAppConfFile = path.join(this.srcDir, './app.json')
+    let wxAppConfFile = path.join(this.miniprogramRoot, './app.json')
     this.resolveWXAppConf(wxAppConfFile)
 
     if (!(Array.isArray(this.appConfig.pages) && this.appConfig.pages.length > 0)) {
@@ -227,6 +223,11 @@ export class OptionManager {
     return true
   }
 
+  /**
+   * 解析微信 project.config.js 文件
+   *
+   * @param {String} file 文件名
+   */
   resolveWXProjConf (file) {
     if (!fs.existsSync(file)) {
       let message = `File ${file} is not found, please ensure ${file} is valid.`
@@ -240,6 +241,20 @@ export class OptionManager {
       let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
       Printer.error(message)
       throw new Error(message)
+    }
+
+    let { miniprogramRoot } = this.projectConfig
+    if (miniprogramRoot) {
+      let app = path.basename(this.outDir)
+      miniprogramRoot = miniprogramRoot.replace(app, '')
+      this.miniprogramRoot = path.join(this.srcDir, miniprogramRoot)
+    }
+
+    let { pluginRoot } = this.projectConfig
+    if (pluginRoot) {
+      let app = path.basename(this.outDir)
+      pluginRoot = pluginRoot.replace(app, '')
+      this.pluginRoot = path.join(this.srcDir, pluginRoot)
     }
 
     this.projectConfigFile = file
