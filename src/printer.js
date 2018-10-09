@@ -138,8 +138,12 @@ export class Printer {
     let startTime = Date.now()
 
     return {
-      reset: () => startTime = Date.now(),
-      end: () => Date.now() - startTime
+      reset () {
+        startTime = Date.now()
+      },
+      end () {
+        return Date.now() - startTime
+      }
     }
   }
 
