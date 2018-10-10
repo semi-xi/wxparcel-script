@@ -25,19 +25,19 @@ export default class WXMLResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, pubPath } = this.options
+    let { staticDir, pubPath } = this.options
 
     let source = this.source.toString()
     source = stripComments(source)
 
-    const covertImageOptions = {
+    let covertImageOptions = {
       convertDestination: this.convertAssetsDestination.bind(this)
     }
 
-    const wxsDeps = this.resolveDependencies(source, WXS_REGEPX)
-    const templateDeps = this.resolveDependencies(source, TEMPLATE_REGEPX)
-    const imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, covertImageOptions)
-    const coverImageDeps = this.resolveDependencies(source, COVER_IMAGE_REGEXP, covertImageOptions)
+    let wxsDeps = this.resolveDependencies(source, WXS_REGEPX)
+    let templateDeps = this.resolveDependencies(source, TEMPLATE_REGEPX)
+    let imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, covertImageOptions)
+    let coverImageDeps = this.resolveDependencies(source, COVER_IMAGE_REGEXP, covertImageOptions)
 
     let dependencies = [].concat(wxsDeps, templateDeps, imageDeps, coverImageDeps)
     dependencies = map(dependencies, (item) => {
@@ -52,6 +52,6 @@ export default class WXMLResolver extends Resolver {
     })
 
     this.source = Buffer.from(source)
-    return { file: this.file, source: this.source, dependencies }
+    return { file: this.file, content: this.source, dependencies }
   }
 }

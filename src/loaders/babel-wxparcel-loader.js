@@ -6,23 +6,28 @@ import { transform } from 'babel-core'
  * Babel 加载器
  *
  * @export
- * @param {String|Buffer} source 代码片段
+ * @param {Object} asset 资源对象
  * @param {Object} options 配置, 配置参考 require('babel-core').transform 中的配置, https://babeljs.io/docs/en/next/babel-core.html
  * @return {Promise}
  */
-export default function BabelLoader (source, options) {
+export default function BabelLoader (asset, options) {
   return new Promise((resolve) => {
+    let { content } = asset
     let { options: babelOptions } = options
     let babelrc = path.join(options.rootDir, '.babelrc')
 
+    content = content.toString()
     if (fs.existsSync(babelrc)) {
-      babelOptions = Object.assign({
+      let defaultOptions = {
+        sourceMaps: true,
         extends: babelrc,
         babelrc: true
-      }, babelOptions)
+      }
+
+      babelOptions = Object.assign({}, defaultOptions, babelOptions)
     }
 
-    let { code } = transform(source.toString(), babelOptions)
+    let { code, map } = transform(content, babelOptions)
     let regexp = /require\(["'\s]+(.+?)["'\s]+\)/g
     let surplus = code
     let match = null
@@ -34,6 +39,6 @@ export default function BabelLoader (source, options) {
       code = code.replace(all, `require('${path.replace(/\\/g, '/')}')`)
     }
 
-    resolve(Buffer.from(code))
+    resolve({ code, map })
   })
 }

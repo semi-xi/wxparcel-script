@@ -68,13 +68,9 @@ export class Bundler {
     bundledChunks = flatten(bundledChunks)
 
     let tasks = bundledChunks.map((chunk) => {
-      let { file, content: source, rule } = chunk
+      let rule = chunk.rule || {}
       let loaders = filter(rule.loaders, (loader) => loader.for === 'bundler')
-
-      return Parser.transform(source, file, { rule, loaders }).then((content) => {
-        chunk.update({ content })
-        return chunk
-      })
+      return Parser.transform(chunk, rule, loaders)
     })
 
     bundledChunks = await Promise.all(tasks)

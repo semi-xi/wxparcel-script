@@ -1,7 +1,8 @@
 import fs from 'fs-extra'
 import path from 'path'
+import pick from 'lodash/pick'
+import cloneDeep from 'lodash/cloneDeep'
 import isPlainObject from 'lodash/isPlainObject'
-import omit from 'lodash/omit'
 import optionManager from './option-manager'
 
 /**
@@ -13,7 +14,19 @@ import optionManager from './option-manager'
  */
 export class Chunk {
   /**
+   * 原始数据
+   *
+   * @type {Object}
+   * @readonly
+   */
+  get metadata () {
+    let metadata = pick(this, ['file', 'type', 'dependencies', 'content', 'rule', 'destination'])
+    return cloneDeep(metadata)
+  }
+
+  /**
    * Creates an instance of Chunk.
+   *
    * @param {String} file 文件名
    * @param {Object} [state={}] 状态
    * @param {OptionManager} [options=OptionManager] 配置管理器
@@ -166,9 +179,8 @@ export class Chunk {
    * @return {object} metadata 元数据
    */
   flush () {
-    let metadata = omit(this, ['flush'])
     this.flushed = true
-    return metadata
+    return this.metadata
   }
 
   /**

@@ -18,14 +18,12 @@ const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([\w\d_\-./]+)['"]\)/
 export default class JSResolver extends Resolver {
   /**
    * Creates an instance of JSResolver.
-   * @param {String} source 代码
-   * @param {String} file 文件名
-   * @param {Object} instance 实例
+   *
+   * @param {Object} asset 资源对象
    * @param {OptionManager} [options=OptionManager] 配置管理器
-   * @memberof JSResolver
    */
-  constructor (source, file, instance, options = OptionManager) {
-    super(source, file, instance, options)
+  constructor (asset, options = OptionManager) {
+    super(asset, options = OptionManager)
 
     /**
      * 模块集合
@@ -70,7 +68,7 @@ export default class JSResolver extends Resolver {
     })
 
     this.source = Buffer.from(source)
-    return { file: this.file, source: this.source, dependencies }
+    return { file: this.file, content: this.source, dependencies }
   }
 
   /**

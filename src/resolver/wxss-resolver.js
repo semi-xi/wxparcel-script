@@ -22,7 +22,7 @@ export default class WXSSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, pubPath } = this.options
+    let { staticDir, pubPath } = this.options
 
     let source = this.source.toString()
     source = stripCssComments(source)
@@ -43,6 +43,6 @@ export default class WXSSResolver extends Resolver {
     })
 
     this.source = Buffer.from(source)
-    return { file: this.file, source: this.source, dependencies }
+    return { file: this.file, content: this.source, dependencies }
   }
 }

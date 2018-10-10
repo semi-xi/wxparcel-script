@@ -47,6 +47,7 @@ if (process.env.NODE_ENV === 'development') {
 if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
   jsRules[0].loaders.push({
     use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+    for: 'bundler',
     options: {}
   })
 }
