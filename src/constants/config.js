@@ -40,6 +40,15 @@ let plugins = [
   })
 ]
 
+let config = Object.defineProperties({ setRule, addPlugin, delPlugin }, {
+  rules: {
+    get: () => [...jsRules, ...wxssRules]
+  },
+  plugins: {
+    get: () => [...plugins]
+  }
+})
+
 if (process.env.NODE_ENV === 'development') {
   plugins.push(new DevServerPlugin())
 }
@@ -52,14 +61,11 @@ if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'productio
   })
 }
 
-export default Object.defineProperties({ setRule, addPlugin, delPlugin }, {
-  rules: {
-    get: () => [...jsRules, ...wxssRules]
-  },
-  plugins: {
-    get: () => [...plugins]
-  }
-})
+// if (process.env.NODE_ENV !== 'production') {
+config.sourceMap = 'inline'
+// }
+
+export default config
 
 function setRule (name, callback) {
   switch (name) {

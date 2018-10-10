@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import minimatch from 'minimatch'
 import omit from 'lodash/omit'
+import find from 'lodash/find'
 import filter from 'lodash/filter'
 import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'promise-waterfall'
@@ -52,7 +53,7 @@ export class Parser {
    *
    * @param {String} file 文件位置
    */
-  compile (file) {
+  async compile (file) {
     let chunkOptions = {}
 
     if (typeof file === 'object') {
@@ -66,10 +67,9 @@ export class Parser {
 
     let rule = this.matchRule(file, this.options.rules) || {}
     let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
-
     let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
     let content = fs.readFileSync(file)
-    chunk.update({ content })
+    await chunk.update({ content })
 
     let queue = [
       () => this.transform(chunk, rule, loaders),
@@ -184,7 +184,7 @@ export class Parser {
 
       return transformer(chunk.metadata, options).then((result) => {
         let { code: content, map } = result
-        chunk.update({ content, map })
+        return chunk.update({ content, sourceMap: map })
       })
     })
 
@@ -201,7 +201,7 @@ export class Parser {
     return new Promise((resolve) => {
       let result = Resolver.resolve(chunk.metadata)
       let { file, content, dependencies, map } = result
-      chunk.update({ file, content, dependencies, map })
+      chunk.update({ file, content, dependencies, sourceMap: map })
 
       resolve(chunk)
     })
@@ -221,8 +221,8 @@ export class Parser {
    * }
    */
   matchRule (file, rules = []) {
-    const handleFind = (rule) => {
-      const { test: pattern, ignore } = rule
+    let handleFind = (rule) => {
+      let { test: pattern, ignore } = rule
       if (pattern.test(file)) {
         if (ignore && inMatches(file, ignore)) {
           return null
@@ -232,7 +232,7 @@ export class Parser {
       }
     }
 
-    return rules.find(handleFind) || null
+    return find(rules, handleFind) || null
   }
 }
 

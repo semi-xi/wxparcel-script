@@ -114,6 +114,13 @@ export class OptionManager {
     }
 
     /**
+     * 是否生成 sourceMap
+     *
+     * @type {String|Boolean}
+     */
+    this.sourceMap = options.sourceMap || false
+
+    /**
      * 插件集合
      *
      * @type {Array}

@@ -4,6 +4,7 @@ import pick from 'lodash/pick'
 import cloneDeep from 'lodash/cloneDeep'
 import isPlainObject from 'lodash/isPlainObject'
 import optionManager from './option-manager'
+import { SourceMap } from './source-map'
 
 /**
  * 代码片段
@@ -20,7 +21,7 @@ export class Chunk {
    * @readonly
    */
   get metadata () {
-    let metadata = pick(this, ['file', 'type', 'dependencies', 'content', 'rule', 'destination'])
+    let metadata = pick(this, ['file', 'type', 'dependencies', 'content', 'sourceMap', 'rule', 'destination'])
     return cloneDeep(metadata)
   }
 
@@ -84,6 +85,13 @@ export class Chunk {
      */
     this.content = Buffer.from(state.content || '')
 
+    /**
+     * 代码映射表 SourceMap
+     *
+     * @type {Sourcemap}
+     */
+    this.sourceMap = null
+
     let { rootDir, srcDir, outDir, npmDir, staticDir } = this.options
     let { rule, destination } = this.state = state
 
@@ -141,7 +149,7 @@ export class Chunk {
    *
    * @param {Object} [props={}] 属性
    */
-  update (props = {}) {
+  async update (props = {}) {
     if (props.hasOwnProperty('file') && typeof props.file === 'string') {
       this.file = props.file
     }
@@ -167,6 +175,13 @@ export class Chunk {
         this.content = Buffer.from(props.content)
       } else if (props.content instanceof Buffer) {
         this.content = props.content
+      }
+    }
+
+    if (props.hasOwnProperty('sourceMap') && this.options.sourceMap !== false) {
+      if (props.sourceMap) {
+        this.sourceMap = new SourceMap(this, this.options)
+        await this.sourceMap.addMap(props.sourceMap)
       }
     }
 

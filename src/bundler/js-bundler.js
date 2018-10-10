@@ -75,7 +75,7 @@ export default class JSBundler extends Bundler {
    * @return {Array[Chunk]} 新的代码片段实例集合
    */
   bundle () {
-    const { outDir, rules } = this.options
+    let { outDir, rules } = this.options
 
     let code = PreludeCode.toString() + this.wrapBundle(this.chunks)
     let bundleContent = Buffer.from(code)
@@ -146,7 +146,7 @@ export default class JSBundler extends Bundler {
     let dependencies = {}
 
     forEach(chunk.dependencies, (item) => {
-      const { dependency, required, destination } = item
+      let { dependency, required, destination } = item
       if (findIndex(this.chunks, (chunk) => chunk.file === dependency) !== -1) {
         let id = this._remember(destination)
         dependencies[required] = id

@@ -1,20 +1,39 @@
+import filter from 'lodash/filter'
+import isEmpty from 'lodash/isEmpty'
 import forEach from 'lodash/forEach'
-import { SourceMapConsumer } from 'source-map'
+import { SourceMapConsumer, SourceMapGenerator } from 'source-map'
+import OptionManager from './option-manager'
 
 export class SourceMap {
   /**
    * Creates an instance of SourceMap.
    *
+   * @param {Chunk} chunk 代码片段
+   * @param {OptionManager} options 配置
    * @param {Array[Mapping]} mappings 映射表
    * @param {Object} sources 映射的源码集合
    */
-  constructor (mappings, sources) {
+  constructor (chunk, options = OptionManager, mappings, sources) {
+    /**
+     * 代码片段
+     *
+     * @type {Chunk}
+     */
+    this.chunk = chunk
+
+    /**
+     * 配置
+     *
+     * @type {Object}
+     */
+    this.options = options
+
     /**
      * 映射图表集合
      *
      * @type {Array[Mapping]}
      */
-    this.mappings = this.validMappings(mappings) || []
+    this.mappings = Array.isArray(mappings) ? filter(mappings, this.validMapping) : []
 
     /**
      * 映射的源码集合
@@ -29,6 +48,21 @@ export class SourceMap {
      * @type {Number}
      */
     this.lineCount = 0
+
+    if (isEmpty(this.sources)) {
+      let { file, content } = chunk
+      let fileName = file.replace(options.srcDir, '')
+      this.sources = {}
+      this.sources[fileName] = content
+    }
+  }
+
+  prependMap () {
+
+  }
+
+  appendMap () {
+
   }
 
   /**
@@ -67,7 +101,7 @@ export class SourceMap {
         })
       }
 
-      Object.keys(map.sources).forEach(sourceName => {
+      Object.keys(map.sources).forEach((sourceName) => {
         if (!this.sources[sourceName]) {
           this.sources[sourceName] = map.sources[sourceName]
         }
@@ -100,7 +134,9 @@ export class SourceMap {
    * @param {number} [columnOffset=0] 对原本映射表末尾的偏移列数
    */
   addConsumerMapping (mapping, lineOffset = 0, columnOffset = 0) {
-    this.validConsumerMapping(mapping)
+    if (!this.validConsumerMapping(mapping)) {
+      return
+    }
 
     let { source, name, originalLine, originalColumn, generatedLine, generatedColumn } = mapping
 
@@ -153,39 +189,30 @@ export class SourceMap {
    */
   validConsumerMapping (mapping) {
     if (typeof mapping !== 'object') {
-      throw new TypeError('Source in Mapping is not an Object or not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (typeof mapping.source !== 'string' || !mapping.source.length) {
-      throw new TypeError('Source in Mapping is not a string or is an empty or not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (!(Number.isSafeInteger(mapping.originalLine) && mapping.originalLine >= 1)) {
-      throw new TypeError('Original.line in Mapping is not a integer or less than 1 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (!(Number.isSafeInteger(mapping.originalColumn) && mapping.originalColumn >= 0)) {
-      throw new TypeError('Original.column in Mapping is not a integer or less than 0 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
+
     if (!(Number.isSafeInteger(mapping.generatedLine) && mapping.generatedLine >= 1)) {
-      throw new TypeError('Generated.line in Mapping is not a safe integer or less than 1 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (!(Number.isSafeInteger(mapping.generatedColumn) && mapping.generatedColumn >= 0)) {
-      throw new TypeError('Generated.column in Mapping is not a integer or less than 0 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     return true
-  }
-
-  /**
-   * 验证映射表集合是否正确
-   *
-   * @param {Array[Mapping]} mappings 映射表集合
-   */
-  validMappings (mappings = []) {
-    Array.isArray(mappings) && forEach(mappings, this.validMapping.bind(this))
-    return mappings || []
   }
 
   /**
@@ -196,81 +223,57 @@ export class SourceMap {
    */
   validMapping (mapping) {
     if (typeof mapping !== 'object') {
-      throw new TypeError('Source in Mapping is not an Object or not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (typeof mapping.source !== 'string' || !mapping.source.length) {
-      throw new TypeError('Source in Mapping is not a string or is an empty or not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (typeof mapping.original !== 'object') {
-      throw new TypeError('Original in Mapping is not an object not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (!(Number.isSafeInteger(mapping.original.line) && mapping.original.line >= 1)) {
-      throw new TypeError('Original.line in Mapping is not a integer or less than 1 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (!(Number.isSafeInteger(mapping.original.column) && mapping.original.column >= 0)) {
-      throw new TypeError('Original.column in Mapping is not a integer or less than 0 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (typeof mapping.generated !== 'object') {
-      throw new TypeError('Generated in Mapping is not an object not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (!(Number.isSafeInteger(mapping.generated.line) && mapping.generated.line >= 1)) {
-      throw new TypeError('Generated.line in Mapping is not a safe integer or less than 1 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     if (!(Number.isSafeInteger(mapping.generated.column) && mapping.generated.column >= 0)) {
-      throw new TypeError('Generated.column in Mapping is not a integer or less than 0 not be provided: ' + JSON.stringify(mapping, null, 2))
+      return false
     }
 
     return true
   }
+
+  stringify (file, sourceRoot) {
+    let { srcDir } = this.options
+
+    if (!file) {
+      let { file: filePath } = this.chunk
+      filePath = filePath.replace(srcDir + '/', './')
+      file = filePath.replace(/\\/g, '/')
+    }
+
+    let generator = new SourceMapGenerator({ file, sourceRoot })
+
+    this.eachMapping((mapping) => generator.addMapping(mapping))
+    Object.keys(this.sources).forEach((sourceName) => generator.setSourceContent(sourceName, this.sources[sourceName]))
+
+    return generator.toString()
+  }
 }
-
-// let originMappings = [
-//   {
-//     source: 'a.js',
-//     original: {
-//       line: 1,
-//       column: 0
-//     },
-//     generated: {
-//       line: 1,
-//       column: 0
-//     }
-//   }
-// ]
-
-// let originSources = {
-//   'a.js': 'alert(123)'
-// }
-
-// let sourcemap = new SourceMap(originMappings, originSources)
-
-// let mappings = [
-//   {
-//     source: 'b.js',
-//     original: {
-//       line: 1,
-//       column: 0
-//     },
-//     generated: {
-//       line: 1,
-//       column: 0
-//     }
-//   }
-// ]
-
-// let sources = {
-//   'a.js': 'alert(123)'
-// }
-
-// sourcemap.addMap({ mappings, sources })
-// console.log(JSON.stringify(sourcemap, null, 2))
 
 /**
  * @typedef Mapping 映射表

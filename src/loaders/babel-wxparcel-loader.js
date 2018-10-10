@@ -12,13 +12,14 @@ import { transform } from 'babel-core'
  */
 export default function BabelLoader (asset, options) {
   return new Promise((resolve) => {
-    let { content } = asset
+    let { file, content } = asset
     let { options: babelOptions } = options
     let babelrc = path.join(options.rootDir, '.babelrc')
 
     content = content.toString()
     if (fs.existsSync(babelrc)) {
       let defaultOptions = {
+        sourceFileName: file.replace(options.srcDir + '/', ''),
         sourceMaps: true,
         extends: babelrc,
         babelrc: true

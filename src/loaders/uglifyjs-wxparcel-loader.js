@@ -1,3 +1,4 @@
+import defaultsDeep from 'lodash/defaultsDeep'
 import UglifyJS from 'uglify-js'
 
 /**
@@ -10,19 +11,19 @@ import UglifyJS from 'uglify-js'
  */
 export default function UglifyjsLoader (asset, options = {}) {
   return new Promise((resolve, reject) => {
-    let { file, content, map: assetMap } = asset
+    let { file, content, sourceMap } = asset
     let { options: uglifyOptions } = options
 
     content = content.toString()
 
     let defaultOptions = {}
-    if (assetMap) {
+    if (sourceMap) {
       defaultOptions.sourceMap = {
-        content: assetMap
+        content: sourceMap.stringify()
       }
     }
 
-    uglifyOptions = Object.assign({}, defaultOptions, uglifyOptions)
+    uglifyOptions = defaultsDeep({}, uglifyOptions, defaultOptions)
 
     let { error, code, map } = UglifyJS.minify({ [file]: content }, uglifyOptions)
     if (error) {
