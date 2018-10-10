@@ -109,11 +109,11 @@ export default class Parcel {
   watch () {
     let { rootDir, appConfigFile } = this.options
 
-    const ignoreFile = (file) => {
+    let ignoreFile = (file) => {
       return IgnoreFiles.findIndex((pattern) => minimatch(file, pattern)) !== -1
     }
 
-    const transform = async (file) => {
+    let transform = async (file) => {
       try {
         this.running = true
         Printer.time()
@@ -142,7 +142,7 @@ export default class Parcel {
       }
     }
 
-    const handleFileChanged = (file) => {
+    let handleFileChanged = (file) => {
       if (ignoreFile(file)) {
         return
       }
@@ -174,7 +174,7 @@ export default class Parcel {
       Printer.info(`${message}, but it's not be required, ignore...`)
     }
 
-    const handleFileUnlink = (file) => {
+    let handleFileUnlink = (file) => {
       if (ignoreFile(file)) {
         return
       }
