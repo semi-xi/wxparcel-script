@@ -73,10 +73,8 @@ export default class Parcel {
       await this.hook('beforeTransform')(instance)
 
       let { rootDir, miniprogramRoot, pluginRoot } = this.options
-      let entries = [
-        path.join(miniprogramRoot, 'app.json'),
-        path.join(miniprogramRoot, 'app.js')
-      ]
+      let entryModule = JSONResolver.prototype.findModule('app', miniprogramRoot)
+      let entries = entryModule.files || []
 
       if (pluginRoot) {
         entries.push(path.join(pluginRoot, 'plugin.json'))
@@ -340,7 +338,7 @@ export default class Parcel {
 
   /**
    * 查找入口
-   * 微信入口都是通过 `app.config.json` 文件配置,
+   * 微信入口都是通过 `app.json` 文件配置,
    * 因此可以通过读取该文件找到对应的入口文件
    *
    * @return {Array} 文件集合
