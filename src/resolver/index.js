@@ -2,6 +2,7 @@ import path from 'path'
 import minimatch from 'minimatch'
 import JSONResolver from './json-resolver'
 import JSResolver from './js-resolver'
+import WXSResolver from './wxs-resolver'
 import WXMLResolver from './wxml-resolver'
 import WXSSResolver from './wxss-resolver'
 import OptionManager from '../option-manager'
@@ -40,6 +41,7 @@ export class Resolver {
      */
     this.register(/\.json$/, JSONResolver)
     this.register(/\.js$/, JSResolver)
+    this.register(/\.wxs$/, WXSResolver)
     this.register(/\.wxss$/, WXSSResolver)
     this.register(/\.wxml$/, WXMLResolver)
   }
