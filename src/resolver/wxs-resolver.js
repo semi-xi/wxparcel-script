@@ -3,10 +3,9 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripCssComments from 'strip-css-comments'
 import { Resolver } from './resolver'
-import { replacement } from './share'
+import { escapeRegExp } from './share'
 
-const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([~\w\d_\-./]+?)['"];/
-const IMAGE_REGEXP = /url\(["']?([~\w\d_\-./]+?)["']?\)/i
+const IMAGE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * WXSS解析器
@@ -22,27 +21,26 @@ export default class WXSSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    let { staticDir, pubPath } = this.options
+    const { staticDir, pubPath } = this.options
 
-    let source = this.source.toString()
-    source = stripCssComments(source)
+    this.source = this.source.toString()
+    this.source = stripCssComments(this.source)
 
-    let importDeps = this.resolveDependencies(source, IMPORT_REGEXP)
-    let imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, {
+    let imageDeps = this.resolveDependencies(IMAGE_REGEXP, {
       convertDestination: this.convertAssetsDestination.bind(this)
     })
 
-    let dependencies = [].concat(importDeps, imageDeps)
+    let dependencies = [].concat(imageDeps)
     dependencies = dependencies.map((item) => {
       let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      source = replacement(source, code, url, IMAGE_REGEXP)
+      this.source = this.source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(source)
-    return { file: this.file, content: this.source, dependencies }
+    this.source = Buffer.from(this.source)
+    return { file: this.file, source: this.source, dependencies }
   }
 }
