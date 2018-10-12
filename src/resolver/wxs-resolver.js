@@ -14,7 +14,7 @@ const IMAGE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
  * @class WXSSResolver
  * @extends {Resolver}
  */
-export default class WXSSResolver extends Resolver {
+export default class WXSResolver extends Resolver {
   /**
    * 解析, 并返回文件,代码,依赖等信息
    *
@@ -41,6 +41,6 @@ export default class WXSSResolver extends Resolver {
     })
 
     this.source = Buffer.from(source)
-    return { file: this.file, source: this.source, dependencies }
+    return { file: this.file, content: this.source, dependencies }
   }
 }

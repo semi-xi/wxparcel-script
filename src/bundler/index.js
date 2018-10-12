@@ -1,4 +1,3 @@
-import map from 'lodash/map'
 import find from 'lodash/find'
 import flatten from 'lodash/flatten'
 import without from 'lodash/without'
@@ -50,7 +49,8 @@ export class Bundler {
   async bundle (chunks) {
     chunks = [].concat(chunks)
 
-    let bundledChunks = map(this.bundlers, ({ regexp, bundler: Bundler }) => {
+    let bundledChunks = []
+    this.bundlers.forEach(({ regexp, bundler: Bundler }) => {
       let targetChunks = filter(chunks, (chunk) => {
         return regexp.test(chunk.destination)
       })
@@ -62,7 +62,9 @@ export class Bundler {
       chunks = without(chunks, ...targetChunks)
 
       let bundler = new Bundler(targetChunks, this.options)
-      return bundler.bundle()
+      let resultChunks = bundler.bundle()
+
+      bundledChunks = bundledChunks.concat(resultChunks)
     })
 
     bundledChunks = flatten(bundledChunks)

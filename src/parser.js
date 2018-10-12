@@ -115,7 +115,7 @@ export class Parser {
      * 没有 loader 不需要编译
      */
     if (loaders.length === 0) {
-      return Promise.resolve()
+      return Promise.resolve(chunk)
     }
 
     /**
@@ -131,13 +131,13 @@ export class Parser {
 
       if (pattern instanceof RegExp) {
         if (pattern.test(file)) {
-          return Promise.resolve()
+          return Promise.resolve(chunk)
         }
       } else {
         pattern = path.join(this.options.rootDir, pattern)
 
         if (minimatch(file, pattern)) {
-          return Promise.resolve()
+          return Promise.resolve(chunk)
         }
       }
     }
