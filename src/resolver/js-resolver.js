@@ -113,7 +113,7 @@ export default class JSResolver extends Resolver {
      * 若无法通过正常方式获取, 则尝试使用相对定位寻找该文件
      */
     try {
-      let file = path.join(relativeTo, requested)
+      let file = this.convertDependencyPath(requested, relativeTo)
       return require.resolve(file)
     } catch (err) {
       try {

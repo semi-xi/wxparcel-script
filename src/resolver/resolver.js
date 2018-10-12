@@ -119,9 +119,8 @@ export class Resolver {
       case '/':
         return path.join(rootDir, required.substr(1))
       case '.':
-        return path.join(relativeTo, required)
       default:
-        return false
+        return path.join(relativeTo, required)
     }
   }
 
