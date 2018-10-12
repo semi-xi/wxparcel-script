@@ -52,7 +52,7 @@ export class Bundler {
     let bundledChunks = []
     this.bundlers.forEach(({ regexp, bundler: Bundler }) => {
       let targetChunks = filter(chunks, (chunk) => {
-        return regexp.test(chunk.destination)
+        return chunk.type === 'bundler' && regexp.test(chunk.destination)
       })
 
       /**

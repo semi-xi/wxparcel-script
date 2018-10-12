@@ -20,6 +20,7 @@ export class Resolver {
    * @param {OptionManager} [options=OptionManager] 配置管理器
    */
   constructor (asset, options = OptionManager) {
+    console.log(asset)
     /**
      * 代码
      *
@@ -62,6 +63,7 @@ export class Resolver {
    */
   resolveDependencies (source, regexp, options = {}) {
     options = defaults({}, options, {
+      type: 'bundler',
       convertDependencyPath: this.convertDependencyPath.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })
@@ -87,7 +89,7 @@ export class Resolver {
 
       if (findIndex(dependencies, { file: this.file, dependency, required, code: all }) === -1) {
         let destination = convertDestination(dependency, this.options)
-        let item = { type: 'bundler', file: this.file, dependency, destination, required, code: all }
+        let item = { type: options.type, file: this.file, dependency, destination, required, code: all }
         dependencies.push(item)
       }
     }

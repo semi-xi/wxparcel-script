@@ -48,6 +48,7 @@ export default class JSResolver extends Resolver {
     })
 
     let workerDependencies = this.resolveDependencies(source, WORKER_REQUIRE_REGEXP, {
+      type: 'scatter',
       convertDependencyPath: this.convertWorkerRelative.bind(this)
     })
 
