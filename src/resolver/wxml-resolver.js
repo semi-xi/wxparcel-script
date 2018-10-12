@@ -35,11 +35,11 @@ export default class WXMLResolver extends Resolver {
       convertDestination: this.convertAssetsDestination.bind(this)
     }
 
-    const wxsDeps = this.resolveDependencies(WXS_REGEPX)
-    const templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
-    const includeDeps = this.resolveDependencies(INCLUDE_REGEPX)
-    const imageDeps = this.resolveDependencies(IMAGE_REGEXP, covertImageOptions)
-    const coverImageDeps = this.resolveDependencies(COVER_IMAGE_REGEXP, covertImageOptions)
+    const wxsDeps = this.resolveDependencies(source, WXS_REGEPX)
+    const templateDeps = this.resolveDependencies(source, TEMPLATE_REGEPX)
+    const includeDeps = this.resolveDependencies(source, INCLUDE_REGEPX)
+    const imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, covertImageOptions)
+    const coverImageDeps = this.resolveDependencies(source, COVER_IMAGE_REGEXP, covertImageOptions)
 
     let dependencies = [].concat(wxsDeps, templateDeps, includeDeps, imageDeps, coverImageDeps)
     dependencies = map(dependencies, (item) => {

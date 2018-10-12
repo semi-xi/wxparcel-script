@@ -23,10 +23,10 @@ export default class WXSSResolver extends Resolver {
   resolve () {
     const { staticDir, pubPath } = this.options
 
-    this.source = this.source.toString()
-    this.source = stripCssComments(this.source)
+    let source = this.source.toString()
+    source = stripCssComments(source)
 
-    let imageDeps = this.resolveDependencies(IMAGE_REGEXP, {
+    let imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, {
       convertDestination: this.convertAssetsDestination.bind(this)
     })
 
@@ -36,11 +36,11 @@ export default class WXSSResolver extends Resolver {
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = this.source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
+      source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(this.source)
+    this.source = Buffer.from(source)
     return { file: this.file, source: this.source, dependencies }
   }
 }
