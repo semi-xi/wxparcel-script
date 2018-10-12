@@ -5,9 +5,10 @@ import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
+import { escapeRegExp } from './share'
 
-const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
-const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([\w\d_\-./]+)['"]\)/
+const REQUIRE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
+const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * JS 解析器
@@ -69,7 +70,7 @@ export default class JSResolver extends Resolver {
       let relativePath = dependencyDestination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = this.source.replace(code, `"${url}"`)
+      this.source = this.source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return { file, destination: dependencyDestination, dependency, required }
     })
 

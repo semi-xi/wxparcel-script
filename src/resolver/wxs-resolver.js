@@ -3,8 +3,9 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripCssComments from 'strip-css-comments'
 import { Resolver } from './resolver'
+import { escapeRegExp } from './share'
 
-const IMAGE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
+const IMAGE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * WXSS解析器
@@ -35,7 +36,7 @@ export default class WXSSResolver extends Resolver {
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = this.source.replace(code, `"${url}"`)
+      this.source = this.source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return { file, destination, dependency, required }
     })
 
