@@ -20,7 +20,6 @@ export class Resolver {
    * @param {OptionManager} [options=OptionManager] 配置管理器
    */
   constructor (asset, options = OptionManager) {
-    console.log(asset)
     /**
      * 代码
      *
