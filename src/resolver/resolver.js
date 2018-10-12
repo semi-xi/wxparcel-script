@@ -3,6 +3,7 @@ import defaults from 'lodash/defaults'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import findIndex from 'lodash/findIndex'
+import { BUNDLE } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import { genFileSync } from './share'
 
@@ -62,7 +63,7 @@ export class Resolver {
    */
   resolveDependencies (source, regexp, options = {}) {
     options = defaults({}, options, {
-      type: 'bundler',
+      type: BUNDLE,
       convertDependencyPath: this.convertDependencyPath.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })

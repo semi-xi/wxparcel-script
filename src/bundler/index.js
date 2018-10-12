@@ -3,6 +3,7 @@ import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
 import JSBundler from './js-bundler'
+import { BUNDLE } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
@@ -52,7 +53,7 @@ export class Bundler {
     let bundledChunks = []
     this.bundlers.forEach(({ regexp, bundler: Bundler }) => {
       let targetChunks = filter(chunks, (chunk) => {
-        return chunk.type === 'bundler' && regexp.test(chunk.destination)
+        return chunk.type === BUNDLE && regexp.test(chunk.destination)
       })
 
       /**

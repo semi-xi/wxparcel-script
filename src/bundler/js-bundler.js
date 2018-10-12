@@ -6,6 +6,7 @@ import forEach from 'lodash/forEach'
 import trimEnd from 'lodash/trimEnd'
 import findIndex from 'lodash/findIndex'
 import Bundler from './bundler'
+import { BUNDLER, ENTRY } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
@@ -77,19 +78,23 @@ export default class JSBundler extends Bundler {
   bundle () {
     let { outDir, rules } = this.options
 
-    let code = PreludeCode.toString() + this.wrapBundle(this.chunks)
+    let { code, map: sourceMap } = this.wrapBundler(this.chunks)
+    code = PreludeCode.toString() + code
+
     let bundleContent = Buffer.from(code)
     let bundleFilename = 'bundler.js'
     let bundleDestination = path.join(outDir, bundleFilename)
 
     let bundledChunk = this.assets.add(bundleFilename, {
-      type: 'bundler',
+      type: BUNDLER,
       content: bundleContent,
       destination: bundleDestination,
-      rule: Parser.matchRule(bundleDestination, rules)
+      rule: Parser.matchRule(bundleDestination, rules),
+      map: sourceMap
     })
 
-    let entryChunks = filter(this.chunks, (chunk) => chunk.type === 'entry')
+    let entryChunks = filter(this.chunks, (chunk) => chunk.type === ENTRY)
+
     entryChunks = map(entryChunks, ({ file, content, destination, ...otherProps }) => {
       let id = this._remember(destination)
 
@@ -117,9 +122,11 @@ export default class JSBundler extends Bundler {
    * @param {Array[Chunk]} chunks
    * @return {String} 包裹后的代码块
    */
-  wrapBundle (chunks) {
-    let modules = this.wrapModules(chunks)
-    return `(${modules}, {})`
+  wrapBundler (chunks) {
+    let { code, map } = this.wrapModules(chunks)
+    code = `(${code}, {})`
+
+    return { code, map }
   }
 
   /**
@@ -129,8 +136,22 @@ export default class JSBundler extends Bundler {
    * @return {String} 包裹后的代码块
    */
   wrapModules (chunks) {
-    let modules = map(chunks, (chunk) => this.wrapModule(chunk))
-    return `{${trimEnd(modules.join('\n'), ',')}}`
+    let codes = []
+    let maps = []
+
+    chunks.forEach((chunk) => {
+      let { code, map } = this.wrapModule(chunk)
+
+      codes.push(code)
+      maps.push(map)
+    })
+
+    let openWrapper = '{'
+    let closeWrapper = '}'
+    let code = openWrapper + trimEnd(codes.join('\n'), ',') + closeWrapper
+
+    let map = null
+    return { code, map }
   }
 
   /**
@@ -147,13 +168,14 @@ export default class JSBundler extends Bundler {
 
     forEach(chunk.dependencies, (item) => {
       let { dependency, required, destination } = item
+
       if (findIndex(this.chunks, (chunk) => chunk.file === dependency) !== -1) {
         let id = this._remember(destination)
         dependencies[required] = id
       }
     })
 
-    return this.wrapCode(id, code, dependencies)
+    return this.wrapCode(id, code, dependencies, chunk.sourceMap)
   }
 
   /**
@@ -165,8 +187,12 @@ export default class JSBundler extends Bundler {
    * @param {Array[String]} dependencies 依赖集合, 这里的集合是32进制的标识ID, 非原生依赖路径名称
    * @return {String} 包裹后的代码块
    */
-  wrapCode (name, code, dependencies) {
-    return `${this.wrapQuote(name)}: [function(require,module,exports) {\n${code}\n}, ${JSON.stringify(dependencies)}],`
+  wrapCode (name, code, dependencies, map) {
+    let openWrapper = `${this.wrapQuote(name)}: [function(require,module,exports) {\n`
+    let closeWrapper = `\n}, ${JSON.stringify(dependencies)}],`
+    code = openWrapper + code + closeWrapper
+
+    return { code, map }
   }
 
   /**

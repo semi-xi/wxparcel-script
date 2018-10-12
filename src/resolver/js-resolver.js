@@ -3,6 +3,7 @@ import Module from 'module'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import { Resolver } from './resolver'
+import { SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import { escapeRegExp } from './share'
 
@@ -48,7 +49,7 @@ export default class JSResolver extends Resolver {
     })
 
     let workerDependencies = this.resolveDependencies(source, WORKER_REQUIRE_REGEXP, {
-      type: 'scatter',
+      type: SCATTER,
       convertDependencyPath: this.convertWorkerRelative.bind(this)
     })
 
