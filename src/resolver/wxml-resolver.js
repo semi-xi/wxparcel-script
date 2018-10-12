@@ -5,10 +5,11 @@ import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
 import { replacement } from './share'
 
-const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
-const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
-const IMAGE_REGEXP = /<image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/image>)/
-const COVER_IMAGE_REGEXP = /<cover-image(?:.*?)src=['"]([\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/cover-image>)/
+const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
+const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
+const INCLUDE_REGEPX = /<include\s*(?:.*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/include>)/
+const IMAGE_REGEXP = /<image(?:.*?)src=['"]([~\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/image>)/
+const COVER_IMAGE_REGEXP = /<cover-image(?:.*?)src=['"]([~\w\d_\-./]+)['"](?:.*?)(?:\/>|>(?:.*?)<\/cover-image>)/
 
 /**
  * WXML 解析器
@@ -35,10 +36,11 @@ export default class WXMLResolver extends Resolver {
 
     const wxsDeps = this.resolveDependencies(WXS_REGEPX)
     const templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
+    const includeDeps = this.resolveDependencies(INCLUDE_REGEPX)
     const imageDeps = this.resolveDependencies(IMAGE_REGEXP, covertImageOptions)
     const coverImageDeps = this.resolveDependencies(COVER_IMAGE_REGEXP, covertImageOptions)
 
-    let dependencies = [].concat(wxsDeps, templateDeps, imageDeps, coverImageDeps)
+    let dependencies = [].concat(wxsDeps, templateDeps, includeDeps, imageDeps, coverImageDeps)
     dependencies = dependencies.map((item) => {
       let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
