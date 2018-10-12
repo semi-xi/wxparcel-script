@@ -21,7 +21,7 @@ export const escapeRegExp = function (source) {
  * @return {String}
  */
 export const replacement = function (source, string, url, regexp) {
-  source = source.replace(new RegExp(escapeRegExp(string), 'g'), () => {
+  source = source.replace(new RegExp(escapeRegExp(string), 'ig'), () => {
     return string.replace(regexp, (string, file) => {
       return string.replace(file, url)
     })

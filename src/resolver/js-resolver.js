@@ -4,9 +4,10 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import { Resolver } from './resolver'
 import OptionManager from '../option-manager'
+import { escapeRegExp } from './share'
 
-const REQUIRE_REGEXP = /require\(['"]([\w\d_\-./]+)['"]\)/
-const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([\w\d_\-./]+)['"]\)/
+const REQUIRE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
+const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * JS 解析器
@@ -63,7 +64,7 @@ export default class JSResolver extends Resolver {
       let relativePath = dependencyDestination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      source = source.replace(code, `"${url}"`)
+      source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return { type, file, destination: dependencyDestination, dependency, required }
     })
 
@@ -106,7 +107,7 @@ export default class JSResolver extends Resolver {
      * 若无法通过正常方式获取, 则尝试使用相对定位寻找该文件
      */
     try {
-      let file = path.join(relativeTo, requested)
+      let file = this.convertDependencyPath(requested, relativeTo)
       return require.resolve(file)
     } catch (err) {
       try {
