@@ -106,9 +106,9 @@ export class Resolver {
     let { srcDir, rootDir } = this.options
     switch (required.charAt(0)) {
       case '~':
-        return path.join(srcDir, required)
+        return path.join(srcDir, required.substr(1))
       case '/':
-        return path.join(rootDir, required)
+        return path.join(rootDir, required.substr(1))
       case '.':
         return path.join(relativeTo, required)
       default:
