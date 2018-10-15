@@ -173,7 +173,7 @@ export class Parser {
        * 所有 loader 都通过 default 形式暴露接口给编译器
        */
       let transformer = require(loader.use)
-      transformer = transformer.default || transformer
+      let transform = transformer.default || transformer
 
       /**
        * 因为 loader 为外部包, 因此这里为了不给外部包改变配置
@@ -182,7 +182,7 @@ export class Parser {
       let loaderOptions = loader.options || {}
       let options = this.options.connect({ file, rule, options: loaderOptions })
 
-      return transformer(chunk.metadata, options).then((result) => {
+      return transform(chunk.metadata, options).then((result) => {
         let { code: content, map } = result
         return chunk.update({ content, sourceMap: map })
       })

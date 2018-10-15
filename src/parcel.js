@@ -242,12 +242,17 @@ export default class Parcel {
     }
 
     let promises = chunks.map((chunk) => {
-      let { destination, content } = chunk.flush()
+      let { destination, content, sourceMap } = chunk.flush()
+
+      sourceMap = JSON.stringify(sourceMap)
+      let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
+
+      content = stripBOM(content) + '\n' + base64SourceMap
 
       return new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, stripBOM(content), 'utf8'),
+          fs.writeFile.bind(fs, destination, content, 'utf8'),
           fs.stat.bind(fs, destination)
         ]
 

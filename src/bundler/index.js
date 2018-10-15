@@ -51,7 +51,7 @@ export class Bundler {
     chunks = [].concat(chunks)
 
     let bundledChunks = []
-    this.bundlers.forEach(({ regexp, bundler: Bundler }) => {
+    let bundleTasks = this.bundlers.map(({ regexp, bundler: Bundler }) => {
       let targetChunks = filter(chunks, (chunk) => {
         return chunk.type === BUNDLE && regexp.test(chunk.destination)
       })
@@ -63,20 +63,20 @@ export class Bundler {
       chunks = without(chunks, ...targetChunks)
 
       let bundler = new Bundler(targetChunks, this.options)
-      let resultChunks = bundler.bundle()
-
-      bundledChunks = bundledChunks.concat(resultChunks)
+      return bundler.bundle()
     })
 
+    let resultChunks = await Promise.all(bundleTasks)
+    bundledChunks = bundledChunks.concat(resultChunks)
     bundledChunks = flatten(bundledChunks)
 
-    let tasks = bundledChunks.map((chunk) => {
+    let transformTasks = bundledChunks.map((chunk) => {
       let rule = chunk.rule || {}
       let loaders = filter(rule.loaders, (loader) => loader.for === 'bundler')
       return Parser.transform(chunk, rule, loaders)
     })
 
-    bundledChunks = await Promise.all(tasks)
+    bundledChunks = await Promise.all(transformTasks)
     return [].concat(chunks, bundledChunks)
   }
 

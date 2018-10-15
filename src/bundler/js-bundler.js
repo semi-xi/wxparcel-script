@@ -6,6 +6,8 @@ import forEach from 'lodash/forEach'
 import trimEnd from 'lodash/trimEnd'
 import findIndex from 'lodash/findIndex'
 import Bundler from './bundler'
+import { getSourceNode } from '../source-map'
+import { SourceNode } from 'source-map'
 import { BUNDLER, ENTRY } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
@@ -75,14 +77,18 @@ export default class JSBundler extends Bundler {
    *
    * @return {Array[Chunk]} 新的代码片段实例集合
    */
-  bundle () {
+  async bundle () {
     let { outDir, rules } = this.options
+    let bundleFilename = 'bundler.js'
 
-    let { code, map: sourceMap } = this.wrapBundler(this.chunks)
-    code = PreludeCode.toString() + code
+    let { code, sourceMapNode: node } = await this.wrapBundler(this.chunks, bundleFilename)
+    let loaderCode = PreludeCode.toString()
+    code = loaderCode + code
+
+    node.prepend(loaderCode)
+    let sourceMap = node.toStringWithSourceMap({ file: bundleFilename })
 
     let bundleContent = Buffer.from(code)
-    let bundleFilename = 'bundler.js'
     let bundleDestination = path.join(outDir, bundleFilename)
 
     let bundledChunk = this.assets.add(bundleFilename, {
@@ -90,7 +96,7 @@ export default class JSBundler extends Bundler {
       content: bundleContent,
       destination: bundleDestination,
       rule: Parser.matchRule(bundleDestination, rules),
-      map: sourceMap
+      sourceMap: sourceMap.map.toString()
     })
 
     let entryChunks = filter(this.chunks, (chunk) => chunk.type === ENTRY)
@@ -122,11 +128,17 @@ export default class JSBundler extends Bundler {
    * @param {Array[Chunk]} chunks
    * @return {String} 包裹后的代码块
    */
-  wrapBundler (chunks) {
-    let { code, map } = this.wrapModules(chunks)
-    code = `(${code}, {})`
+  async wrapBundler (chunks, file) {
+    let { code, sourceMapNode: node } = await this.wrapModules(chunks, file)
 
-    return { code, map }
+    let openCode = '('
+    let closeCode = ', {})'
+
+    code = openCode + code + closeCode
+    node.prepend(openCode)
+    node.add(closeCode)
+
+    return { code, sourceMapNode: node }
   }
 
   /**
@@ -135,23 +147,26 @@ export default class JSBundler extends Bundler {
    * @param {Array[Chunk]} chunks
    * @return {String} 包裹后的代码块
    */
-  wrapModules (chunks) {
+  async wrapModules (chunks, file) {
     let codes = []
-    let maps = []
+    let nodes = []
 
-    chunks.forEach((chunk) => {
-      let { code, map } = this.wrapModule(chunk)
-
-      codes.push(code)
-      maps.push(map)
+    let tasks = chunks.map((chunk) => this.wrapModule(chunk))
+    await Promise.all(tasks).then((response) => {
+      response.forEach(({ code, sourceMapNode: node }) => {
+        codes.push(code)
+        nodes.push(node)
+      })
     })
 
-    let openWrapper = '{'
-    let closeWrapper = '}'
-    let code = openWrapper + trimEnd(codes.join('\n'), ',') + closeWrapper
+    let openCode = '{'
+    let closeCode = '}'
+    let code = openCode + trimEnd(codes.join(''), ',') + closeCode
+    let node = new SourceNode(null, null, file, nodes)
+    node.prepend(openCode)
+    node.add(closeCode)
 
-    let map = null
-    return { code, map }
+    return { code, sourceMapNode: node }
   }
 
   /**
@@ -161,7 +176,7 @@ export default class JSBundler extends Bundler {
    * @param {Chunk} chunk 代码片段
    * @return {String} 包裹后的名称
    */
-  wrapModule (chunk) {
+  async wrapModule (chunk) {
     let id = this._remember(chunk.destination)
     let code = chunk.content.toString()
     let dependencies = {}
@@ -175,7 +190,8 @@ export default class JSBundler extends Bundler {
       }
     })
 
-    return this.wrapCode(id, code, dependencies, chunk.sourceMap)
+    let result = await this.wrapCode(id, code, dependencies, chunk.sourceMap)
+    return result
   }
 
   /**
@@ -187,12 +203,16 @@ export default class JSBundler extends Bundler {
    * @param {Array[String]} dependencies 依赖集合, 这里的集合是32进制的标识ID, 非原生依赖路径名称
    * @return {String} 包裹后的代码块
    */
-  wrapCode (name, code, dependencies, map) {
-    let openWrapper = `${this.wrapQuote(name)}: [function(require,module,exports) {\n`
-    let closeWrapper = `\n}, ${JSON.stringify(dependencies)}],`
-    code = openWrapper + code + closeWrapper
+  async wrapCode (name, code, dependencies, map) {
+    let openCode = `${this.wrapQuote(name)}: [function(require,module,exports) {\n`
+    let closeCode = `\n}, ${JSON.stringify(dependencies)}],\n`
 
-    return { code, map }
+    let node = await getSourceNode(code, map)
+    node.prepend(openCode)
+    node.add(closeCode)
+
+    code = openCode + code + closeCode
+    return { code, sourceMapNode: node }
   }
 
   /**

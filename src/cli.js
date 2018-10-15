@@ -19,5 +19,3 @@ if (!params.slice(2).length) {
 }
 
 program.parse(params)
-
-// import './source-map'

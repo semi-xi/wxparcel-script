@@ -4,7 +4,6 @@ import pick from 'lodash/pick'
 import cloneDeep from 'lodash/cloneDeep'
 import isPlainObject from 'lodash/isPlainObject'
 import optionManager from './option-manager'
-import { SourceMap } from './source-map'
 
 /**
  * 代码片段
@@ -91,6 +90,12 @@ export class Chunk {
      * @type {Sourcemap}
      */
     this.sourceMap = null
+
+    if (typeof state.sourceMap === 'string') {
+      this.sourceMap = JSON.parse(state.sourceMap)
+    } else if (typeof state.sourceMap === 'object') {
+      this.sourceMap = state.sourceMap
+    }
 
     let { rootDir, srcDir, outDir, npmDir, staticDir } = this.options
     let { rule, destination } = this.state = state
@@ -179,9 +184,10 @@ export class Chunk {
     }
 
     if (props.hasOwnProperty('sourceMap') && this.options.sourceMap !== false) {
-      if (props.sourceMap) {
-        this.sourceMap = new SourceMap(this, this.options)
-        await this.sourceMap.addMap(props.sourceMap)
+      if (typeof props.sourceMap === 'string') {
+        this.sourceMap = JSON.parse(props.sourceMap)
+      } else if (typeof props.sourceMap === 'object') {
+        this.sourceMap = props.sourceMap
       }
     }
 
