@@ -69,7 +69,7 @@ export class Parser {
     let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
     let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
     let content = fs.readFileSync(file)
-    await chunk.update({ content })
+    chunk.update({ content })
 
     let queue = [
       () => this.transform(chunk, rule, loaders),

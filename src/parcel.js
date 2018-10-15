@@ -118,7 +118,6 @@ export default class Parcel {
     }
 
     let transform = async (file) => {
-      console.log(file)
       try {
         this.running = true
         const timer = Printer.timer()
@@ -126,14 +125,30 @@ export default class Parcel {
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
 
+        /**
+         * 找到相应的 rule 与对应的 loaders 这样才能够遍历文件与其依赖的文件
+         */
         let rule = Parser.matchRule(file, this.options.rules)
         let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
         let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
+
+        /**
+         * Chunk 不会自己读取内容也不会自动更新新内容
+         * 因此这里需要手动 update 内容
+         */
+        let content = fs.readFileSync(file)
+        chunk.update({ content })
         await Parser.transform(chunk, rule, loaders)
 
         let files = chunk.dependencies.map((item) => item.dependency)
         let chunks = await Parser.multiCompile(files)
 
+        /**
+         * 找出对应的打包器, 这样就能简单直接地进行
+         * 相应文件类型的打包, 若找不到对应的打包器
+         * 则说明该文件可能不需要打包, 则直接进行输
+         * 出即可
+         */
         let { regexp, bundler: MatchedBundler } = Bundler.matchBundler(chunk.destination) || {}
         if (MatchedBundler) {
           chunks = filter(Assets.chunks, ({ destination }) => regexp.test(destination))
