@@ -28,11 +28,16 @@ export default class JSONResolver extends Resolver {
   resolve () {
     let config = {}
 
+    if (this.source instanceof Buffer) {
+      this.source = this.source.toString()
+    }
+
     if (isPlainObject(this.source)) {
       config = this.source
     } else {
       try {
-        config = JSON.parse(this.source)
+        let source = this.source
+        config = JSON.parse(source)
       } catch (error) {
         throw new Error(`File ${this.file} is invalid json, please check the json corrected.\n${error}`)
       }
@@ -78,10 +83,11 @@ export default class JSONResolver extends Resolver {
     })
 
     config = this.convertProjectConf(config)
-    this.source = JSON.stringify(config, null, 2)
 
-    this.source = Buffer.from(this.source)
-    return { file: this.file, source: this.source, dependencies }
+    let source = JSON.stringify(config, null, 2)
+    this.source = Buffer.from(source)
+
+    return { file: this.file, content: this.source, dependencies }
   }
 
   /**
@@ -91,8 +97,8 @@ export default class JSONResolver extends Resolver {
    * @return {Object} 配置
    */
   convertProjectConf (config = {}) {
-    const { outDir } = this.options
-    const name = path.basename(outDir)
+    let { outDir } = this.options
+    let name = path.basename(outDir)
 
     if (config.hasOwnProperty('miniprogramRoot')) {
       let folder = config.miniprogramRoot.replace(name, '')
@@ -107,21 +113,27 @@ export default class JSONResolver extends Resolver {
     return config
   }
 
+  /**
+   * 解析项目配置
+   *
+   * @param {Object} [config={}] 配置
+   * @return {Array} 入口文件集合
+   */
   resolveProjectConf (config) {
-    const { srcDir } = this.options
+    let { srcDir } = this.options
 
     let files = []
     if (config.hasOwnProperty('pluginRoot')) {
-      const { pluginRoot } = config
-      const file = path.join(srcDir, pluginRoot, 'plugin.json')
+      let { pluginRoot } = config
+      let file = path.join(srcDir, pluginRoot, 'plugin.json')
       fs.existsSync(file) && files.push(file)
     }
 
     if (config.hasOwnProperty('main')) {
-      const { projectConfig } = this.options
+      let { projectConfig } = this.options
       if (projectConfig.hasOwnProperty('pluginRoot')) {
-        const { pluginRoot } = projectConfig
-        const file = path.join(srcDir, pluginRoot, config.main)
+        let { pluginRoot } = projectConfig
+        let file = path.join(srcDir, pluginRoot, config.main)
         fs.existsSync(file) && files.push(file)
       }
     }
@@ -136,7 +148,7 @@ export default class JSONResolver extends Resolver {
    * @return {Array} 页面集合
    */
   resolvePages (pages) {
-    const relativePath = path.dirname(this.file)
+    let relativePath = path.dirname(this.file)
 
     pages = pages.map((page) => {
       page = path.join(relativePath, page)
@@ -157,7 +169,7 @@ export default class JSONResolver extends Resolver {
    * 解析组件配置
    *
    * @param {Object} [config={}] 配置
-   * @return {Array} 组件结合
+   * @return {Array} 组件集合
    */
   resolveComponents (components) {
     let relativePath = path.dirname(this.file)

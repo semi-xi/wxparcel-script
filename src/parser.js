@@ -1,21 +1,14 @@
-import fs from 'fs-extra'
+import fs from 'fs'
 import path from 'path'
 import minimatch from 'minimatch'
 import omit from 'lodash/omit'
-import uniqBy from 'lodash/uniqBy'
-import isEmpty from 'lodash/isEmpty'
+import find from 'lodash/find'
+import filter from 'lodash/filter'
 import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'promise-waterfall'
 import OptionManager from './option-manager'
 import Assets from './assets'
 import Resolver from './resolver'
-
-/**
- * @typedef {Object} flowdata
- * @property {String} file
- * @property {String} source
- * @property {Array} dependencies
- */
 
 /**
  * 编译器
@@ -60,7 +53,7 @@ export class Parser {
    *
    * @param {String} file 文件位置
    */
-  compile (file) {
+  async compile (file) {
     let chunkOptions = {}
 
     if (typeof file === 'object') {
@@ -72,12 +65,19 @@ export class Parser {
       return Promise.resolve()
     }
 
-    let rule = this.matchRule(file, this.options.rules)
+    let rule = this.matchRule(file, this.options.rules) || {}
+    let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
     let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
-    let rollup = (flowdata) => {
-      let { source, dependencies } = flowdata
-      chunk.update({ content: source, dependencies, rule })
+    let content = fs.readFileSync(file)
+    chunk.update({ content })
 
+    let queue = [
+      () => this.transform(chunk, rule, loaders),
+      () => this.resolve(chunk)
+    ]
+
+    return waterfall(queue).then(() => {
+      let { dependencies } = chunk
       if (!Array.isArray(dependencies) || dependencies.length === 0) {
         return chunk
       }
@@ -85,11 +85,11 @@ export class Parser {
       let files = []
       dependencies.forEach((item) => {
         if (Assets.exists(item.dependency)) {
-          return
+          return chunk
         }
 
-        let { dependency, destination } = item
-        files.push({ file: dependency, destination })
+        let { type, dependency, destination } = item
+        files.push({ type, file: dependency, destination })
       })
 
       if (!Array.isArray(files) || files.length === 0) {
@@ -99,60 +99,23 @@ export class Parser {
       return this.multiCompile(files).then((chunks) => {
         return [chunk].concat(chunks)
       })
-    }
-
-    return this.convert(file, rule).then(rollup)
-  }
-
-  /**
-   * 将文件转换成 {flowdata}, 其中包括
-   * 编译后的文件内容和文件所需要的依赖
-   *
-   * @param {String} file 文件路径 (required)
-   * @param {Object} rule 编译规则 (optional)
-   * @returns {Promise} pormise
-   * @returns {flowdata} 流程数据
-   */
-  convert (file, rule) {
-    if (!rule) {
-      rule = this.matchRule(file, this.options.rules) || {}
-    }
-
-    /**
-     * 创建接口对象, 用于提供 loader 编译时创建新流程
-     */
-    let instance = new InstanceForTransform()
-    return readFilePromisify(file)
-      .then((buffer) => this.transform(buffer, file, rule, instance))
-      .then((buffer) => Resolver.resolve(buffer, file, rule, instance))
-      .then((flowdata) => {
-        let dependencies = [].concat(flowdata.dependencies, instance.dependencies)
-        flowdata.dependencies = uniqBy(dependencies, 'dependency')
-        return flowdata
-      })
+    })
   }
 
   /**
    * 编译代码
    *
-   * @param {String|Buffer} source 文件内容
-   * @param {String} file 文件路径
-   * @param {Object} rule 编译规则
-   * @param {InstanceForTransform} instance 流程接口对象
+   * @param {Chunk} chunk 代码片段
    * @returns {Promise} promise
-   * @returns {String} 编译后的内容
    */
-  transform (source, file, rule, instance) {
-    let loaders = []
-    if (!isEmpty(rule)) {
-      loaders = rule.loaders || []
-    }
+  transform (chunk, rule, loaders) {
+    let { file } = chunk
 
     /**
      * 没有 loader 不需要编译
      */
     if (loaders.length === 0) {
-      return Promise.resolve(source)
+      return Promise.resolve(chunk)
     }
 
     /**
@@ -165,14 +128,16 @@ export class Parser {
     let exclude = rule.exclude || []
     for (let i = exclude.length; i--;) {
       let pattern = exclude[i]
+
       if (pattern instanceof RegExp) {
         if (pattern.test(file)) {
-          return Promise.resolve(source)
+          return Promise.resolve(chunk)
         }
       } else {
         pattern = path.join(this.options.rootDir, pattern)
+
         if (minimatch(file, pattern)) {
-          return Promise.resolve(source)
+          return Promise.resolve(chunk)
         }
       }
     }
@@ -194,7 +159,7 @@ export class Parser {
      *  options: {}
      * }
      */
-    let taskQueue = loaders.map((loader) => (source) => {
+    let queue = loaders.map((loader) => () => {
       if (!loader.hasOwnProperty('use')) {
         return Promise.reject(new Error('Params use is not provided from loader'))
       }
@@ -208,7 +173,7 @@ export class Parser {
        * 所有 loader 都通过 default 形式暴露接口给编译器
        */
       let transformer = require(loader.use)
-      transformer = transformer.default || transformer
+      let transform = transformer.default || transformer
 
       /**
        * 因为 loader 为外部包, 因此这里为了不给外部包改变配置
@@ -216,15 +181,30 @@ export class Parser {
        */
       let loaderOptions = loader.options || {}
       let options = this.options.connect({ file, rule, options: loaderOptions })
-      return transformer(source, options, instance)
+
+      return transform(chunk.metadata, options).then((result) => {
+        let { code: content, map } = result
+        return chunk.update({ content, sourceMap: map })
+      })
     })
 
-    /**
-     * 因为流程中没有 source, 因此在主流程中头部任务插入
-     * 一个输入内容的任务
-     */
-    taskQueue.unshift(() => Promise.resolve(source))
-    return waterfall(taskQueue)
+    return waterfall(queue).then(() => chunk)
+  }
+
+  /**
+   * 解析代码
+   *
+   * @param {Chunk} chunk 代码片段
+   * @returns {Promise} promise
+   */
+  resolve (chunk) {
+    return new Promise((resolve) => {
+      let result = Resolver.resolve(chunk.metadata)
+      let { file, content, dependencies, map } = result
+      chunk.update({ file, content, dependencies, sourceMap: map })
+
+      resolve(chunk)
+    })
   }
 
   /**
@@ -241,8 +221,8 @@ export class Parser {
    * }
    */
   matchRule (file, rules = []) {
-    const handleFind = (rule) => {
-      const { test: pattern, ignore } = rule
+    let handleFind = (rule) => {
+      let { test: pattern, ignore } = rule
       if (pattern.test(file)) {
         if (ignore && inMatches(file, ignore)) {
           return null
@@ -252,58 +232,11 @@ export class Parser {
       }
     }
 
-    return rules.find(handleFind) || null
+    return find(rules, handleFind) || null
   }
 }
 
 export default new Parser()
-
-/**
- * 编译实例
- *
- * @class InstanceForTransform
- */
-class InstanceForTransform {
-  /**
-   * Creates an instance of InstanceForTransform.
-   */
-  constructor () {
-    /**
-     * 依赖集合
-     *
-     * @type {Array}
-     */
-    this.dependencies = []
-  }
-
-  /**
-   * 提交文件
-   *
-   * @param {String} file 被依赖的文件路径
-   * @param {String} destination 文件编译后存放的目的地
-   * @param {String} dependency 依赖文件路径
-   * @param {String} required 匹配到依赖的字符串
-   */
-  emitFile (file, destination, dependency, required) {
-    if (typeof file !== 'string') {
-      throw new TypeError('File is not a string or not be provided')
-    }
-
-    if (typeof destination !== 'string') {
-      throw new TypeError('Destination is not a string or not be provided')
-    }
-
-    if (typeof dependency !== 'string') {
-      throw new TypeError('Dependency is not a string or not be provided')
-    }
-
-    if (typeof required !== 'string') {
-      throw new TypeError('Required is not a string or not be provided')
-    }
-
-    this.dependencies.push({ file, destination, dependency, required })
-  }
-}
 
 /**
  * 是否命中其中一个正则
@@ -321,13 +254,3 @@ const inMatches = (string, regexps) => {
 
   return false
 }
-
-/**
- * 读取文件的 promise 形式
- *
- * @param {String} file 文件路径
- * @return {Promise}
- */
-const readFilePromisify = (file) => new Promise((resolve, reject) => {
-  fs.readFile(file, (error, source) => error ? reject(error) : resolve(source))
-})

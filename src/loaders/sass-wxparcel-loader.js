@@ -1,35 +1,37 @@
 import { render } from 'node-sass'
 
-const DEFAULTS_OPTIONS = {
-  outputStyle: 'compressed',
-  sourceComments: false,
-  sourceMap: false
-}
-
 /**
  * Sass 加载器
  *
  * @export
- * @param {String} source 代码块
+ * @param {Object} asset 资源对象
  * @param {Object} [options={}] 配置, 可参考 require('node-sass').redner 中的配置: https://github.com/sass/node-sass#options
  * @return {Promise}
  */
-export default function SassLoader (source, options) {
-  source = source.toString()
-
+export default function SassLoader (asset, options = {}) {
   return new Promise((resolve, reject) => {
-    let { file, options: SassOptions } = options
-    let params = { file, data: source }
-    options = Object.assign({}, DEFAULTS_OPTIONS, SassOptions, params)
+    let { content } = asset
+    let { file, options: sassOptions } = options
 
-    render(options, (error, source) => {
+    let data = content.toString()
+    let params = { file, data }
+
+    let defaultOptions = {
+      outputStyle: 'compressed',
+      sourceComments: false,
+      sourceMap: true
+    }
+
+    options = Object.assign({}, defaultOptions, sassOptions, params)
+
+    render(options, (error, result) => {
       if (error) {
         reject(error)
         return
       }
 
-      let { css: code } = source
-      resolve(Buffer.from(code))
+      let { css: code, map } = result
+      resolve({ code, map })
     })
   })
 }

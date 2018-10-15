@@ -1,7 +1,9 @@
 import fs from 'fs-extra'
 import path from 'path'
+import pick from 'lodash/pick'
+import cloneDeep from 'lodash/cloneDeep'
 import isPlainObject from 'lodash/isPlainObject'
-import omit from 'lodash/omit'
+import { ENTRY } from './constants/chunk-type'
 import optionManager from './option-manager'
 
 /**
@@ -13,7 +15,19 @@ import optionManager from './option-manager'
  */
 export class Chunk {
   /**
+   * 原始数据
+   *
+   * @type {Object}
+   * @readonly
+   */
+  get metadata () {
+    let metadata = pick(this, ['file', 'type', 'dependencies', 'content', 'sourceMap', 'rule', 'destination'])
+    return cloneDeep(metadata)
+  }
+
+  /**
    * Creates an instance of Chunk.
+   *
    * @param {String} file 文件名
    * @param {Object} [state={}] 状态
    * @param {OptionManager} [options=OptionManager] 配置管理器
@@ -51,6 +65,13 @@ export class Chunk {
     this.file = file
 
     /**
+     * 分片类型 [bundler|entry]
+     *
+     * @type {Menu}
+     */
+    this.type = state.type || ENTRY
+
+    /**
      * 依赖集合
      *
      * @type {Array}
@@ -63,6 +84,21 @@ export class Chunk {
      * @type {Buffer}
      */
     this.content = Buffer.from(state.content || '')
+
+    /**
+     * 代码映射表 SourceMap
+     *
+     * @type {Sourcemap}
+     */
+    this.sourceMap = null
+
+    if (options.sourceMap !== false) {
+      if (typeof state.sourceMap === 'string') {
+        this.sourceMap = JSON.parse(state.sourceMap)
+      } else if (typeof state.sourceMap === 'object') {
+        this.sourceMap = state.sourceMap
+      }
+    }
 
     let { rootDir, srcDir, outDir, npmDir, staticDir } = this.options
     let { rule, destination } = this.state = state
@@ -122,8 +158,13 @@ export class Chunk {
    * @param {Object} [props={}] 属性
    */
   update (props = {}) {
+    const { sourceMap: useSourceMap } = this.options
     if (props.hasOwnProperty('file') && typeof props.file === 'string') {
       this.file = props.file
+    }
+
+    if (props.hasOwnProperty('type') && typeof props.type === 'string') {
+      this.type = props.type
     }
 
     if (props.hasOwnProperty('dependencies') && Array.isArray(props.dependencies)) {
@@ -146,6 +187,16 @@ export class Chunk {
       }
     }
 
+    if (useSourceMap !== false) {
+      if (props.hasOwnProperty('sourceMap') && this.options.sourceMap !== false) {
+        if (typeof props.sourceMap === 'string') {
+          this.sourceMap = JSON.parse(props.sourceMap)
+        } else if (typeof props.sourceMap === 'object') {
+          this.sourceMap = props.sourceMap
+        }
+      }
+    }
+
     this.flushed = false
   }
 
@@ -155,9 +206,8 @@ export class Chunk {
    * @return {object} metadata 元数据
    */
   flush () {
-    let metadata = omit(this, ['flush'])
     this.flushed = true
-    return metadata
+    return this.metadata
   }
 
   /**

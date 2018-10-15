@@ -52,6 +52,7 @@
     "pretty-error": "^2.1.1",
     "promise-waterfall": "^0.1.0",
     "serve-static": "^1.13.2",
+    "source-map": "^0.7.3",
     "spritesheet-templates": "^10.2.2",
     "spritesmith": "^3.3.1",
     "strip-comment": "^1.1.3",

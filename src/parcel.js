@@ -1,5 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
+import filter from 'lodash/filter'
 import colors from 'colors'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
@@ -9,8 +10,10 @@ import map from 'lodash/map'
 import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
+import { BUNDLER } from './constants/chunk-type'
 import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
+import Bundler from './bundler'
 import Printer from './printer'
 import IgnoreFiles from './constants/ingore-files'
 import Package from '../package.json'
@@ -64,7 +67,7 @@ export default class Parcel {
 
     try {
       this.running = true
-      Printer.time()
+      const timer = Printer.timer()
 
       this.hook('async')()
       await this.hook('before')()
@@ -73,7 +76,8 @@ export default class Parcel {
       await this.hook('beforeTransform')(instance)
 
       let { rootDir, miniprogramRoot, pluginRoot } = this.options
-      let entryModule = JSONResolver.prototype.findModule('app', miniprogramRoot)
+      let resolver = new JSONResolver({})
+      let entryModule = resolver.findModule('app', miniprogramRoot)
       let entries = entryModule.files || []
 
       if (pluginRoot) {
@@ -89,8 +93,10 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
-      let stats = await this.flush(chunks)
-      stats.spendTime = Printer.timeEnd()
+      let bundles = await Bundler.bundle(chunks)
+
+      let stats = await this.flush(bundles)
+      stats.spendTime = timer.end()
 
       this.printStats(stats)
     } catch (error) {
@@ -114,23 +120,49 @@ export default class Parcel {
     let transform = async (file) => {
       try {
         this.running = true
-        Printer.time()
+        const timer = Printer.timer()
 
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
 
+        /**
+         * 找到相应的 rule 与对应的 loaders 这样才能够遍历文件与其依赖的文件
+         */
         let rule = Parser.matchRule(file, this.options.rules)
+        let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
         let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
-        let flowdata = await Parser.convert(file)
-        let { source, dependencies } = flowdata
-        chunk.update({ content: source, dependencies, rule })
 
-        let files = dependencies.map((item) => item.dependency)
+        /**
+         * Chunk 不会自己读取内容也不会自动更新新内容
+         * 因此这里需要手动 update 内容
+         */
+        let content = fs.readFileSync(file)
+        chunk.update({ content })
+        await Parser.transform(chunk, rule, loaders)
+
+        let files = chunk.dependencies.map((item) => item.dependency)
         let chunks = await Parser.multiCompile(files)
-        chunks = [chunk].concat(chunks)
 
+        /**
+         * 找出对应的打包器, 这样就能简单直接地进行
+         * 相应文件类型的打包, 若找不到对应的打包器
+         * 则说明该文件可能不需要打包, 则直接进行输
+         * 出即可
+         */
+        let { regexp, bundler: MatchedBundler } = Bundler.matchBundler(chunk.destination) || {}
+        if (MatchedBundler) {
+          chunks = filter(Assets.chunks, ({ destination }) => regexp.test(destination))
+
+          const bundler = new MatchedBundler(chunks)
+          chunks = await bundler.bundle()
+        } else {
+          chunks = [chunk].concat(chunks)
+        }
+
+        chunks = [].concat(chunks, instance.chunks)
         let stats = await this.flush(chunks)
-        stats.spendTime = Printer.timeEnd()
+
+        stats.spendTime = timer.end()
         this.printStats(stats)
       } catch (error) {
         Printer.error(error)
@@ -222,17 +254,26 @@ export default class Parcel {
    * @return {Promise}
    */
   flush (chunks) {
+    const { sourceMap: useSourceMap } = this.options
     if (!Array.isArray(chunks) || chunks.length === 0) {
       return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
     }
 
     let promises = chunks.map((chunk) => {
-      let { destination, content } = chunk.flush()
+      let { destination, content, sourceMap } = chunk.flush()
+      content = stripBOM(content)
+
+      if (useSourceMap !== false && chunk.type === BUNDLER && sourceMap) {
+        sourceMap = JSON.stringify(sourceMap)
+
+        let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
+        content = content + '\n' + base64SourceMap
+      }
 
       return new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, stripBOM(content), 'utf8'),
+          fs.writeFile.bind(fs, destination, content, 'utf8'),
           fs.stat.bind(fs, destination)
         ]
 

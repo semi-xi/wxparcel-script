@@ -17,8 +17,9 @@ import OptionManager from '../option-manager'
  */
 export class Resolver {
   /**
-   * Creates an instance of Resolver.
-   * @param {OptionManager} [options=OptionManager] 配置管理器
+   * Creates an instance of Resolver
+   * .
+   * @param {OptionManager} [=OptionManager] 配置管理器
    * @memberof Resolver
    */
   constructor (options = OptionManager) {
@@ -30,7 +31,7 @@ export class Resolver {
     this.options = options
 
     /**
-     * 解析器结合
+     * 解析器集合
      *
      * @type {Array}
      */
@@ -64,12 +65,12 @@ export class Resolver {
   /**
    * 解析文件
    *
-   * @param {Buffer} source 文件内容
-   * @param {String} file 文件名称
-   * @param {Object} instance 编译器实例
+   * @param {Object} asset 资源对象
+   * @param {Object} options 配置
+   * @return {Object} 新的 Chunk 信息
    */
-  resolve (source, file, rule, instance) {
-    const { resolvers } = this
+  resolve (asset, options = this.options) {
+    const { file, content, rule } = asset
     const extname = rule.extname || '.' + path.extname(file)
 
     /**
@@ -85,25 +86,28 @@ export class Resolver {
       let pattern = exclude[i]
       if (pattern instanceof RegExp) {
         if (pattern.test(file)) {
-          return { file, source, dependencies: [] }
+          return { file, content, dependencies: [] }
         }
       } else {
-        pattern = path.join(this.options.rootDir, pattern)
+        pattern = path.join(options.rootDir, pattern)
+
         if (minimatch(file, pattern)) {
-          return { file, source, dependencies: [] }
+          return { file, content, dependencies: [] }
         }
       }
     }
 
+    let resolvers = this.resolvers || []
     for (let i = 0, l = resolvers.length; i < l; i++) {
       let { regexp, resolver: Resolver } = resolvers[i]
+
       if (regexp.test(extname)) {
-        let resolver = new Resolver(source, file, instance, this.options)
+        let resolver = new Resolver(asset, options)
         return resolver.resolve()
       }
     }
 
-    return { file, source, dependencies: [] }
+    return { file, content, dependencies: [] }
   }
 }
 

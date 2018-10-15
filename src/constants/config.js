@@ -40,18 +40,7 @@ let plugins = [
   })
 ]
 
-if (process.env.NODE_ENV === 'development') {
-  plugins.push(new DevServerPlugin())
-}
-
-if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
-  jsRules[0].loaders.push({
-    use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-    options: {}
-  })
-}
-
-export default Object.defineProperties({ setRule, addPlugin, delPlugin }, {
+let config = Object.defineProperties({ setRule, addPlugin, delPlugin }, {
   rules: {
     get: () => [...jsRules, ...wxssRules]
   },
@@ -59,6 +48,20 @@ export default Object.defineProperties({ setRule, addPlugin, delPlugin }, {
     get: () => [...plugins]
   }
 })
+
+if (process.env.NODE_ENV === 'development') {
+  plugins.push(new DevServerPlugin())
+}
+
+if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
+  jsRules[0].loaders.push({
+    use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
+    for: 'bundler',
+    options: {}
+  })
+}
+
+export default config
 
 function setRule (name, callback) {
   switch (name) {

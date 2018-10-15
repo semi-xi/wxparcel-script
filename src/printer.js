@@ -33,13 +33,6 @@ export class Printer {
      * @type {Array}
      */
     this.layzedMessages = []
-
-    /**
-     * 起始时间
-     *
-     * @type {Number}
-     */
-    this.startTime = NaN
   }
 
   /**
@@ -138,24 +131,20 @@ export class Printer {
   }
 
   /**
-   * 开始计时
+   * 计时器
+   * @return {Function} 结束方法
    */
-  time () {
-    this.startTime = Date.now()
-  }
+  timer () {
+    let startTime = Date.now()
 
-  /**
-   * 结束计时并返回所花时间
-   * @return {Number} 所花时间
-   */
-  timeEnd () {
-    if (!this.startTime) {
-      this.warn('Please excute \'time()\' first')
+    return {
+      reset () {
+        startTime = Date.now()
+      },
+      end () {
+        return Date.now() - startTime
+      }
     }
-
-    let spendTime = Date.now() - this.startTime
-    this.startTime = NaN
-    return spendTime
   }
 
   /**

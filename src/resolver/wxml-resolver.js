@@ -1,4 +1,5 @@
 import path from 'path'
+import map from 'lodash/map'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comment'
@@ -27,31 +28,32 @@ export default class WXMLResolver extends Resolver {
   resolve () {
     const { staticDir, pubPath } = this.options
 
-    this.source = this.source.toString()
-    this.source = stripComments(this.source)
+    let source = this.source.toString()
+    source = stripComments(source)
 
-    const covertImageOptions = {
+    let covertImageOptions = {
       convertDestination: this.convertAssetsDestination.bind(this)
     }
 
-    const wxsDeps = this.resolveDependencies(WXS_REGEPX)
-    const templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
-    const includeDeps = this.resolveDependencies(INCLUDE_REGEPX)
-    const imageDeps = this.resolveDependencies(IMAGE_REGEXP, covertImageOptions)
-    const coverImageDeps = this.resolveDependencies(COVER_IMAGE_REGEXP, covertImageOptions)
+    const wxsDeps = this.resolveDependencies(source, WXS_REGEPX)
+    const templateDeps = this.resolveDependencies(source, TEMPLATE_REGEPX)
+    const includeDeps = this.resolveDependencies(source, INCLUDE_REGEPX)
+    const imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, covertImageOptions)
+    const coverImageDeps = this.resolveDependencies(source, COVER_IMAGE_REGEXP, covertImageOptions)
 
     let dependencies = [].concat(wxsDeps, templateDeps, includeDeps, imageDeps, coverImageDeps)
-    dependencies = dependencies.map((item) => {
+    dependencies = map(dependencies, (item) => {
       let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, IMAGE_REGEXP)
-      this.source = replacement(this.source, code, url, COVER_IMAGE_REGEXP)
+      source = replacement(source, code, url, IMAGE_REGEXP)
+      source = replacement(source, code, url, COVER_IMAGE_REGEXP)
+
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(this.source)
-    return { file: this.file, source: this.source, dependencies }
+    this.source = Buffer.from(source)
+    return { file: this.file, content: this.source, dependencies }
   }
 }

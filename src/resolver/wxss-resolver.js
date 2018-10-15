@@ -22,13 +22,13 @@ export default class WXSSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, pubPath } = this.options
+    let { staticDir, pubPath } = this.options
 
-    this.source = this.source.toString()
-    this.source = stripCssComments(this.source)
+    let source = this.source.toString()
+    source = stripCssComments(source)
 
-    let importDeps = this.resolveDependencies(IMPORT_REGEXP)
-    let imageDeps = this.resolveDependencies(IMAGE_REGEXP, {
+    let importDeps = this.resolveDependencies(source, IMPORT_REGEXP)
+    let imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, {
       convertDestination: this.convertAssetsDestination.bind(this)
     })
 
@@ -38,11 +38,11 @@ export default class WXSSResolver extends Resolver {
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, IMAGE_REGEXP)
+      source = replacement(source, code, url, IMAGE_REGEXP)
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(this.source)
-    return { file: this.file, source: this.source, dependencies }
+    this.source = Buffer.from(source)
+    return { file: this.file, content: this.source, dependencies }
   }
 }

@@ -3,6 +3,7 @@ import defaults from 'lodash/defaults'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import findIndex from 'lodash/findIndex'
+import { BUNDLE } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import { genFileSync } from './share'
 
@@ -15,33 +16,24 @@ import { genFileSync } from './share'
 export class Resolver {
   /**
    * Creates an instance of JSResolver.
-   * @param {String} source 代码
-   * @param {String} file 文件名
-   * @param {Object} instance 实例
+   *
+   * @param {Object} asset 资源对象
    * @param {OptionManager} [options=OptionManager] 配置管理器
-   * @memberof JSResolver
    */
-  constructor (source, file, instance, options = OptionManager) {
+  constructor (asset, options = OptionManager) {
     /**
      * 代码
      *
-     * @type {String}
+     * @type {Buffer}
      */
-    this.source = source
+    this.source = asset.content
 
     /**
      * 文件路径
      *
      * @type {String}
      */
-    this.file = file
-
-    /**
-     * 编译实例
-     *
-     * @type {InstanceForTransform}
-     */
-    this.instance = instance
+    this.file = asset.file
 
     /**
      * 配置管理器
@@ -57,7 +49,7 @@ export class Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    return { file: this.file, source: this.source, dependencies: [] }
+    return { file: this.file, content: this.source, dependencies: [] }
   }
 
   /**
@@ -69,16 +61,17 @@ export class Resolver {
    * @param {Function} [options.convertDestination=this.convertDestination] 转换目标路径
    * @return {Array} 依赖
    */
-  resolveDependencies (regexp, options = {}) {
+  resolveDependencies (source, regexp, options = {}) {
     options = defaults({}, options, {
+      type: BUNDLE,
       convertDependencyPath: this.convertDependencyPath.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })
 
-    const relativeTo = path.dirname(this.file)
-    const { convertDependencyPath, convertDestination } = options
+    let relativeTo = path.dirname(this.file)
+    let { convertDependencyPath, convertDestination } = options
 
-    let code = this.source.toString()
+    let code = source
     let dependencies = []
     while (true) {
       let match = regexp.exec(code)
@@ -96,7 +89,7 @@ export class Resolver {
 
       if (findIndex(dependencies, { file: this.file, dependency, required, code: all }) === -1) {
         let destination = convertDestination(dependency, this.options)
-        let item = { file: this.file, dependency, destination, required, code: all }
+        let item = { type: options.type, file: this.file, dependency, destination, required, code: all }
         dependencies.push(item)
       }
     }
@@ -112,7 +105,7 @@ export class Resolver {
    * @return {String} 依赖路径
    */
   convertDependencyPath (required, relativeTo) {
-    const { srcDir, rootDir } = this.options
+    let { srcDir, rootDir } = this.options
     switch (required.charAt(0)) {
       case '~':
         return path.join(srcDir, required.substr(1))
@@ -131,7 +124,7 @@ export class Resolver {
    * @return {String} 目标路径
    */
   convertDestination (file) {
-    const { rootDir, srcDir, outDir } = this.options
+    let { rootDir, srcDir, outDir } = this.options
 
     /**
      * windows 下 path 存在多个反斜杠
@@ -150,7 +143,7 @@ export class Resolver {
    * @return {String} 静态目标路径
    */
   convertAssetsDestination (file) {
-    const { staticDir } = this.options
+    let { staticDir } = this.options
 
     let extname = path.extname(file)
     let basename = path.basename(file).replace(extname, '')
@@ -165,7 +158,7 @@ export class Resolver {
    * @return {String} 公共路径
    */
   convertPublicPath (file) {
-    const { staticDir, pubPath } = this.options
+    let { staticDir, pubPath } = this.options
     /**
      * 这里使用 `/` 而非 `path.sep`, 但必须要过滤 `path.sep`
      * 以防 windows 路径与 web 路径不统一
