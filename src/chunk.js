@@ -92,10 +92,12 @@ export class Chunk {
      */
     this.sourceMap = null
 
-    if (typeof state.sourceMap === 'string') {
-      this.sourceMap = JSON.parse(state.sourceMap)
-    } else if (typeof state.sourceMap === 'object') {
-      this.sourceMap = state.sourceMap
+    if (options.sourceMap !== false) {
+      if (typeof state.sourceMap === 'string') {
+        this.sourceMap = JSON.parse(state.sourceMap)
+      } else if (typeof state.sourceMap === 'object') {
+        this.sourceMap = state.sourceMap
+      }
     }
 
     let { rootDir, srcDir, outDir, npmDir, staticDir } = this.options
@@ -156,6 +158,7 @@ export class Chunk {
    * @param {Object} [props={}] 属性
    */
   update (props = {}) {
+    const { sourceMap: useSourceMap } = this.options
     if (props.hasOwnProperty('file') && typeof props.file === 'string') {
       this.file = props.file
     }
@@ -184,11 +187,13 @@ export class Chunk {
       }
     }
 
-    if (props.hasOwnProperty('sourceMap') && this.options.sourceMap !== false) {
-      if (typeof props.sourceMap === 'string') {
-        this.sourceMap = JSON.parse(props.sourceMap)
-      } else if (typeof props.sourceMap === 'object') {
-        this.sourceMap = props.sourceMap
+    if (useSourceMap !== false) {
+      if (props.hasOwnProperty('sourceMap') && this.options.sourceMap !== false) {
+        if (typeof props.sourceMap === 'string') {
+          this.sourceMap = JSON.parse(props.sourceMap)
+        } else if (typeof props.sourceMap === 'object') {
+          this.sourceMap = props.sourceMap
+        }
       }
     }
 

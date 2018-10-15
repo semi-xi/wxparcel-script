@@ -118,7 +118,7 @@ export class OptionManager {
      *
      * @type {String|Boolean}
      */
-    this.sourceMap = options.sourceMap || false
+    this.sourceMap = options.sourceMap || process.env.NODE_ENV === 'development'
 
     /**
      * 插件集合

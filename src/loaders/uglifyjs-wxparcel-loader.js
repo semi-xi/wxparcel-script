@@ -12,14 +12,14 @@ import UglifyJS from 'uglify-js'
 export default function UglifyjsLoader (asset, options = {}) {
   return new Promise((resolve, reject) => {
     let { file, content, sourceMap } = asset
-    let { options: uglifyOptions } = options
+    let { options: uglifyOptions, sourceMap: useSourceMap } = options
 
     content = content.toString()
 
     let defaultOptions = {}
-    if (sourceMap) {
+    if (useSourceMap !== false && sourceMap) {
       defaultOptions.sourceMap = {
-        content: sourceMap.stringify()
+        content: sourceMap
       }
     }
 

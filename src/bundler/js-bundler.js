@@ -78,15 +78,20 @@ export default class JSBundler extends Bundler {
    * @return {Array[Chunk]} 新的代码片段实例集合
    */
   async bundle () {
-    let { outDir, rules } = this.options
+    let { outDir, rules, sourceMap: useSourceMap } = this.options
     let bundleFilename = 'bundler.js'
 
     let { code, sourceMapNode: node } = await this.wrapBundler(this.chunks, bundleFilename)
     let loaderCode = PreludeCode.toString()
     code = loaderCode + code
 
-    node.prepend(loaderCode)
-    let sourceMap = node.toStringWithSourceMap({ file: bundleFilename })
+    let sourceMap = null
+    let srouceMapResult = null
+    if (useSourceMap !== false) {
+      node.prepend(loaderCode)
+      sourceMap = node.toStringWithSourceMap({ file: bundleFilename })
+      srouceMapResult = sourceMap.map.toString()
+    }
 
     let bundleContent = Buffer.from(code)
     let bundleDestination = path.join(outDir, bundleFilename)
@@ -96,7 +101,7 @@ export default class JSBundler extends Bundler {
       content: bundleContent,
       destination: bundleDestination,
       rule: Parser.matchRule(bundleDestination, rules),
-      sourceMap: sourceMap.map.toString()
+      sourceMap: srouceMapResult
     })
 
     let entryChunks = filter(this.chunks, (chunk) => chunk.type === ENTRY)
@@ -129,14 +134,18 @@ export default class JSBundler extends Bundler {
    * @return {String} 包裹后的代码块
    */
   async wrapBundler (chunks, file) {
+    let { sourceMap: useSourceMap } = this.options
     let { code, sourceMapNode: node } = await this.wrapModules(chunks, file)
 
     let openCode = '('
     let closeCode = ', {})'
 
     code = openCode + code + closeCode
-    node.prepend(openCode)
-    node.add(closeCode)
+
+    if (useSourceMap !== false && node) {
+      node.prepend(openCode)
+      node.add(closeCode)
+    }
 
     return { code, sourceMapNode: node }
   }
@@ -148,6 +157,8 @@ export default class JSBundler extends Bundler {
    * @return {String} 包裹后的代码块
    */
   async wrapModules (chunks, file) {
+    let { sourceMap: useSourceMap } = this.options
+
     let codes = []
     let nodes = []
 
@@ -162,9 +173,13 @@ export default class JSBundler extends Bundler {
     let openCode = '{'
     let closeCode = '}'
     let code = openCode + trimEnd(codes.join(''), ',') + closeCode
-    let node = new SourceNode(null, null, file, nodes)
-    node.prepend(openCode)
-    node.add(closeCode)
+
+    let node = null
+    if (useSourceMap !== false) {
+      node = new SourceNode(null, null, file, nodes)
+      node.prepend(openCode)
+      node.add(closeCode)
+    }
 
     return { code, sourceMapNode: node }
   }
@@ -204,11 +219,12 @@ export default class JSBundler extends Bundler {
    * @return {String} 包裹后的代码块
    */
   async wrapCode (name, code, dependencies, map) {
+    let { sourceMap: useSourceMap } = this.options
     let openCode = `${this.wrapQuote(name)}: [function(require,module,exports) {\n`
     let closeCode = `\n}, ${JSON.stringify(dependencies)}],\n`
 
     let node = null
-    if (map) {
+    if (useSourceMap !== false && map) {
       node = await getSourceNode(code, map)
       node.prepend(openCode)
       node.add(closeCode)

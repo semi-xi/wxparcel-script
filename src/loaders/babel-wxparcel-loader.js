@@ -13,7 +13,7 @@ import { transform } from 'babel-core'
 export default function BabelLoader (asset, options) {
   return new Promise((resolve) => {
     let { file, content } = asset
-    let { options: babelOptions } = options
+    let { options: babelOptions, sourceMap: useSourceMap } = options
     let babelrc = path.join(options.rootDir, '.babelrc')
 
     content = content.toString()
@@ -21,10 +21,19 @@ export default function BabelLoader (asset, options) {
     if (fs.existsSync(babelrc)) {
       let defaultOptions = {
         comments: false,
-        sourceFileName: file.replace(options.srcDir + '/', ''),
+        sourceRoot: 'local',
+        sourceFileName: file.replace(options.srcDir + path.sep, '').replace(/\\/g, '/'),
         sourceMaps: true,
         extends: babelrc,
         babelrc: true
+      }
+
+      if (useSourceMap !== false) {
+        Object.assign(defaultOptions, {
+          sourceRoot: 'local',
+          sourceFileName: file.replace(options.srcDir + path.sep, '').replace(/\\/g, '/'),
+          sourceMaps: true
+        })
       }
 
       babelOptions = Object.assign({}, defaultOptions, babelOptions)

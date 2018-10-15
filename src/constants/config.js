@@ -61,10 +61,6 @@ if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'productio
   })
 }
 
-// if (process.env.NODE_ENV !== 'production') {
-config.sourceMap = 'inline'
-// }
-
 export default config
 
 function setRule (name, callback) {

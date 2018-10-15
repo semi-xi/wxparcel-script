@@ -254,6 +254,7 @@ export default class Parcel {
    * @return {Promise}
    */
   flush (chunks) {
+    const { sourceMap: useSourceMap } = this.options
     if (!Array.isArray(chunks) || chunks.length === 0) {
       return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
     }
@@ -262,7 +263,7 @@ export default class Parcel {
       let { destination, content, sourceMap } = chunk.flush()
       content = stripBOM(content)
 
-      if (chunk.type === BUNDLER && sourceMap) {
+      if (useSourceMap !== false && chunk.type === BUNDLER && sourceMap) {
         sourceMap = JSON.stringify(sourceMap)
 
         let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
