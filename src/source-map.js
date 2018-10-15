@@ -12,11 +12,15 @@ export const getConsumer = async (sourceMap) => {
   }
 
   sourceMap = typeof sourceMap === 'string' ? JSON.parse(sourceMap) : sourceMap
+  if (!sourceMap) {
+    return null
+  }
+
   let consumer = await new SourceMapConsumer(sourceMap)
   return consumer
 }
 
 export const getSourceNode = async (content, map) => {
   let consumer = await getConsumer(map)
-  return SourceNode.fromStringWithSourceMap(content, consumer)
+  return consumer && SourceNode.fromStringWithSourceMap(content, consumer)
 }

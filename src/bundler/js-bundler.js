@@ -155,7 +155,7 @@ export default class JSBundler extends Bundler {
     await Promise.all(tasks).then((response) => {
       response.forEach(({ code, sourceMapNode: node }) => {
         codes.push(code)
-        nodes.push(node)
+        node && nodes.push(node)
       })
     })
 
@@ -207,9 +207,12 @@ export default class JSBundler extends Bundler {
     let openCode = `${this.wrapQuote(name)}: [function(require,module,exports) {\n`
     let closeCode = `\n}, ${JSON.stringify(dependencies)}],\n`
 
-    let node = await getSourceNode(code, map)
-    node.prepend(openCode)
-    node.add(closeCode)
+    let node = null
+    if (map) {
+      node = await getSourceNode(code, map)
+      node.prepend(openCode)
+      node.add(closeCode)
+    }
 
     code = openCode + code + closeCode
     return { code, sourceMapNode: node }

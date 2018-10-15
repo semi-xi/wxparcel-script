@@ -25,7 +25,7 @@ export default class JSResolver extends Resolver {
    * @param {OptionManager} [options=OptionManager] 配置管理器
    */
   constructor (asset, options = OptionManager) {
-    super(asset, options = OptionManager)
+    super(asset, options)
 
     /**
      * 模块集合
@@ -42,6 +42,7 @@ export default class JSResolver extends Resolver {
    */
   resolve () {
     const { pubPath, staticDir } = this.options
+
     let source = this.source.toString()
     let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
       convertDependencyPath: this.convertRelative.bind(this),

@@ -17,8 +17,10 @@ export default function BabelLoader (asset, options) {
     let babelrc = path.join(options.rootDir, '.babelrc')
 
     content = content.toString()
+
     if (fs.existsSync(babelrc)) {
       let defaultOptions = {
+        comments: false,
         sourceFileName: file.replace(options.srcDir + '/', ''),
         sourceMaps: true,
         extends: babelrc,

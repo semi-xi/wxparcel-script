@@ -3,7 +3,7 @@ import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
 import JSBundler from './js-bundler'
-import { BUNDLE } from '../constants/chunk-type'
+import { BUNDLER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
@@ -53,7 +53,7 @@ export class Bundler {
     let bundledChunks = []
     let bundleTasks = this.bundlers.map(({ regexp, bundler: Bundler }) => {
       let targetChunks = filter(chunks, (chunk) => {
-        return chunk.type === BUNDLE && regexp.test(chunk.destination)
+        return regexp.test(chunk.destination)
       })
 
       /**
@@ -66,13 +66,12 @@ export class Bundler {
       return bundler.bundle()
     })
 
-    let resultChunks = await Promise.all(bundleTasks)
-    bundledChunks = bundledChunks.concat(resultChunks)
+    bundledChunks = await Promise.all(bundleTasks)
     bundledChunks = flatten(bundledChunks)
 
     let transformTasks = bundledChunks.map((chunk) => {
       let rule = chunk.rule || {}
-      let loaders = filter(rule.loaders, (loader) => loader.for === 'bundler')
+      let loaders = filter(rule.loaders, (loader) => loader.for === BUNDLER)
       return Parser.transform(chunk, rule, loaders)
     })
 

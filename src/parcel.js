@@ -10,6 +10,7 @@ import map from 'lodash/map'
 import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
+import { BUNDLER } from './constants/chunk-type'
 import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
 import Bundler from './bundler'
@@ -75,7 +76,8 @@ export default class Parcel {
       await this.hook('beforeTransform')(instance)
 
       let { rootDir, miniprogramRoot, pluginRoot } = this.options
-      let entryModule = JSONResolver.prototype.findModule('app', miniprogramRoot)
+      let resolver = new JSONResolver({})
+      let entryModule = resolver.findModule('app', miniprogramRoot)
       let entries = entryModule.files || []
 
       if (pluginRoot) {
@@ -116,6 +118,7 @@ export default class Parcel {
     }
 
     let transform = async (file) => {
+      console.log(file)
       try {
         this.running = true
         const timer = Printer.timer()
@@ -124,12 +127,11 @@ export default class Parcel {
         await this.hook('beforeTransform')(instance)
 
         let rule = Parser.matchRule(file, this.options.rules)
+        let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
         let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
-        let flowdata = await Parser.convert(file)
-        let { source, dependencies } = flowdata
-        chunk.update({ content: source, dependencies, rule })
+        await Parser.transform(chunk, rule, loaders)
 
-        let files = dependencies.map((item) => item.dependency)
+        let files = chunk.dependencies.map((item) => item.dependency)
         let chunks = await Parser.multiCompile(files)
 
         let { regexp, bundler: MatchedBundler } = Bundler.matchBundler(chunk.destination) || {}
@@ -137,7 +139,7 @@ export default class Parcel {
           chunks = filter(Assets.chunks, ({ destination }) => regexp.test(destination))
 
           const bundler = new MatchedBundler(chunks)
-          chunks = bundler.bundle()
+          chunks = await bundler.bundle()
         } else {
           chunks = [chunk].concat(chunks)
         }
@@ -243,11 +245,14 @@ export default class Parcel {
 
     let promises = chunks.map((chunk) => {
       let { destination, content, sourceMap } = chunk.flush()
+      content = stripBOM(content)
 
-      sourceMap = JSON.stringify(sourceMap)
-      let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
+      if (chunk.type === BUNDLER && sourceMap) {
+        sourceMap = JSON.stringify(sourceMap)
 
-      content = stripBOM(content) + '\n' + base64SourceMap
+        let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
+        content = content + '\n' + base64SourceMap
+      }
 
       return new Promise((resolve, reject) => {
         let taskQueue = [
