@@ -94,9 +94,9 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
-      let bundles = await Bundler.bundle(chunks)
+      // let bundles = await Bundler.bundle(chunks)
 
-      let stats = await this.flush(bundles)
+      let stats = await this.flush(chunks)
       stats.spendTime = timer.end()
 
       this.printStats(stats)
