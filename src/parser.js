@@ -127,7 +127,7 @@ export class Parser {
    * @returns {Promise} promise
    */
   transform (chunk, rule, loaders) {
-    let { file } = chunk
+    const { file } = chunk
 
     /**
      * 没有 loader 不需要编译
@@ -152,7 +152,8 @@ export class Parser {
           return Promise.resolve(chunk)
         }
       } else {
-        pattern = path.join(this.options.rootDir, pattern)
+        const { rootDir } = this.options
+        pattern = path.join(rootDir, pattern)
 
         if (minimatch(file, pattern)) {
           return Promise.resolve(chunk)

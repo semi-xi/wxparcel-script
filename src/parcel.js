@@ -77,6 +77,7 @@ export default class Parcel {
 
       let { rootDir, miniprogramRoot, pluginRoot } = this.options
       let resolver = new JSONResolver({})
+
       let entryModule = resolver.findModule('app', miniprogramRoot)
       let entries = entryModule.files || []
 
@@ -94,10 +95,6 @@ export default class Parcel {
 
       let chunks = await Parser.multiCompile(entries)
       let bundles = await Bundler.bundle(chunks)
-
-      bundles.forEach((chunk) => {
-        console.log(chunk.file, chunk.type)
-      })
 
       let stats = await this.flush(bundles)
       stats.spendTime = timer.end()
