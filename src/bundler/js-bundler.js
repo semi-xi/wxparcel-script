@@ -105,7 +105,6 @@ export default class JSBundler extends Bundler {
     })
 
     let entryChunks = filter(this.chunks, (chunk) => chunk.type === ENTRY)
-
     entryChunks = map(entryChunks, ({ file, content, destination, ...otherProps }) => {
       let id = this._remember(destination)
 

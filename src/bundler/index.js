@@ -3,7 +3,7 @@ import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
 import JSBundler from './js-bundler'
-import { BUNDLER } from '../constants/chunk-type'
+import { BUNDLER, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
@@ -53,7 +53,7 @@ export class Bundler {
     let bundledChunks = []
     let bundleTasks = this.bundlers.map(({ regexp, bundler: Bundler }) => {
       let targetChunks = filter(chunks, (chunk) => {
-        return regexp.test(chunk.destination)
+        return chunk.type !== SCATTER && regexp.test(chunk.destination)
       })
 
       /**
