@@ -73,7 +73,9 @@ export default class Parcel {
       await this.hook('beforeTransform')(instance)
 
       let { rootDir, miniprogramRoot, pluginRoot } = this.options
-      let entryModule = JSONResolver.prototype.findModule('app', miniprogramRoot)
+      let resolver = new JSONResolver({})
+
+      let entryModule = resolver.findModule('app', miniprogramRoot)
       let entries = entryModule.files || []
 
       if (pluginRoot) {
