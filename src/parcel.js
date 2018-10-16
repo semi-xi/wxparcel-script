@@ -10,7 +10,7 @@ import map from 'lodash/map'
 import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
-import { BUNDLER } from './constants/chunk-type'
+import { BUNDLER, SCATTER } from './constants/chunk-type'
 import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
 import Bundler from './bundler'
@@ -263,7 +263,7 @@ export default class Parcel {
       let { destination, content, sourceMap } = chunk.flush()
       content = stripBOM(content)
 
-      if (useSourceMap !== false && chunk.type === BUNDLER && sourceMap) {
+      if (useSourceMap !== false && (chunk.type === BUNDLER || chunk.type === SCATTER) && sourceMap) {
         sourceMap = JSON.stringify(sourceMap)
 
         let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
