@@ -2,6 +2,7 @@ import path from 'path'
 import Module from 'module'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
+import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import { SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
@@ -44,6 +45,8 @@ export default class JSResolver extends Resolver {
     const { pubPath, staticDir } = this.options
 
     let source = this.source.toString()
+    source = stripComments(source)
+
     let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
       convertDependencyPath: this.convertRelative.bind(this),
       convertDestination: this.convertDestination.bind(this)
