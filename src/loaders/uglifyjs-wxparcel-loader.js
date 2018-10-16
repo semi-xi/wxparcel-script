@@ -1,5 +1,5 @@
 import defaultsDeep from 'lodash/defaultsDeep'
-import UglifyJS from 'uglify-es'
+import UglifyJS from 'uglify-js'
 import colors from 'colors'
 
 /**

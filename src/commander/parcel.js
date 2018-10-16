@@ -1,10 +1,9 @@
 import fs from 'fs-extra'
 import path from 'path'
 import program from 'commander'
-import colors from 'colors'
-import PrettyError from 'pretty-error'
 import OptionManager from '../option-manager'
 import Parcel from '../parcel'
+import Logger from '../logger'
 
 /**
  * 执行编译流程
@@ -12,7 +11,7 @@ import Parcel from '../parcel'
  * @param {Object} [options={}] 配置
  * @param {String} options.config 配置文件
  */
-const run = async function (options = {}) {
+const run = async (options = {}) => {
   let { config: configFile } = options
 
   if (!configFile) {
@@ -46,11 +45,75 @@ const run = async function (options = {}) {
    * 是否监听文件
    */
   if (options.watch) {
-    PrettyError.start()
-
     OptionManager.watching = true
     parcel.watch()
   }
+}
+
+/**
+ * Start Action
+ *
+ * @param {Object} [options={}] 配置
+ * @param {String} options.config 配置文件
+ */
+const startAction = async (options = {}) => {
+  try {
+    let { config, env } = options
+
+    switch (env) {
+      case 'prod':
+      case 'product':
+      case 'production': {
+        process.env.NODE_ENV = 'production'
+        break
+      }
+
+      case 'test':
+      case 'unitest':
+      case 'prerelease': {
+        process.env.NODE_ENV = 'prerelease'
+        break
+      }
+
+      case 'dev':
+      case 'develop':
+      case 'development':
+      default: {
+        process.env.NODE_ENV = 'development'
+        break
+      }
+    }
+
+    if (!config) {
+      config = path.join(__dirname, '../constants/config.js')
+    }
+
+    if (!path.isAbsolute(config)) {
+      config = path.join(OptionManager.rootDir, config)
+    }
+
+    if (!fs.existsSync(config)) {
+      throw new Error(`Config file is not found, please ensure config file exists. ${config}`)
+    }
+
+    options.config = config
+    options.watch = options.hasOwnProperty('watch')
+
+    await run(options)
+  } catch (error) {
+    Logger.error(error)
+  }
+}
+
+/**
+ * Help Action
+ */
+const helpAction = () => {
+  console.log('')
+  console.log('  Examples:')
+  console.log('')
+  console.log('    $ wxparcel-script start --config path/to/config.js --watch')
+  console.log('')
 }
 
 program
@@ -60,61 +123,5 @@ program
   .option('--env <env>')
   .option('-w, --watch', 'open the listener for file changes')
   .option('--publicPath <publicPath>', 'set public path of static resources')
-  .on('--help', () => {
-    console.log('')
-    console.log('  Examples:')
-    console.log('')
-    console.log('    $ wxparcel-script start --config path/to/config.js --watch')
-    console.log('')
-  })
-  .action(async function (options = {}) {
-    try {
-      let { config, env } = options
-      switch (env) {
-        case 'prod':
-        case 'product':
-        case 'production': {
-          process.env.NODE_ENV = 'production'
-          break
-        }
-
-        case 'test':
-        case 'unitest':
-        case 'prerelease': {
-          process.env.NODE_ENV = 'prerelease'
-          break
-        }
-
-        case 'dev':
-        case 'develop':
-        case 'development':
-        default: {
-          process.env.NODE_ENV = 'development'
-          break
-        }
-      }
-
-      if (!config) {
-        config = path.join(__dirname, '../constants/config.js')
-      }
-
-      if (!path.isAbsolute(config)) {
-        config = path.join(OptionManager.rootDir, config)
-      }
-
-      if (!fs.existsSync(config)) {
-        throw new Error(`Config file is not found, please ensure config file exists. ${config}`)
-      }
-
-      options.config = config
-      options.watch = options.hasOwnProperty('watch')
-
-      await run(options)
-    } catch (error) {
-      let pe = new PrettyError()
-      error.message = colors.red(error.message)
-
-      let message = pe.render(error)
-      console.log(message)
-    }
-  })
+  .on('--help', helpAction)
+  .action(startAction)

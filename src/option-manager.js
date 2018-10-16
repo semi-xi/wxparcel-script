@@ -102,6 +102,13 @@ export class OptionManager {
     this.env = process.env.NODE_ENV || 'development'
 
     /**
+     * 日志类型
+     *
+     * @type {Array|String}
+     */
+    this.logType = options.hasOwnProperty('logType') ? options.logType : ['console']
+
+    /**
      * 规则集合
      *
      * @type {Array}

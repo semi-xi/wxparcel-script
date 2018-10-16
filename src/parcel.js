@@ -101,7 +101,10 @@ export default class Parcel {
 
       this.printStats(stats)
     } catch (error) {
-      Printer.error(error)
+      /**
+       * 往外抛, 到最顶层统一处理
+       */
+      throw error
     } finally {
       this.running = false
     }
