@@ -19,7 +19,7 @@ export class Resolver {
    * @param {Object} asset 资源对象
    * @param {OptionManager} [options=OptionManager] 配置管理器
    */
-  constructor (asset, options = OptionManager) {
+  constructor (asset = {}, options = OptionManager) {
     /**
      * 代码
      *

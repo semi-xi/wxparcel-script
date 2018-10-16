@@ -70,16 +70,8 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let { rootDir, miniprogramRoot, pluginRoot } = this.options
-      let resolver = new JSONResolver({})
-
-      let entryModule = resolver.findModule('app', miniprogramRoot)
-      let entries = entryModule.files || []
-
-      if (pluginRoot) {
-        entries.push(path.join(pluginRoot, 'plugin.json'))
-        entries.push(path.join(pluginRoot, 'index.js'))
-      }
+      let { rootDir } = this.options
+      let entries = this.findEntries()
 
       let projectConfigFile = path.join(rootDir, './project.config.json')
       if (!fs.existsSync(projectConfigFile)) {
@@ -105,7 +97,7 @@ export default class Parcel {
    * 监听文件
    *
    */
-  watch (handleEach) {
+  watch (options = {}) {
     let { appConfigFile } = this.options
 
     let ignoreFile = (file) => {
@@ -160,7 +152,7 @@ export default class Parcel {
         let stats = await this.flush(chunks)
         stats.spendTime = Date.now() - startTime
 
-        typeof handleEach === 'function' && handleEach(stats)
+        typeof options.complete === 'function' && options.complete(stats)
       } catch (error) {
         Logger.error(error)
       } finally {
@@ -175,20 +167,29 @@ export default class Parcel {
       }
 
       if (appConfigFile === file) {
+        typeof options.change === 'function' && options.change(file, true)
+
         this.options.resolveWXAppConf(file)
         transform(file)
         return
       }
 
       if (Assets.exists(file)) {
+        typeof options.change === 'function' && options.change(file, true)
+
         transform(file)
         return
       }
 
       let entries = this.findEntries()
       if (entries.indexOf(file) !== -1) {
+        typeof options.change === 'function' && options.change(file, true)
+
         transform(file)
+        return
       }
+
+      typeof options.change === 'function' && options.change(file, false)
     }
 
     let handleFileUnlink = (file) => {
@@ -197,6 +198,7 @@ export default class Parcel {
       }
 
       if (Assets.exists(file)) {
+        typeof options.unlink === 'function' && options.unlink(file, false)
         Assets.del(file)
       }
     }
@@ -376,11 +378,18 @@ export default class Parcel {
    * @return {Array} 文件集合
    */
   findEntries () {
-    let { appConfig, appConfigFile } = this.options
-    let resolver = new JSONResolver(appConfig, appConfigFile)
-    let chunk = resolver.resolve(appConfig, appConfigFile)
-    let files = chunk.dependencies.map((item) => item.dependency)
-    return [chunk.file].concat(files)
+    let { miniprogramRoot, pluginRoot } = this.options
+    let resolver = new JSONResolver({})
+
+    let entryModule = resolver.findModule('app', miniprogramRoot)
+    let entries = entryModule.files || []
+
+    if (pluginRoot) {
+      entries.push(path.join(pluginRoot, 'plugin.json'))
+      entries.push(path.join(pluginRoot, 'index.js'))
+    }
+
+    return entries
   }
 }
 

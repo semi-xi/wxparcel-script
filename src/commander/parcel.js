@@ -53,7 +53,14 @@ const run = async (options = {}) => {
    */
   if (options.watch) {
     OptionManager.watching = true
-    parcel.watch((stats) => printStats(stats))
+
+    let options = {
+      change: (file, valid) => Logger.trace(`\nFile ${chalk.bold(file)} has been changed, ${valid ? 'compile' : 'but it\'s not be required, ignore'}...\n`),
+      unlink: (file) => Logger.trace(`\nFile ${chalk.bold(file)} has been deleted, but it will be only delete from cache.\n`),
+      complete: (stats) => printStats(stats)
+    }
+
+    parcel.watch(options)
   }
 }
 
