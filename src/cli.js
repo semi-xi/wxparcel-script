@@ -1,21 +1,19 @@
 import program from 'commander'
+import Logger from './logger'
 import { version } from '../package.json'
 import './commander/parcel'
+
+const helpAction = () => {
+  Logger.trace('\nExamples:')
+  Logger.trace('  $ wxparcel-script start --env development --watch')
+  Logger.trace('  $ wxparcel-script start --env production --config wx.config.js')
+}
 
 program
   .version(version, '-v, --version')
   .option('-q, --quiet', 'do not print any information')
-  .on('--help', () => {
-    console.log('')
-    console.log('  Examples:')
-    console.log('')
-    console.log('    $ wxparcel-script start --help')
-    console.log('')
-  })
+  .on('--help', helpAction)
 
 let params = process.argv
-if (!params.slice(2).length) {
-  program.outputHelp()
-}
-
+!params.slice(2).length && program.outputHelp()
 program.parse(params)

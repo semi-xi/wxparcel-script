@@ -4,7 +4,7 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
-import { SCATTER } from '../constants/chunk-type'
+import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import { escapeRegExp } from './share'
 
@@ -48,6 +48,7 @@ export default class JSResolver extends Resolver {
     source = stripComments(source)
 
     let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
+      type: BUNDLE,
       convertDependencyPath: this.convertRelative.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })

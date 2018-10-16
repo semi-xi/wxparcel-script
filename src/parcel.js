@@ -1,22 +1,18 @@
 import fs from 'fs-extra'
 import path from 'path'
 import filter from 'lodash/filter'
-import colors from 'colors'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
 import promisifyWaterfall from 'promise-waterfall'
 import minimatch from 'minimatch'
-import map from 'lodash/map'
-import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
 import { BUNDLER, SCATTER } from './constants/chunk-type'
 import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
 import Bundler from './bundler'
-import Printer from './printer'
+import Logger from './logger'
 import IgnoreFiles from './constants/ingore-files'
-import Package from '../package.json'
 import HOOK_TYPES from './constants/hooks'
 
 /**
@@ -61,13 +57,12 @@ export default class Parcel {
    */
   async run () {
     if (this.running === true) {
-      Printer.warn(`WXParcel is running, you can enter ${colors.bold('Ctrl + C')} to exit.`)
-      return Promise.resolve()
+      return Promise.reject(new Error('WXParcel is running'))
     }
 
     try {
+      let startTime = Date.now()
       this.running = true
-      const timer = Printer.timer()
 
       this.hook('async')()
       await this.hook('before')()
@@ -94,17 +89,13 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
-      // let bundles = await Bundler.bundle(chunks)
+      let bundles = await Bundler.bundle(chunks)
+      let stats = await this.flush(bundles)
+      stats.spendTime = Date.now() - startTime
 
-      let stats = await this.flush(chunks)
-      stats.spendTime = timer.end()
-
-      this.printStats(stats)
+      return stats
     } catch (error) {
-      /**
-       * 往外抛, 到最顶层统一处理
-       */
-      throw error
+      Logger.error(error)
     } finally {
       this.running = false
     }
@@ -114,8 +105,8 @@ export default class Parcel {
    * 监听文件
    *
    */
-  watch () {
-    let { rootDir, appConfigFile } = this.options
+  watch (handleEach) {
+    let { appConfigFile } = this.options
 
     let ignoreFile = (file) => {
       return IgnoreFiles.findIndex((pattern) => minimatch(file, pattern)) !== -1
@@ -123,8 +114,9 @@ export default class Parcel {
 
     let transform = async (file) => {
       try {
+        let startTime = Date.now()
+
         this.running = true
-        const timer = Printer.timer()
 
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
@@ -164,12 +156,13 @@ export default class Parcel {
         }
 
         chunks = [].concat(chunks, instance.chunks)
-        let stats = await this.flush(chunks)
 
-        stats.spendTime = timer.end()
-        this.printStats(stats)
+        let stats = await this.flush(chunks)
+        stats.spendTime = Date.now() - startTime
+
+        typeof handleEach === 'function' && handleEach(stats)
       } catch (error) {
-        Printer.error(error)
+        Logger.error(error)
       } finally {
         this.running = false
         this.excutePaddingTask()
@@ -181,31 +174,21 @@ export default class Parcel {
         return
       }
 
-      let relativePath = file.replace(rootDir, '')
-      let message = `File ${colors.bold(relativePath)} has been changed`
-
       if (appConfigFile === file) {
-        Printer.info(`${message}, resolve and compile...`)
-
         this.options.resolveWXAppConf(file)
         transform(file)
         return
       }
 
       if (Assets.exists(file)) {
-        Printer.info(`${message}, compile...`)
         transform(file)
         return
       }
 
       let entries = this.findEntries()
       if (entries.indexOf(file) !== -1) {
-        Printer.info(`${message}, it's a entry-file, compile...`)
         transform(file)
-        return
       }
-
-      Printer.info(`${message}, but it's not be required, ignore...`)
     }
 
     let handleFileUnlink = (file) => {
@@ -213,11 +196,7 @@ export default class Parcel {
         return
       }
 
-      let relativePath = file.replace(rootDir, '')
-      let message = `File ${colors.bold(relativePath)} has been deleted`
-
       if (Assets.exists(file)) {
-        Printer.warn(`${message}, it will be only delete from cache.`)
         Assets.del(file)
       }
     }
@@ -280,14 +259,16 @@ export default class Parcel {
       return new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, content, 'utf8'),
-          fs.stat.bind(fs, destination)
+          fs.writeFile.bind(fs, destination, content, 'utf8')
         ]
 
-        waterfall(taskQueue, (error, stats) => {
-          error
-            ? reject(error)
-            : resolve({ assets: destination, size: stats.size })
+        waterfall(taskQueue, (error) => {
+          if (error) {
+            reject(error)
+            return
+          }
+
+          resolve({ assets: destination, size: content.length })
         })
       })
     })
@@ -303,7 +284,7 @@ export default class Parcel {
    */
   hook (type) {
     switch (type) {
-      case 'async':
+      case 'async': {
         return () => {
           let promises = []
           this.options.plugins.forEach((plugin) => {
@@ -313,14 +294,15 @@ export default class Parcel {
             }
 
             let options = this.options.connect({})
-            let promise = plugin[fn](options, Printer)
+            let promise = plugin[fn](options)
             promises.push(promise)
           })
 
           return Promise.all(promises)
         }
+      }
 
-      case 'before':
+      case 'before': {
         return () => {
           let promises = []
           this.options.plugins.forEach((plugin) => {
@@ -330,7 +312,7 @@ export default class Parcel {
             }
 
             promises.push(async () => {
-              await plugin[fn](this.options, Printer)
+              await plugin[fn](this.options)
               return Promise.resolve()
             })
           })
@@ -341,8 +323,9 @@ export default class Parcel {
 
           return Promise.resolve()
         }
+      }
 
-      case 'beforeTransform':
+      case 'beforeTransform': {
         return (assets = new AssetsInstance()) => {
           if (!(assets instanceof AssetsInstance)) {
             throw new TypeError('Params assets is not instanceof Assets')
@@ -357,7 +340,7 @@ export default class Parcel {
 
             promises.push(async () => {
               let options = this.options.connect({})
-              await plugin[fn](assets, options, Printer)
+              await plugin[fn](assets, options)
 
               assets.size > 0 && Assets.chunks.push(...assets.chunks)
               return Promise.resolve()
@@ -370,6 +353,7 @@ export default class Parcel {
 
           return Promise.resolve()
         }
+      }
     }
   }
 
@@ -397,45 +381,6 @@ export default class Parcel {
     let chunk = resolver.resolve(appConfig, appConfigFile)
     let files = chunk.dependencies.map((item) => item.dependency)
     return [chunk.file].concat(files)
-  }
-
-  /**
-   * 打印 stats
-   *
-   * @param {Object} stats 状态
-   * @param {Boolean} [watching=this.options.watching] 是否在监听
-   */
-  printStats (stats, watching = this.options.watching) {
-    let { rootDir, srcDir } = this.options
-
-    let statsFormatter = stats.map(({ assets, size }) => {
-      assets = assets.replace(rootDir, '.')
-      return { assets, size }
-    })
-
-    let warning = map(stats.conflict, (dependency, file) => {
-      file = file.replace(rootDir, '')
-      dependency = dependency.replace(rootDir, '')
-      return `-> ${file} ${colors.gray('reqiured')} ${dependency}`
-    })
-
-    Printer.push('')
-    Printer.push(`${capitalize(Package.name).replace(/-(\w)/g, (_, $1) => $1.toUpperCase())} Version at ${colors.cyan.bold(Package.version)}`)
-    Printer.push(`${colors.gray('Time:')} ${colors.bold(colors.white(stats.spendTime))}ms\n`)
-    Printer.push(Printer.formatStats(statsFormatter))
-    Printer.push('')
-
-    watching && Printer.push(`✨ Open your ${colors.magenta.bold('WeChat Develop Tool')} to serve`)
-    watching && Printer.push(`✨ Watching folder ${colors.white.bold(srcDir)}, cancel at ${colors.white.bold('Ctrl + C')}`)
-    Printer.push('')
-
-    if (warning.length > 0) {
-      Printer.push(colors.yellow.bold('Some below files required each other, it maybe occur circular reference error in WeChat Mini Program'))
-      Printer.push(warning.join('\n'))
-      Printer.push('')
-    }
-
-    Printer.flush()
   }
 }
 

@@ -8,7 +8,7 @@ import findIndex from 'lodash/findIndex'
 import Bundler from './bundler'
 import { getSourceNode } from '../source-map'
 import { SourceNode } from 'source-map'
-import { BUNDLER, BUNDLE, SCATTER } from '../constants/chunk-type'
+import { BUNDLER, BUNDLE, ENTRY } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
@@ -103,7 +103,13 @@ export default class JSBundler extends Bundler {
       sourceMap: srouceMapResult
     })
 
-    let chunks = filter(this.chunks, (chunk) => chunk.type === BUNDLE)
+    /**
+     * 因为这里传入的 chunks 已经过滤了出JS代码块与独立类型代码块
+     * 因此这里只有通过 JSResolver 查找依赖 (dependencies) 的
+     * 代码块, 并且类型一定为 BUNDLE; 因此将 BUNDLE 去除以外的
+     * 代码块就为入口代码块
+     */
+    let chunks = filter(this.chunks, (chunk) => chunk.type !== BUNDLE)
     chunks = map(chunks, ({ file, content, destination, ...otherProps }) => {
       let id = this._remember(destination)
 
@@ -117,7 +123,7 @@ export default class JSBundler extends Bundler {
 
       return this.assets.add(file, {
         ...otherProps,
-        type: SCATTER,
+        type: ENTRY,
         content: entryContent,
         rule: Parser.matchRule(file, rules)
       })

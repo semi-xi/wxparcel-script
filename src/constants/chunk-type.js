@@ -21,3 +21,11 @@ export const BUNDLER = 'bundler'
  * @constant
  */
 export const SCATTER = 'scatter'
+
+/**
+ * 入口类型
+ *
+ * @type {String}
+ * @constant
+ */
+export const ENTRY = 'entry'

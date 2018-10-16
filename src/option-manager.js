@@ -4,7 +4,6 @@ import path from 'path'
 import portscanner from 'portscanner'
 import isEmpty from 'lodash/isEmpty'
 import mapValues from 'lodash/mapValues'
-import Printer from './printer'
 
 /**
  * 配置管理器
@@ -245,7 +244,6 @@ export class OptionManager {
   resolveWXProjConf (file) {
     if (!fs.existsSync(file)) {
       let message = `File ${file} is not found, please ensure ${file} is valid.`
-      Printer.error(message)
       throw new Error(message)
     }
 
@@ -253,7 +251,6 @@ export class OptionManager {
       this.projectConfig = fs.readJSONSync(file)
     } catch (error) {
       let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
-      Printer.error(message)
       throw new Error(message)
     }
 
@@ -282,7 +279,6 @@ export class OptionManager {
   resolveWXAppConf (file) {
     if (!fs.existsSync(file)) {
       let message = `File ${file} is not found, please ensure ${file} is valid.`
-      Printer.error(message)
       throw new Error(message)
     }
 
@@ -290,7 +286,6 @@ export class OptionManager {
       this.appConfig = fs.readJSONSync(file)
     } catch (error) {
       let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
-      Printer.error(message)
       throw new Error(message)
     }
 

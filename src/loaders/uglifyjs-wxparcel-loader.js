@@ -1,6 +1,5 @@
 import defaultsDeep from 'lodash/defaultsDeep'
 import UglifyJS from 'uglify-es'
-import colors from 'colors'
 
 /**
  * Javascript 压缩加载器
@@ -30,10 +29,9 @@ export default function UglifyjsLoader (asset, options = {}) {
     if (error) {
       let lines = content.split('\n')
       let line = lines[error.line - 1]
-      let prevFragment = line.substr(error.col - 10, 10)
-      let fragment = line.substr(error.col, 100)
-      let message = `\n错误代码为: ${prevFragment}${colors.red('^')}${fragment}\n`
-      error.detail = message
+      let fragment = line.substr(error.col - 10, 10)
+      fragment = `${fragment} ${line.substr(error.col, 100)}\n${new Array(fragment.length + 1).fill(' ').join('')}^`
+      error.fragment = fragment
 
       reject(error)
       return
