@@ -1,5 +1,6 @@
 import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
 import DevServerPlugin from '../plugins/dev-server-wxparcel-plugin'
+import { BUNDLER, SCATTER } from './chunk-type'
 
 let jsRules = [
   {
@@ -56,7 +57,7 @@ if (process.env.NODE_ENV === 'development') {
 if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
   jsRules[0].loaders.push({
     use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-    for: 'bundler',
+    for: [BUNDLER, SCATTER],
     options: {}
   })
 }

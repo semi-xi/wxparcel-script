@@ -9,6 +9,7 @@ import waterfall from 'promise-waterfall'
 import OptionManager from './option-manager'
 import Assets from './assets'
 import Resolver from './resolver'
+import { SCATTER } from './constants/chunk-type'
 
 /**
  * 编译器
@@ -65,8 +66,25 @@ export class Parser {
       return Promise.resolve()
     }
 
+    /**
+     * 筛选 loader 类型, 只有不指定 loader.for
+     * 或者独立类型 (SCATTER) 才能操作代码片段
+     * 因为某些 loader 只操作打包后的文件, 例如
+     * uglify 只操作 打包类型 (BUNDLER)
+     */
     let rule = this.matchRule(file, this.options.rules) || {}
-    let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
+    let loaders = filter(rule.loaders, (loader) => {
+      if (!loader.hasOwnProperty('for')) {
+        return true
+      }
+
+      if (Array.isArray(loader.for)) {
+        return loader.for.indexOf(SCATTER) !== -1
+      }
+
+      return loader.for === SCATTER
+    })
+
     let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
     let content = fs.readFileSync(file)
     chunk.update({ content })

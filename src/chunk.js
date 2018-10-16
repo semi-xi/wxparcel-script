@@ -3,7 +3,6 @@ import path from 'path'
 import pick from 'lodash/pick'
 import cloneDeep from 'lodash/cloneDeep'
 import isPlainObject from 'lodash/isPlainObject'
-import { ENTRY } from './constants/chunk-type'
 import optionManager from './option-manager'
 
 /**
@@ -69,7 +68,7 @@ export class Chunk {
      *
      * @type {Menu}
      */
-    this.type = state.type || ENTRY
+    this.type = state.type || null
 
     /**
      * 依赖集合

@@ -8,7 +8,7 @@ import findIndex from 'lodash/findIndex'
 import Bundler from './bundler'
 import { getSourceNode } from '../source-map'
 import { SourceNode } from 'source-map'
-import { BUNDLER, ENTRY } from '../constants/chunk-type'
+import { BUNDLER, BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
@@ -95,8 +95,7 @@ export default class JSBundler extends Bundler {
 
     let bundleContent = Buffer.from(code)
     let bundleDestination = path.join(outDir, bundleFilename)
-
-    let bundledChunk = this.assets.add(bundleFilename, {
+    let bundlerChunk = this.assets.add(bundleFilename, {
       type: BUNDLER,
       content: bundleContent,
       destination: bundleDestination,
@@ -104,8 +103,8 @@ export default class JSBundler extends Bundler {
       sourceMap: srouceMapResult
     })
 
-    let entryChunks = filter(this.chunks, (chunk) => chunk.type === ENTRY)
-    entryChunks = map(entryChunks, ({ file, content, destination, ...otherProps }) => {
+    let chunks = filter(this.chunks, (chunk) => chunk.type === BUNDLE)
+    chunks = map(chunks, ({ file, content, destination, ...otherProps }) => {
       let id = this._remember(destination)
 
       let destFolder = path.dirname(destination)
@@ -118,12 +117,13 @@ export default class JSBundler extends Bundler {
 
       return this.assets.add(file, {
         ...otherProps,
+        type: SCATTER,
         content: entryContent,
         rule: Parser.matchRule(file, rules)
       })
     })
 
-    return [bundledChunk].concat(entryChunks)
+    return [bundlerChunk].concat(chunks)
   }
 
   /**

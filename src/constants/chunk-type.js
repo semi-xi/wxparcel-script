@@ -1,12 +1,4 @@
 /**
- * 入口类型
- *
- * @type {String}
- * @constant
- */
-export const ENTRY = 'entry'
-
-/**
  * 需要打包类型
  *
  * @type {String}

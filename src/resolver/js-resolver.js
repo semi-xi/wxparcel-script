@@ -52,6 +52,10 @@ export default class JSResolver extends Resolver {
       convertDestination: this.convertDestination.bind(this)
     })
 
+    /**
+     * worker 文件因为必须独立于 worker 目录, 因此这里使用 SCATTER 类型
+     * worker 目录在 app.json 中定义
+     */
     let workerDependencies = this.resolveDependencies(source, WORKER_REQUIRE_REGEXP, {
       type: SCATTER,
       convertDependencyPath: this.convertWorkerRelative.bind(this)
