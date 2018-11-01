@@ -1,5 +1,19 @@
-import fs from 'fs-extra'
+import fs from 'fs'
 import crypto from 'crypto'
+
+/**
+ * 异步读取文件
+ *
+ * @param {String} file 文件名
+ * @param {String} type 读取类型
+ */
+export const readFileAsync = (file, type) => {
+  return new Promise((resolve, reject) => {
+    fs.readFile(file, type, (error, source) => {
+      error ? reject(error) : resolve(source)
+    })
+  })
+}
 
 /**
  * 反斜杠转义

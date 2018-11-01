@@ -30,8 +30,9 @@ export default function SassLoader (asset, options = {}) {
         return
       }
 
-      let { css: code, map } = result
-      resolve({ code, map })
+      let { css: code, map, stats } = result
+      let dependencies = stats.includedFiles || []
+      resolve({ code, map, dependencies })
     })
   })
 }

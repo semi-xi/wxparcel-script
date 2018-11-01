@@ -80,7 +80,6 @@ export class Resolver {
      * 例如: 不编译 JS 文件
      * exclude: ['./**\/*.js']
      */
-
     let exclude = rule.exclude || []
     for (let i = exclude.length; i--;) {
       let pattern = exclude[i]

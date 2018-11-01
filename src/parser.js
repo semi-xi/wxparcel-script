@@ -1,14 +1,15 @@
-import fs from 'fs'
 import path from 'path'
 import minimatch from 'minimatch'
 import omit from 'lodash/omit'
 import find from 'lodash/find'
 import filter from 'lodash/filter'
+import isEmpty from 'lodash/isEmpty'
 import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'promise-waterfall'
 import OptionManager from './option-manager'
 import Assets from './assets'
 import Resolver from './resolver'
+import { readFileAsync } from './share'
 import { SCATTER } from './constants/chunk-type'
 
 /**
@@ -52,13 +53,25 @@ export class Parser {
   /**
    * 编译文件
    *
-   * @param {String} file 文件位置
+   * @param {Array|String} file 文件位置
+   * @return {Promise} [chunk]
    */
   async compile (file) {
-    let chunkOptions = {}
+    let chunk = await this.convert(file)
+    chunk = await this.transform(chunk)
+    return this.resolve(chunk)
+  }
 
+  /**
+   * 将 file 转化成 chunk
+   *
+   * @param {String} file 文件
+   * @param {Object} [chunkOptions={}] 配置
+   * @return {Promise} chunk
+   */
+  convert (file, chunkOptions = {}) {
     if (typeof file === 'object') {
-      chunkOptions = omit(file, 'file')
+      chunkOptions = isEmpty(chunkOptions) ? omit(file, 'file') : chunkOptions
       file = file.file
     }
 
@@ -66,14 +79,39 @@ export class Parser {
       return Promise.resolve()
     }
 
+    const { rules } = this.options
+
     /**
      * 筛选 loader 类型, 只有不指定 loader.for
      * 或者独立类型 (SCATTER) 才能操作代码片段
      * 因为某些 loader 只操作打包后的文件, 例如
      * uglify 只操作 打包类型 (BUNDLER)
      */
-    let rule = this.matchRule(file, this.options.rules) || {}
-    let loaders = filter(rule.loaders, (loader) => {
+    let rule = this.matchRule(file, rules) || {}
+    let chunk = Assets.add(file, Object.assign({}, chunkOptions, { rule }))
+
+    return readFileAsync(file).then((source) => {
+      chunk.update({ content: source })
+      return chunk
+    })
+  }
+
+  /**
+   * 编译代码
+   *
+   * @param {Chunk} chunk 代码片段
+   * @returns {Promise} promise
+   */
+  transform (chunk) {
+    const { file, rule } = chunk
+
+    /**
+     * 筛选 loader 类型, 只有不指定 loader.for
+     * 或者独立类型 (SCATTER) 才能操作代码片段
+     * 因为某些 loader 只操作打包后的文件, 例如
+     * uglify 只操作 打包类型 (BUNDLER)
+     */
+    const loaders = filter(rule.loaders, (loader) => {
       if (!loader.hasOwnProperty('for')) {
         return true
       }
@@ -84,50 +122,6 @@ export class Parser {
 
       return loader.for === SCATTER
     })
-
-    let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
-    let content = fs.readFileSync(file)
-    chunk.update({ content })
-
-    let queue = [
-      () => this.transform(chunk, rule, loaders),
-      () => this.resolve(chunk)
-    ]
-
-    return waterfall(queue).then(() => {
-      let { dependencies } = chunk
-      if (!Array.isArray(dependencies) || dependencies.length === 0) {
-        return chunk
-      }
-
-      let files = []
-      dependencies.forEach((item) => {
-        if (Assets.exists(item.dependency)) {
-          return chunk
-        }
-
-        let { type, dependency, destination } = item
-        files.push({ type, file: dependency, destination })
-      })
-
-      if (!Array.isArray(files) || files.length === 0) {
-        return chunk
-      }
-
-      return this.multiCompile(files).then((chunks) => {
-        return [chunk].concat(chunks)
-      })
-    })
-  }
-
-  /**
-   * 编译代码
-   *
-   * @param {Chunk} chunk 代码片段
-   * @returns {Promise} promise
-   */
-  transform (chunk, rule, loaders) {
-    const { file } = chunk
 
     /**
      * 没有 loader 不需要编译
@@ -211,19 +205,37 @@ export class Parser {
   }
 
   /**
-   * 解析代码
+   * 解析文件
    *
-   * @param {Chunk} chunk 代码片段
-   * @returns {Promise} promise
+   * @param {String} srcFile 文件路径
+   * @param {Object} options 配置
+   * @return {Promise} [chunk]
    */
-  resolve (chunk) {
-    return new Promise((resolve) => {
-      let result = Resolver.resolve(chunk.metadata)
-      let { file, content, dependencies, map } = result
-      chunk.update({ file, content, dependencies, sourceMap: map })
+  async resolve (chunk) {
+    let result = Resolver.resolve(chunk.metadata)
+    let { file, content, dependencies, map } = result
+    chunk.update({ file, content, dependencies, sourceMap: map })
 
-      resolve(chunk)
+    if (!Array.isArray(dependencies) || dependencies.length === 0) {
+      return chunk
+    }
+
+    let files = []
+    dependencies.forEach((item) => {
+      if (Assets.exists(item.dependency)) {
+        return
+      }
+
+      let { type, dependency, destination } = item
+      files.push({ type, file: dependency, destination })
     })
+
+    if (!Array.isArray(files) || files.length === 0) {
+      return chunk
+    }
+
+    let chunks = await this.multiCompile(files)
+    return [chunk].concat(chunks)
   }
 
   /**

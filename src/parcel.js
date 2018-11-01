@@ -14,6 +14,7 @@ import Bundler from './bundler'
 import Logger from './logger'
 import IgnoreFiles from './constants/ingore-files'
 import HOOK_TYPES from './constants/hooks'
+import { readFileAsync } from './share'
 
 /**
  * Parcel
@@ -81,8 +82,8 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
-      let bundles = await Bundler.bundle(chunks)
-      let stats = await this.flush(bundles)
+      // let bundles = await Bundler.bundle(chunks)
+      let stats = await this.flush(chunks)
       stats.spendTime = Date.now() - startTime
 
       return stats
@@ -124,7 +125,7 @@ export default class Parcel {
          * Chunk 不会自己读取内容也不会自动更新新内容
          * 因此这里需要手动 update 内容
          */
-        let content = fs.readFileSync(file)
+        let content = await readFileAsync(file)
         chunk.update({ content })
         await Parser.transform(chunk, rule, loaders)
 

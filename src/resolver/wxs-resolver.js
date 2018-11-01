@@ -3,7 +3,7 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripCssComments from 'strip-css-comments'
 import { Resolver } from './resolver'
-import { escapeRegExp } from './share'
+import { escapeRegExp } from '../share'
 
 const IMAGE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
 

@@ -3,7 +3,7 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripCssComments from 'strip-css-comments'
 import { Resolver } from './resolver'
-import { replacement } from './share'
+import { replacement } from '../share'
 
 const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([~\w\d_\-./]+?)['"];/
 const IMAGE_REGEXP = /url\(["']?([~\w\d_\-./]+?)["']?\)/i
@@ -22,7 +22,7 @@ export default class WXSSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    let { staticDir, pubPath } = this.options
+    const { staticDir, pubPath } = this.options
 
     let source = this.source.toString()
     source = stripCssComments(source)
