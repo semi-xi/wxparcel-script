@@ -14,7 +14,7 @@ import Bundler from './bundler'
 import Logger from './logger'
 import IgnoreFiles from './constants/ingore-files'
 import HOOK_TYPES from './constants/hooks'
-import { readFileAsync } from './share'
+import { readFileAsync, gen as genHex } from './share'
 
 /**
  * Parcel
@@ -250,7 +250,7 @@ export default class Parcel {
    * @return {Promise}
    */
   flush (chunks) {
-    const { sourceMap: useSourceMap } = this.options
+    const { sourceMap: useSourceMap, outDir, staticDir, pubPath } = this.options
     if (!Array.isArray(chunks) || chunks.length === 0) {
       return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
     }
@@ -263,21 +263,36 @@ export default class Parcel {
 
       content = stripBOM(content)
 
+      let taskQueue = []
+
       /**
        * 只有打包文件(BUNDLER) 与 独立文件(SCATTER) 才需要 sourceMap
        */
       if (useSourceMap !== false && (chunk.type === BUNDLER || chunk.type === SCATTER) && sourceMap) {
         sourceMap = JSON.stringify(sourceMap)
 
-        let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
-        content = content + '\n' + base64SourceMap
+        let hash = genHex(sourceMap)
+        let file = destination.replace(outDir, '')
+        let extname = path.extname(file)
+        let filename = file.replace(new RegExp(`${extname}$`), '')
+        let relative = filename + '.' + hash + extname + '.map'
+        let output = path.join(staticDir, relative)
+        let url = pubPath + relative
+        let sourceMapContent = `//# sourceMappingURL=${url}`
+
+        taskQueue = taskQueue.concat([
+          fs.ensureFileSync.bind(fs, output),
+          fs.writeFileSync.bind(fs, output, sourceMap)
+        ])
+
+        content = content + '\n' + sourceMapContent
       }
 
       return new Promise((resolve, reject) => {
-        let taskQueue = [
+        taskQueue = taskQueue.concat([
           fs.ensureFile.bind(fs, destination),
           fs.writeFile.bind(fs, destination, content, 'utf8')
-        ]
+        ])
 
         waterfall(taskQueue, (error) => {
           if (error) {
