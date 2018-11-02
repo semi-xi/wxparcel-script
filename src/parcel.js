@@ -280,12 +280,12 @@ export default class Parcel {
         let url = pubPath + relative
         let sourceMapContent = `//# sourceMappingURL=${url}`
 
-        taskQueue = taskQueue.concat([
-          fs.ensureFileSync.bind(fs, output),
-          fs.writeFileSync.bind(fs, output, sourceMap)
-        ])
-
         content = content + '\n' + sourceMapContent
+
+        taskQueue = taskQueue.concat([
+          fs.ensureFile.bind(fs, output),
+          fs.writeFile.bind(fs, output, sourceMap, 'utf8')
+        ])
       }
 
       return new Promise((resolve, reject) => {
