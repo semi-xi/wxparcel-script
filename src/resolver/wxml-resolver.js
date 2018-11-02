@@ -50,6 +50,9 @@ export default class WXMLResolver extends Resolver {
       return { file, destination, dependency, required }
     })
 
+    source = source.trim()
+    source = source.replace(/(\n)+/g, '$1')
+
     this.source = Buffer.from(source)
     return { file: this.file, content: this.source, dependencies }
   }
