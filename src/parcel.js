@@ -14,7 +14,7 @@ import Bundler from './bundler'
 import Logger from './logger'
 import IgnoreFiles from './constants/ingore-files'
 import HOOK_TYPES from './constants/hooks'
-import { readFileAsync, gen as genHex } from './share'
+import { readFileAsync } from './share'
 
 /**
  * Parcel
@@ -281,7 +281,7 @@ export default class Parcel {
    * @return {Promise}
    */
   flush (chunks) {
-    const { sourceMap: useSourceMap, outDir, staticDir, pubPath } = this.options
+    const { sourceMap: useSourceMap } = this.options
     if (!Array.isArray(chunks) || chunks.length === 0) {
       return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
     }
@@ -302,21 +302,8 @@ export default class Parcel {
       if (useSourceMap !== false && (chunk.type === BUNDLER || chunk.type === SCATTER) && sourceMap) {
         sourceMap = JSON.stringify(sourceMap)
 
-        let hash = genHex(sourceMap)
-        let file = destination.replace(outDir + path.sep, '')
-        let extname = path.extname(file)
-        let filename = file.replace(new RegExp(`${extname}$`), '')
-        let relative = filename + '.' + hash + extname + '.map'
-        let output = path.join(staticDir, relative)
-        let url = pubPath + '/' + relative
-        let sourceMapContent = `//# sourceMappingURL=${url}`
-
-        content = content + '\n' + sourceMapContent
-
-        taskQueue = taskQueue.concat([
-          fs.ensureFile.bind(fs, output),
-          fs.writeFile.bind(fs, output, sourceMap, 'utf8')
-        ])
+        let base64SourceMap = '//# sourceMappingURL=data:application/json;base64,' + Buffer.from(sourceMap).toString('base64')
+        content = content + '\n' + base64SourceMap
       }
 
       return new Promise((resolve, reject) => {
