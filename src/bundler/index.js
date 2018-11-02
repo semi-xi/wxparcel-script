@@ -55,11 +55,7 @@ export class Bundler {
   async bundle (chunks) {
     chunks = [].concat(chunks)
 
-    let bundlers = this.bundlers.filter(({ regexp }) => {
-      let index = chunks.findIndex((chunk) => regexp.test(chunk.file))
-      return index !== -1
-    })
-
+    let bundlers = this.matchBundler(chunks)
     let bundledChunks = []
     let bundleTasks = bundlers.map(({ regexp, bundler: Bundler }) => {
       /**
@@ -101,6 +97,19 @@ export class Bundler {
 
     bundledChunks = await Promise.all(transformTasks)
     return [].concat(chunks, bundledChunks)
+  }
+
+  /**
+   * 获取适合 file 的 bulder
+   *
+   * @param {String} file 文件
+   * @returns {Array} Bundler
+   */
+  matchBundler (chunks) {
+    return this.bundlers.filter(({ regexp }) => {
+      let index = chunks.findIndex((chunk) => regexp.test(chunk.file))
+      return index !== -1
+    })
   }
 }
 

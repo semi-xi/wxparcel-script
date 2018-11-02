@@ -111,7 +111,38 @@ export default class Parcel {
       files = Array.isArray(files) ? files : [files]
 
       let chunks = await Parser.multiCompile(files)
-      return flattenDeep(chunks)
+
+      /**
+       * 找出对应的打包器, 这样就能简单直接地进行
+       * 相应文件类型的打包, 若找不到对应的打包器
+       * 则说明该文件可能不需要打包, 则直接进行输
+       * 出即可
+       */
+      let bundlers = Bundler.matchBundler(chunks)
+      if (bundlers.length > 0) {
+        let promises = bundlers.map((item) => {
+          const { regexp, bundler: MatchedBundler } = item
+
+          let chunks = Assets.chunks.filter((chunk) => {
+            const { destination } = chunk
+            return regexp.test(destination)
+          })
+
+          if (chunks.length === 0) {
+            return Promise.resolve()
+          }
+
+          const bundler = new MatchedBundler(chunks)
+          return bundler.bundle()
+        })
+
+        chunks = await Promise.all(promises)
+      }
+
+      chunks = flattenDeep(chunks)
+      chunks = chunks.filter((chunk) => chunk)
+
+      return chunks
     }
 
     // 开始执行
@@ -272,12 +303,12 @@ export default class Parcel {
         sourceMap = JSON.stringify(sourceMap)
 
         let hash = genHex(sourceMap)
-        let file = destination.replace(outDir, '')
+        let file = destination.replace(outDir + path.sep, '')
         let extname = path.extname(file)
         let filename = file.replace(new RegExp(`${extname}$`), '')
         let relative = filename + '.' + hash + extname + '.map'
         let output = path.join(staticDir, relative)
-        let url = pubPath + relative
+        let url = pubPath + '/' + relative
         let sourceMapContent = `//# sourceMappingURL=${url}`
 
         content = content + '\n' + sourceMapContent
