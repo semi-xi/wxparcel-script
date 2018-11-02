@@ -1,4 +1,3 @@
-import find from 'lodash/find'
 import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
@@ -47,11 +46,22 @@ export class Bundler {
     this.bundlers.push({ regexp, bundler })
   }
 
+  /**
+   * 打包代码块
+   *
+   * @param {Array} chunks chunk 集合
+   * @returns {Promise} [chunk]
+   */
   async bundle (chunks) {
     chunks = [].concat(chunks)
 
+    let bundlers = this.bundlers.filter(({ regexp }) => {
+      let index = chunks.findIndex((chunk) => regexp.test(chunk.file))
+      return index !== -1
+    })
+
     let bundledChunks = []
-    let bundleTasks = this.bundlers.map(({ regexp, bundler: Bundler }) => {
+    let bundleTasks = bundlers.map(({ regexp, bundler: Bundler }) => {
       /**
        * 过滤需要打包的文件, 这里先判断文件类型
        * 再判断结果文件是否与操作打包匹配的正则匹配到
@@ -91,10 +101,6 @@ export class Bundler {
 
     bundledChunks = await Promise.all(transformTasks)
     return [].concat(chunks, bundledChunks)
-  }
-
-  matchBundler (file) {
-    return find(this.bundlers, ({ regexp }) => regexp.test(file))
   }
 }
 

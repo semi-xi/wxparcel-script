@@ -1,5 +1,6 @@
 import path from 'path'
 import minimatch from 'minimatch'
+import map from 'lodash/map'
 import omit from 'lodash/omit'
 import find from 'lodash/find'
 import filter from 'lodash/filter'
@@ -76,7 +77,8 @@ export class Parser {
     }
 
     if (Assets.exists(file)) {
-      return Promise.resolve()
+      let chunk = Assets.get(file)
+      return Promise.resolve(chunk)
     }
 
     const { rules } = this.options
@@ -196,8 +198,9 @@ export class Parser {
       let options = this.options.connect({ file, rule, options: loaderOptions })
 
       return transform(chunk.metadata, options).then((result) => {
-        let { code: content, map } = result
-        return chunk.update({ content, sourceMap: map })
+        let { code: content, map: sourceMap, dependencies } = result
+        dependencies = map(dependencies, (file) => ({ dependency: file }))
+        return chunk.update({ content, sourceMap, dependencies })
       })
     })
 
@@ -214,6 +217,8 @@ export class Parser {
   async resolve (chunk) {
     let result = Resolver.resolve(chunk.metadata)
     let { file, content, dependencies, map } = result
+
+    dependencies = chunk.dependencies.concat(dependencies)
     chunk.update({ file, content, dependencies, sourceMap: map })
 
     if (!Array.isArray(dependencies) || dependencies.length === 0) {
@@ -227,7 +232,7 @@ export class Parser {
       }
 
       let { type, dependency, destination } = item
-      files.push({ type, file: dependency, destination })
+      destination && files.push({ type, file: dependency, destination })
     })
 
     if (!Array.isArray(files) || files.length === 0) {

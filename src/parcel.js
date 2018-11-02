@@ -1,6 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
-import filter from 'lodash/filter'
+import flattenDeep from 'lodash/flattenDeep'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
 import promisifyWaterfall from 'promise-waterfall'
@@ -14,7 +14,6 @@ import Bundler from './bundler'
 import Logger from './logger'
 import IgnoreFiles from './constants/ingore-files'
 import HOOK_TYPES from './constants/hooks'
-import { readFileAsync } from './share'
 
 /**
  * Parcel
@@ -82,8 +81,8 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
-      // let bundles = await Bundler.bundle(chunks)
-      let stats = await this.flush(chunks)
+      let bundles = await Bundler.bundle(chunks)
+      let stats = await this.flush(bundles)
       stats.spendTime = Date.now() - startTime
 
       return stats
@@ -99,58 +98,36 @@ export default class Parcel {
    *
    */
   watch (options = {}) {
-    let { appConfigFile } = this.options
+    const { appConfigFile } = this.options
 
-    let ignoreFile = (file) => {
+    // 判断是否为被忽略文件
+    const ignoreFile = (file) => {
       return IgnoreFiles.findIndex((pattern) => minimatch(file, pattern)) !== -1
     }
 
-    let transform = async (file) => {
+    // 编译并输出文件
+    const transform = async (files) => {
+      files = Array.isArray(files) ? files : [files]
+
+      let chunks = await Parser.multiCompile(files)
+      return flattenDeep(chunks)
+    }
+
+    // 开始执行
+    const run = async (file) => {
       try {
         let startTime = Date.now()
-
         this.running = true
 
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
 
-        /**
-         * 找到相应的 rule 与对应的 loaders 这样才能够遍历文件与其依赖的文件
-         */
-        let rule = Parser.matchRule(file, this.options.rules)
-        let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
-        let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
-
-        /**
-         * Chunk 不会自己读取内容也不会自动更新新内容
-         * 因此这里需要手动 update 内容
-         */
-        let content = await readFileAsync(file)
-        chunk.update({ content })
-        await Parser.transform(chunk, rule, loaders)
-
-        let files = chunk.dependencies.map((item) => item.dependency)
-        let chunks = await Parser.multiCompile(files)
-
-        /**
-         * 找出对应的打包器, 这样就能简单直接地进行
-         * 相应文件类型的打包, 若找不到对应的打包器
-         * 则说明该文件可能不需要打包, 则直接进行输
-         * 出即可
-         */
-        let { regexp, bundler: MatchedBundler } = Bundler.matchBundler(chunk.destination) || {}
-        if (MatchedBundler) {
-          chunks = filter(Assets.chunks, ({ destination }) => regexp.test(destination))
-
-          const bundler = new MatchedBundler(chunks)
-          chunks = await bundler.bundle()
-        } else {
-          chunks = [chunk].concat(chunks)
-        }
-
+        let chunks = await transform(file)
         chunks = [].concat(chunks, instance.chunks)
 
-        let stats = await this.flush(chunks)
+        let bundles = await Bundler.bundle(chunks)
+        let stats = await this.flush(bundles)
+
         stats.spendTime = Date.now() - startTime
 
         typeof options.complete === 'function' && options.complete(stats)
@@ -163,30 +140,44 @@ export default class Parcel {
     }
 
     let handleFileChanged = (file) => {
+      /**
+       * 判断变更的文件是否被忽略,
+       * 若被忽略则直接退出
+       */
       if (ignoreFile(file)) {
         return
       }
 
+      /**
+       * 判断文件是否为入口配置文件
+       * 若为入口配置文件则直接重新解析即可
+       */
       if (appConfigFile === file) {
         typeof options.change === 'function' && options.change(file, true)
 
         this.options.resolveWXAppConf(file)
-        transform(file)
+        run(file)
         return
       }
 
+      /**
+       * 判断变更的文件是否本来就在 assets 列表中
+       * 如果是则直接重新编译该文件即可
+       */
       if (Assets.exists(file)) {
         typeof options.change === 'function' && options.change(file, true)
-
-        transform(file)
+        run(file)
         return
       }
 
-      let entries = this.findEntries()
-      if (entries.indexOf(file) !== -1) {
-        typeof options.change === 'function' && options.change(file, true)
-
-        transform(file)
+      /**
+       * 查找该文件是否为被依赖文件, 若该文件被依赖, 则找出
+       * 依赖该文件的 chunks, 将它们的文件进行重新编译
+       */
+      let chunks = Assets.findChunkByDependent(file)
+      if (chunks.length) {
+        let files = chunks.map((chunk) => chunk.file)
+        run(files)
         return
       }
 
@@ -194,10 +185,18 @@ export default class Parcel {
     }
 
     let handleFileUnlink = (file) => {
+      /**
+       * 判断变更的文件是否被忽略,
+       * 若被忽略则直接退出
+       */
       if (ignoreFile(file)) {
         return
       }
 
+      /**
+       * 判断文件是否存在与 assets 中
+       * 若存在则删除对应的 chunk
+       */
       if (Assets.exists(file)) {
         typeof options.unlink === 'function' && options.unlink(file, false)
         Assets.del(file)
@@ -217,6 +216,10 @@ export default class Parcel {
     watcher.on('change', handleFileChanged)
     watcher.on('unlink', handleFileUnlink)
 
+    /**
+     * 处理各种 kill 程序情况
+     * 若程序被 kill 则监听的子程序也被关闭
+     */
     let handleProcessSigint = process.exit.bind(process)
     let handleProcessExit = function () {
       watcher && watcher.close()
@@ -247,6 +250,10 @@ export default class Parcel {
 
     let promises = chunks.map((chunk) => {
       let { destination, content, sourceMap } = chunk.flush()
+      if (!destination) {
+        return Promise.resolve()
+      }
+
       content = stripBOM(content)
 
       /**
