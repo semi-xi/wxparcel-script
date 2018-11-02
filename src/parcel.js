@@ -14,6 +14,7 @@ import Bundler from './bundler'
 import Logger from './logger'
 import IgnoreFiles from './constants/ingore-files'
 import HOOK_TYPES from './constants/hooks'
+import { readFileAsync } from './share'
 
 /**
  * Parcel
@@ -114,7 +115,7 @@ export default class Parcel {
     }
 
     // 开始执行
-    const run = async (file) => {
+    const run = async (file, involvedFiles = []) => {
       try {
         let startTime = Date.now()
         this.running = true
@@ -122,7 +123,13 @@ export default class Parcel {
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
 
-        let chunks = await transform(file)
+        if (Assets.exists(file)) {
+          let chunk = Assets.get(file)
+          let source = await readFileAsync(chunk.file)
+          chunk.update({ content: source })
+        }
+
+        let chunks = await transform(involvedFiles.length > 0 ? involvedFiles : file)
         chunks = [].concat(chunks, instance.chunks)
 
         let bundles = await Bundler.bundle(chunks)
@@ -176,8 +183,8 @@ export default class Parcel {
        */
       let chunks = Assets.findChunkByDependent(file)
       if (chunks.length) {
-        let files = chunks.map((chunk) => chunk.file)
-        run(files)
+        let involvedFiles = chunks.map((chunk) => chunk.file)
+        run(file, involvedFiles)
         return
       }
 
