@@ -2,14 +2,13 @@ import path from 'path'
 import Module from 'module'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
-import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
 import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
-import { escapeRegExp } from './share'
+import { escapeRegExp } from '../share'
 
-const REQUIRE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
-const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([~\w\d_\-./]+?)['"]\)/
+const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
+const WORKER_REQUIRE_REGEXP = /wx.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * JS 解析器
@@ -45,8 +44,6 @@ export default class JSResolver extends Resolver {
     const { pubPath, staticDir } = this.options
 
     let source = this.source.toString()
-    source = stripComments(source)
-
     let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
       type: BUNDLE,
       convertDependencyPath: this.convertRelative.bind(this),
@@ -78,6 +75,9 @@ export default class JSResolver extends Resolver {
       source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return { type, file, destination: dependencyDestination, dependency, required }
     })
+
+    source = source.trim()
+    source = source.replace(/(\n)+/g, '$1')
 
     this.source = Buffer.from(source)
     return { file: this.file, content: this.source, dependencies }

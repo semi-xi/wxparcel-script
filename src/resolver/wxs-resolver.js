@@ -3,7 +3,7 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripCssComments from 'strip-css-comments'
 import { Resolver } from './resolver'
-import { escapeRegExp } from './share'
+import { escapeRegExp } from '../share'
 
 const IMAGE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
 
@@ -39,6 +39,9 @@ export default class WXSResolver extends Resolver {
       source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return { file, destination, dependency, required }
     })
+
+    source = source.trim()
+    source = source.replace(/(\n)+/g, '$1')
 
     this.source = Buffer.from(source)
     return { file: this.file, content: this.source, dependencies }
