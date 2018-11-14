@@ -1,7 +1,7 @@
 import path from 'path'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
-import stripCssComments from 'strip-css-comments'
+import stripComments from 'strip-css-comments'
 import { Resolver } from './resolver'
 import { escapeRegExp } from '../share'
 
@@ -24,9 +24,9 @@ export default class WXSResolver extends Resolver {
     const { staticDir, pubPath } = this.options
 
     let source = this.source.toString()
-    source = stripCssComments(source)
+    let strippedCommentsCode = stripComments(source)
 
-    let imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, {
+    let imageDeps = this.resolveDependencies(strippedCommentsCode, IMAGE_REGEXP, {
       convertDestination: this.convertAssetsDestination.bind(this)
     })
 

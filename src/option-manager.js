@@ -141,6 +141,14 @@ export class OptionManager {
     this.watching = options.watch || false
 
     /**
+     * 是否打包模块, 打包的模块根据 `libs(src)/bundler/*` 文件定义
+     * 可以通过 `libs(src)/bundler` 中的 `Bundler.register` 注册
+     *
+     * @type {Boolean}
+     */
+    this.bundle = options.bundle || true
+
+    /**
      * 是否位安静模式
      *
      * @type {Boolean}

@@ -29,14 +29,14 @@ export default class WXMLResolver extends Resolver {
     const { staticDir, pubPath } = this.options
 
     let source = this.source.toString()
-    source = stripComments(source)
+    let strippedCommentsCode = stripComments(source)
 
     let covertImageOptions = {
       convertDestination: this.convertAssetsDestination.bind(this)
     }
 
-    const surroundingDeps = this.resolveDependencies(source, [WXS_REGEPX, TEMPLATE_REGEPX, INCLUDE_REGEPX])
-    const imageDeps = this.resolveDependencies(source, [IMAGE_REGEXP, COVER_IMAGE_REGEXP], covertImageOptions)
+    const surroundingDeps = this.resolveDependencies(strippedCommentsCode, [WXS_REGEPX, TEMPLATE_REGEPX, INCLUDE_REGEPX])
+    const imageDeps = this.resolveDependencies(strippedCommentsCode, [IMAGE_REGEXP, COVER_IMAGE_REGEXP], covertImageOptions)
 
     let dependencies = [].concat(surroundingDeps, imageDeps)
     dependencies = map(dependencies, (item) => {

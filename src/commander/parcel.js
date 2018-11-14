@@ -15,14 +15,17 @@ import { version as pkgVersion } from '../../package.json'
  * @param {String} options.config 配置文件
  */
 const run = async (options = {}) => {
-  let { config: configFile } = options
-
+  let { config: configFile, bundle } = options
   if (!configFile) {
     throw new TypeError('Config file is not provided')
   }
 
   if (!fs.existsSync(configFile)) {
     throw new Error(`Config file is not found, please ensure config file exists. ${configFile}`)
+  }
+
+  if (typeof bundle !== 'undefined') {
+    OptionManager.bundle = bundle !== 'false'
   }
 
   let babelrc = path.join(OptionManager.execDir, './.babelrc')
@@ -75,25 +78,25 @@ const startAction = async (options = {}) => {
     let { config, env } = options
 
     switch (env) {
-      case 'prod':
-      case 'product':
-      case 'production': {
-        process.env.NODE_ENV = 'production'
+      case 'dev':
+      case 'develop':
+      case 'development': {
+        process.env.NODE_ENV = 'development'
         break
       }
 
       case 'test':
       case 'unitest':
       case 'prerelease': {
-        process.env.NODE_ENV = 'prerelease'
+        process.env.NODE_ENV = 'test'
         break
       }
 
-      case 'dev':
-      case 'develop':
-      case 'development':
-      default: {
-        process.env.NODE_ENV = 'development'
+      case 'prod':
+      case 'product':
+      case 'production':
+      case 'release': {
+        process.env.NODE_ENV = 'production'
         break
       }
     }
@@ -124,17 +127,24 @@ const startAction = async (options = {}) => {
  */
 const helpAction = () => {
   Logger.trace('\nExamples:')
-  Logger.trace('  $ wxparcel-script start --env development --watch')
+  Logger.trace(`  $ wxparcel-script start --env development --watch`)
   Logger.trace('  $ wxparcel-script start --env production --config wx.config.js')
 }
+
+const padidngMessage = ' '.padStart(27)
 
 program
   .command('start')
   .description('start the compilation process')
   .option('-c, --config <config>', 'setting configuration file')
-  .option('--env <env>')
-  .option('-w, --watch', 'open the listener for file changes')
   .option('--publicPath <publicPath>', 'set public path of static resources')
+  .option('-w, --watch', 'open the listener for file changes')
+  .option('--env <env>', `setting process.env.NODE_ENV variables` +
+    `\n${padidngMessage}${chalk.bold('dev|develop|development')} for development` +
+    `\n${padidngMessage}${chalk.bold('test|unitest|prerelease')} for test` +
+    `\n${padidngMessage}${chalk.bold('prod|product|production')} for production`
+  )
+  .option('--bundle <bundle>', 'generate bundlers with generated bundler')
   .on('--help', helpAction)
   .action(startAction)
 

@@ -71,7 +71,7 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let { rootDir } = this.options
+      let { rootDir, bundle: useBundle } = this.options
       let entries = this.findEntries()
 
       let projectConfigFile = path.join(rootDir, './project.config.json')
@@ -82,10 +82,16 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       let chunks = await Parser.multiCompile(entries)
-      let bundles = await Bundler.bundle(chunks)
-      let stats = await this.flush(bundles)
-      stats.spendTime = Date.now() - startTime
 
+      if (useBundle === true) {
+        let bundles = await Bundler.bundle(chunks)
+        let stats = await this.flush(bundles)
+        stats.spendTime = Date.now() - startTime
+        return stats
+      }
+
+      let stats = await this.flush(chunks)
+      stats.spendTime = Date.now() - startTime
       return stats
     } catch (error) {
       Logger.error(error)

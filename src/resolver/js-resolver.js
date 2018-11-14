@@ -7,6 +7,7 @@ import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import { stripComments, escapeRegExp } from '../share'
 
+const IMPORT_REGEXP = /(?:ex|im)port(?:\s+(?:[\w\W]+?\s+from\s+)?['"]([~\w\d_\-./]+?)['"]|\s*\(['"]([~\w\d_\-./]+?)['"]\))/
 const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 const WORKER_REQUIRE_REGEXP = /wx.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 
@@ -44,9 +45,9 @@ export default class JSResolver extends Resolver {
     const { pubPath, staticDir } = this.options
 
     let source = this.source.toString()
-    source = stripComments(source)
+    let strippedCommentsCode = stripComments(source)
 
-    let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
+    let jsDependencies = this.resolveDependencies(strippedCommentsCode, [IMPORT_REGEXP, REQUIRE_REGEXP], {
       type: BUNDLE,
       convertDependencyPath: this.convertRelative.bind(this),
       convertDestination: this.convertDestination.bind(this)
@@ -56,7 +57,7 @@ export default class JSResolver extends Resolver {
      * worker 文件因为必须独立于 worker 目录, 因此这里使用 SCATTER 类型
      * worker 目录在 app.json 中定义
      */
-    let workerDependencies = this.resolveDependencies(source, WORKER_REQUIRE_REGEXP, {
+    let workerDependencies = this.resolveDependencies(strippedCommentsCode, WORKER_REQUIRE_REGEXP, {
       type: SCATTER,
       convertDependencyPath: this.convertWorkerRelative.bind(this)
     })
