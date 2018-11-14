@@ -42,7 +42,8 @@ export default class WXSSResolver extends Resolver {
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(source)
-    return { file: this.file, content: this.source, dependencies }
+    source = Buffer.from(source)
+
+    return { file: this.file, content: source, dependencies }
   }
 }

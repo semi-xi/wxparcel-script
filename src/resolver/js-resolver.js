@@ -5,7 +5,7 @@ import trimStart from 'lodash/trimStart'
 import { Resolver } from './resolver'
 import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
-import { escapeRegExp } from '../share'
+import { stripComments, escapeRegExp } from '../share'
 
 const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 const WORKER_REQUIRE_REGEXP = /wx.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
@@ -44,6 +44,8 @@ export default class JSResolver extends Resolver {
     const { pubPath, staticDir } = this.options
 
     let source = this.source.toString()
+    source = stripComments(source)
+
     let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
       type: BUNDLE,
       convertDependencyPath: this.convertRelative.bind(this),
@@ -79,8 +81,8 @@ export default class JSResolver extends Resolver {
     source = source.trim()
     source = source.replace(/(\n)+/g, '$1')
 
-    this.source = Buffer.from(source)
-    return { file: this.file, content: this.source, dependencies }
+    source = Buffer.from(source)
+    return { file: this.file, content: source, dependencies }
   }
 
   /**

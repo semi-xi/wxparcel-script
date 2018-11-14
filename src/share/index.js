@@ -1,11 +1,24 @@
 import fs from 'fs'
 import crypto from 'crypto'
+import CommentStripper from './comment-stripper'
+
+/**
+ * 去除所有备注
+ *
+ * @param {String} source JS code
+ * @return {String}
+ */
+export const stripComments = (source) => {
+  let stripper = new CommentStripper()
+  return stripper.strip(source)
+}
 
 /**
  * 异步读取文件
  *
  * @param {String} file 文件名
  * @param {String} type 读取类型
+ * @return {Promise} source
  */
 export const readFileAsync = (file, type) => {
   return new Promise((resolve, reject) => {
