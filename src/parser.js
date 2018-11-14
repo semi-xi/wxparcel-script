@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import minimatch from 'minimatch'
+import map from 'lodash/map'
 import omit from 'lodash/omit'
 import find from 'lodash/find'
 import filter from 'lodash/filter'
@@ -89,35 +90,10 @@ export class Parser {
     let content = fs.readFileSync(file)
     chunk.update({ content })
 
-    let queue = [
-      () => this.transform(chunk, rule, loaders),
-      () => this.resolve(chunk)
-    ]
+    chunk = await this.transform(chunk, rule, loaders)
+    let metadata = await this.resolve(chunk)
 
-    return waterfall(queue).then(() => {
-      let { dependencies } = chunk
-      if (!Array.isArray(dependencies) || dependencies.length === 0) {
-        return chunk
-      }
-
-      let files = []
-      dependencies.forEach((item) => {
-        if (Assets.exists(item.dependency)) {
-          return chunk
-        }
-
-        let { type, dependency, destination } = item
-        files.push({ type, file: dependency, destination })
-      })
-
-      if (!Array.isArray(files) || files.length === 0) {
-        return chunk
-      }
-
-      return this.multiCompile(files).then((chunks) => {
-        return [chunk].concat(chunks)
-      })
-    })
+    return metadata
   }
 
   /**
@@ -202,8 +178,9 @@ export class Parser {
       let options = this.options.connect({ file, rule, options: loaderOptions })
 
       return transform(chunk.metadata, options).then((result) => {
-        let { code: content, map } = result
-        return chunk.update({ content, sourceMap: map })
+        let { code: content, map: sourceMap, dependencies } = result
+        dependencies = map(dependencies, (file) => ({ dependency: file }))
+        return chunk.update({ content, sourceMap, dependencies })
       })
     })
 
@@ -216,14 +193,33 @@ export class Parser {
    * @param {Chunk} chunk 代码片段
    * @returns {Promise} promise
    */
-  resolve (chunk) {
-    return new Promise((resolve) => {
-      let result = Resolver.resolve(chunk.metadata)
-      let { file, content, dependencies, map } = result
-      chunk.update({ file, content, dependencies, sourceMap: map })
+  async resolve (chunk) {
+    let result = Resolver.resolve(chunk.metadata)
+    let { file, content, dependencies, map: sourceMap } = result
 
-      resolve(chunk)
+    dependencies = chunk.dependencies.concat(dependencies)
+    chunk.update({ file, content, dependencies, sourceMap })
+
+    if (!Array.isArray(dependencies) || dependencies.length === 0) {
+      return chunk
+    }
+
+    let files = []
+    dependencies.forEach((item) => {
+      if (Assets.exists(item.dependency)) {
+        return
+      }
+
+      let { type, dependency, destination } = item
+      destination && files.push({ type, file: dependency, destination })
     })
+
+    if (!Array.isArray(files) || files.length === 0) {
+      return chunk
+    }
+
+    let chunks = await this.multiCompile(files)
+    return [chunk].concat(chunks)
   }
 
   /**
