@@ -1,16 +1,17 @@
-import fs from 'fs'
 import path from 'path'
 import minimatch from 'minimatch'
 import map from 'lodash/map'
 import omit from 'lodash/omit'
 import find from 'lodash/find'
 import filter from 'lodash/filter'
+import isEmpty from 'lodash/isEmpty'
 import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'promise-waterfall'
 import OptionManager from './option-manager'
 import Assets from './assets'
 import Resolver from './resolver'
 import { SCATTER } from './constants/chunk-type'
+import { readFileAsync } from './share'
 
 /**
  * 编译器
@@ -53,19 +54,11 @@ export class Parser {
   /**
    * 编译文件
    *
-   * @param {String} file 文件位置
+   * @param {Array|String} file 文件位置
+   * @return {Promise} [chunk]
    */
   async compile (file) {
-    let chunkOptions = {}
-
-    if (typeof file === 'object') {
-      chunkOptions = omit(file, 'file')
-      file = file.file
-    }
-
-    if (Assets.exists(file)) {
-      return Promise.resolve()
-    }
+    let chunk = await this.convert(file)
 
     /**
      * 筛选 loader 类型, 只有不指定 loader.for
@@ -73,8 +66,8 @@ export class Parser {
      * 因为某些 loader 只操作打包后的文件, 例如
      * uglify 只操作 打包类型 (BUNDLER)
      */
-    let rule = this.matchRule(file, this.options.rules) || {}
-    let loaders = filter(rule.loaders, (loader) => {
+    const { rule } = chunk
+    const loaders = filter(rule.loaders, (loader) => {
       if (!loader.hasOwnProperty('for')) {
         return true
       }
@@ -86,20 +79,45 @@ export class Parser {
       return loader.for === SCATTER
     })
 
-    let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
-    let content = fs.readFileSync(file)
-    chunk.update({ content })
-
     chunk = await this.transform(chunk, rule, loaders)
-    let metadata = await this.resolve(chunk)
+    let chunks = await this.resolve(chunk)
+    return chunks
+  }
 
-    return metadata
+  /**
+   * 将 file 转化成 chunk
+   *
+   * @param {String} file 文件
+   * @param {Object} [chunkOptions={}] 配置
+   * @return {Promise} chunk
+   */
+  convert (file, chunkOptions = {}) {
+    if (typeof file === 'object') {
+      chunkOptions = isEmpty(chunkOptions) ? omit(file, 'file') : chunkOptions
+      file = file.file
+    }
+
+    if (Assets.exists(file)) {
+      let chunk = Assets.get(file)
+      return Promise.resolve(chunk)
+    }
+
+    const { rules } = this.options
+    const rule = this.matchRule(file, rules) || {}
+    const chunk = Assets.add(file, Object.assign({}, chunkOptions, { rule }))
+
+    return readFileAsync(file).then((content) => {
+      chunk.update({ content })
+      return chunk
+    })
   }
 
   /**
    * 编译代码
    *
    * @param {Chunk} chunk 代码片段
+   * @param {Object} rule 规则
+   * @param {Array} loeaders 加载器
    * @returns {Promise} promise
    */
   transform (chunk, rule, loaders) {
@@ -191,7 +209,7 @@ export class Parser {
    * 解析代码
    *
    * @param {Chunk} chunk 代码片段
-   * @returns {Promise} promise
+   * @returns {Promise} [chunk]
    */
   async resolve (chunk) {
     let result = Resolver.resolve(chunk.metadata)

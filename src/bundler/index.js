@@ -1,4 +1,3 @@
-import find from 'lodash/find'
 import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
@@ -47,6 +46,12 @@ export class Bundler {
     this.bundlers.push({ regexp, bundler })
   }
 
+  /**
+   * 打包代码块
+   *
+   * @param {Array} chunks chunk 集合
+   * @returns {Promise} [chunk]
+   */
   async bundle (chunks) {
     chunks = [].concat(chunks)
 
@@ -93,8 +98,17 @@ export class Bundler {
     return [].concat(chunks, bundledChunks)
   }
 
-  matchBundler (file) {
-    return find(this.bundlers, ({ regexp }) => regexp.test(file))
+  /**
+   * 获取适合 file 的 bulder
+   *
+   * @param {Chunk} chunks 代码片
+   * @returns {Array} Bundler
+   */
+  matchBundler (chunks) {
+    return this.bundlers.filter(({ regexp }) => {
+      let index = chunks.findIndex((chunk) => regexp.test(chunk.file))
+      return index !== -1
+    })
   }
 }
 

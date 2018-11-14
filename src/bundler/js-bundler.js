@@ -109,8 +109,8 @@ export default class JSBundler extends Bundler {
      * 代码块, 并且类型一定为 BUNDLE; 因此将 BUNDLE 去除以外的
      * 代码块就为入口代码块
      */
-    let chunks = filter(this.chunks, (chunk) => chunk.type !== BUNDLE)
-    chunks = map(chunks, ({ file, content, destination, ...otherProps }) => {
+    let bundleChunks = filter(this.chunks, (chunk) => chunk.type !== BUNDLE)
+    let entryChunks = map(bundleChunks, ({ file, content, destination, ...otherProps }) => {
       let id = this._remember(destination)
 
       let destFolder = path.dirname(destination)
@@ -121,15 +121,17 @@ export default class JSBundler extends Bundler {
       let code = `require(${this.wrapQuote(required)})(${this.wrapQuote(id)})`
       let entryContent = Buffer.from(code)
 
-      return this.assets.add(file, {
+      let params = {
         ...otherProps,
         type: ENTRY,
         content: entryContent,
         rule: Parser.matchRule(file, rules)
-      })
+      }
+
+      return this.assets.add(file, params)
     })
 
-    return [bundlerChunk].concat(chunks)
+    return [bundlerChunk].concat(entryChunks)
   }
 
   /**
