@@ -9,7 +9,7 @@ import { stripComments, escapeRegExp } from '../share'
 
 const IMPORT_REGEXP = /(?:ex|im)port(?:\s+(?:[\w\W]+?\s+from\s+)?['"]([~\w\d_\-./]+?)['"]|\s*\(['"]([~\w\d_\-./]+?)['"]\))/
 const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
-const WORKER_REQUIRE_REGEXP = /wx.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
+const WORKER_REQUIRE_REGEXP = /wx\.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * JS 解析器
