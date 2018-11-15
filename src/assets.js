@@ -105,6 +105,19 @@ export class Assets {
   }
 
   /**
+   * 查找依赖于 file 的 chunks
+   *
+   * @param {String} file 文件
+   * @return {Array}
+   */
+  findChunkByDependent (file) {
+    return this.chunks.filter((chunk) => {
+      let index = chunk.dependencies.findIndex((item) => item.dependency === file)
+      return index !== -1
+    })
+  }
+
+  /**
    * 清除所有 chunk
    *
    */

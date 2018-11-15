@@ -4,7 +4,6 @@ import path from 'path'
 import portscanner from 'portscanner'
 import isEmpty from 'lodash/isEmpty'
 import mapValues from 'lodash/mapValues'
-import Printer from './printer'
 
 /**
  * 配置管理器
@@ -102,6 +101,13 @@ export class OptionManager {
     this.env = process.env.NODE_ENV || 'development'
 
     /**
+     * 日志类型
+     *
+     * @type {Array|String}
+     */
+    this.logType = options.hasOwnProperty('logType') ? options.logType : ['console']
+
+    /**
      * 规则集合
      *
      * @type {Array}
@@ -112,6 +118,13 @@ export class OptionManager {
     if (valid !== true) {
       throw new TypeError(valid)
     }
+
+    /**
+     * 是否生成 sourceMap
+     *
+     * @type {String|Boolean}
+     */
+    this.sourceMap = options.sourceMap || process.env.NODE_ENV === 'development'
 
     /**
      * 插件集合
@@ -126,6 +139,14 @@ export class OptionManager {
      * @type {Boolean}
      */
     this.watching = options.watch || false
+
+    /**
+     * 是否打包模块, 打包的模块根据 `libs(src)/bundler/*` 文件定义
+     * 可以通过 `libs(src)/bundler` 中的 `Bundler.register` 注册
+     *
+     * @type {Boolean}
+     */
+    this.bundle = options.bundle || true
 
     /**
      * 是否位安静模式
@@ -231,7 +252,6 @@ export class OptionManager {
   resolveWXProjConf (file) {
     if (!fs.existsSync(file)) {
       let message = `File ${file} is not found, please ensure ${file} is valid.`
-      Printer.error(message)
       throw new Error(message)
     }
 
@@ -239,7 +259,6 @@ export class OptionManager {
       this.projectConfig = fs.readJSONSync(file)
     } catch (error) {
       let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
-      Printer.error(message)
       throw new Error(message)
     }
 
@@ -268,7 +287,6 @@ export class OptionManager {
   resolveWXAppConf (file) {
     if (!fs.existsSync(file)) {
       let message = `File ${file} is not found, please ensure ${file} is valid.`
-      Printer.error(message)
       throw new Error(message)
     }
 
@@ -276,7 +294,6 @@ export class OptionManager {
       this.appConfig = fs.readJSONSync(file)
     } catch (error) {
       let message = `File ${file} is invalid json, please check the json corrected.\n${error}`
-      Printer.error(message)
       throw new Error(message)
     }
 

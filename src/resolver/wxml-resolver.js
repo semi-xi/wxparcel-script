@@ -1,9 +1,10 @@
 import path from 'path'
+import map from 'lodash/map'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
-import { replacement } from './share'
+import { replacement } from '../share'
 
 const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
 const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
@@ -27,31 +28,32 @@ export default class WXMLResolver extends Resolver {
   resolve () {
     const { staticDir, pubPath } = this.options
 
-    this.source = this.source.toString()
-    this.source = stripComments(this.source)
+    let source = this.source.toString()
+    let strippedCommentsCode = stripComments(source)
 
-    const covertImageOptions = {
+    let covertImageOptions = {
       convertDestination: this.convertAssetsDestination.bind(this)
     }
 
-    const wxsDeps = this.resolveDependencies(WXS_REGEPX)
-    const templateDeps = this.resolveDependencies(TEMPLATE_REGEPX)
-    const includeDeps = this.resolveDependencies(INCLUDE_REGEPX)
-    const imageDeps = this.resolveDependencies(IMAGE_REGEXP, covertImageOptions)
-    const coverImageDeps = this.resolveDependencies(COVER_IMAGE_REGEXP, covertImageOptions)
+    const surroundingDeps = this.resolveDependencies(strippedCommentsCode, [WXS_REGEPX, TEMPLATE_REGEPX, INCLUDE_REGEPX])
+    const imageDeps = this.resolveDependencies(strippedCommentsCode, [IMAGE_REGEXP, COVER_IMAGE_REGEXP], covertImageOptions)
 
-    let dependencies = [].concat(wxsDeps, templateDeps, includeDeps, imageDeps, coverImageDeps)
-    dependencies = dependencies.map((item) => {
+    let dependencies = [].concat(surroundingDeps, imageDeps)
+    dependencies = map(dependencies, (item) => {
       let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, IMAGE_REGEXP)
-      this.source = replacement(this.source, code, url, COVER_IMAGE_REGEXP)
+      source = replacement(source, code, url, IMAGE_REGEXP)
+      source = replacement(source, code, url, COVER_IMAGE_REGEXP)
+
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(this.source)
-    return { file: this.file, source: this.source, dependencies }
+    source = source.trim()
+    source = source.replace(/(\n)+/g, '$1')
+    source = Buffer.from(source)
+
+    return { file: this.file, content: source, dependencies }
   }
 }

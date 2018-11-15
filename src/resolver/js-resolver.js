@@ -2,13 +2,14 @@ import path from 'path'
 import Module from 'module'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
-import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
+import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
-import { escapeRegExp } from './share'
+import { stripComments, escapeRegExp } from '../share'
 
-const REQUIRE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
-const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([~\w\d_\-./]+?)['"]\)/
+const IMPORT_REGEXP = /(?:ex|im)port(?:\s+(?:[\w\W]+?\s+from\s+)?['"]([~\w\d_\-./]+?)['"]|\s*\(['"]([~\w\d_\-./]+?)['"]\))/
+const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
+const WORKER_REQUIRE_REGEXP = /wx.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * JS 解析器
@@ -20,14 +21,12 @@ const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([~\w\d_\-./]+?)['"]\)/
 export default class JSResolver extends Resolver {
   /**
    * Creates an instance of JSResolver.
-   * @param {String} source 代码
-   * @param {String} file 文件名
-   * @param {Object} instance 实例
+   *
+   * @param {Object} asset 资源对象
    * @param {OptionManager} [options=OptionManager] 配置管理器
-   * @memberof JSResolver
    */
-  constructor (source, file, instance, options = OptionManager) {
-    super(source, file, instance, options)
+  constructor (asset, options = OptionManager) {
+    super(asset, options)
 
     /**
      * 模块集合
@@ -43,24 +42,30 @@ export default class JSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, pubPath } = this.options
+    const { pubPath, staticDir } = this.options
 
-    this.source = this.source.toString()
-    this.source = stripComments(this.source)
+    let source = this.source.toString()
+    let strippedCommentsCode = stripComments(source)
 
-    let jsDependencies = this.resolveDependencies(REQUIRE_REGEXP, {
+    let jsDependencies = this.resolveDependencies(strippedCommentsCode, [IMPORT_REGEXP, REQUIRE_REGEXP], {
+      type: BUNDLE,
       convertDependencyPath: this.convertRelative.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })
 
-    let workerDependencies = this.resolveDependencies(WORKER_REQUIRE_REGEXP, {
+    /**
+     * worker 文件因为必须独立于 worker 目录, 因此这里使用 SCATTER 类型
+     * worker 目录在 app.json 中定义
+     */
+    let workerDependencies = this.resolveDependencies(strippedCommentsCode, WORKER_REQUIRE_REGEXP, {
+      type: SCATTER,
       convertDependencyPath: this.convertWorkerRelative.bind(this)
     })
 
     let dependencies = [].concat(jsDependencies, workerDependencies)
     dependencies = this.filterDependencies(dependencies)
     dependencies = dependencies.map((item) => {
-      let { file, destination, dependency, required, code } = item
+      let { type, file, destination, dependency, required, code } = item
       let extname = path.extname(destination)
       if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
         return item
@@ -70,12 +75,15 @@ export default class JSResolver extends Resolver {
       let relativePath = dependencyDestination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = this.source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
-      return { file, destination: dependencyDestination, dependency, required }
+      source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
+      return { type, file, destination: dependencyDestination, dependency, required }
     })
 
-    this.source = Buffer.from(this.source)
-    return { file: this.file, source: this.source, dependencies }
+    source = source.trim()
+    source = source.replace(/(\n)+/g, '$1')
+
+    source = Buffer.from(source)
+    return { file: this.file, content: source, dependencies }
   }
 
   /**

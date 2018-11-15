@@ -1,6 +1,4 @@
 import http from 'http'
-import colors from 'colors'
-import ip from 'ip'
 import ipPortRegex from 'ip-port-regex'
 import Finalhandler from 'finalhandler'
 import ServeStatic from 'serve-static'
@@ -57,9 +55,8 @@ export default class DevServerPlugin {
    * 在编译过程中异步执行
    *
    * @param {Object} options 配置
-   * @param {Printer} printer 记录管理工具
    */
-  async applyAsync (options, printer) {
+  async applyAsync (options) {
     options = defaultsDeep(options, this.options)
     if (options.watching === false) {
       return Promise.resolve()
@@ -80,12 +77,6 @@ export default class DevServerPlugin {
     let port = options.port || match.port
     server.listen(port, '0.0.0.0')
 
-    server.on('error', (error) => printer.error(error))
-
-    server.once('listening', () => {
-      printer.layze(`Static server is running at ${colors.cyan.bold(`${ip.address()}:${port}`)}`)
-      printer.layze(`Static output is served from ${colors.cyan.bold(pubPath)}`)
-      printer.layze('')
-    })
+    server.on('error', (error) => console.error(error))
   }
 }

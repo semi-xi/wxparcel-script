@@ -3,6 +3,26 @@
 /test
 
 
+# Output files
+/coverage
+/documents
+/gh-pages
+
+
+# eslint files
+/.eslintrc.js
+
+
+# CI config files
+/.travis.yml
+/appveyor.yml
+
+
+# ESDoc files
+.esdoc.json
+esdoc.sh
+
+
 # Source versions
 .git
 .hg

@@ -1,16 +1,26 @@
-import CleanerPlugin from '../plugins/clean-wxparcel-plugin'
-import DevServerPlugin from '../plugins/dev-server-wxparcel-plugin'
+/**
+ * 默认配置, 自定义配置可以参考这里
+ */
+import {
+  BabelLoader, EnvifyLoader, UglifyJSLoader, SassLoader,
+  CleanPlugin, DevServerPlugin,
+  chunkTypes
+} from '../index'
 
+// 分片类型
+const { BUNDLER, SCATTER } = chunkTypes
+
+// JS 规则
 let jsRules = [
   {
     test: /\.js$/,
     extname: '.js',
     loaders: [
       {
-        use: require.resolve('../loaders/babel-wxparcel-loader')
+        use: BabelLoader
       },
       {
-        use: require.resolve('../loaders/envify-wxparcel-loader'),
+        use: EnvifyLoader,
         options: {
           env: {
             NODE_ENV: process.env.NODE_ENV
@@ -21,37 +31,29 @@ let jsRules = [
   }
 ]
 
+// wxss 规则
 let wxssRules = [
   {
     test: /\.scss$/,
     extname: '.wxss',
     loaders: [
       {
-        use: require.resolve('../loaders/sass-wxparcel-loader'),
+        use: SassLoader,
         options: {}
       }
     ]
   }
 ]
 
+// 插件配置
 let plugins = [
-  new CleanerPlugin({
+  new CleanPlugin({
     alisas: ['outDir', 'staticDir', 'tmplDir']
   })
 ]
 
-if (process.env.NODE_ENV === 'development') {
-  plugins.push(new DevServerPlugin())
-}
-
-if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
-  jsRules[0].loaders.push({
-    use: require.resolve('../loaders/uglifyjs-wxparcel-loader'),
-    options: {}
-  })
-}
-
-export default Object.defineProperties({ setRule, addPlugin, delPlugin }, {
+// 全局配置
+let config = Object.defineProperties({ setRule, addPlugin, delPlugin }, {
   rules: {
     get: () => [...jsRules, ...wxssRules]
   },
@@ -60,6 +62,23 @@ export default Object.defineProperties({ setRule, addPlugin, delPlugin }, {
   }
 })
 
+// 开发环境下配置
+if (process.env.NODE_ENV === 'development') {
+  plugins.push(new DevServerPlugin())
+}
+
+// 测试或生产配置
+if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'production') {
+  jsRules[0].loaders.push({
+    use: UglifyJSLoader,
+    for: [BUNDLER, SCATTER],
+    options: {}
+  })
+}
+
+export default config
+
+// 设置规则
 function setRule (name, callback) {
   switch (name) {
     case 'js': {
@@ -76,10 +95,12 @@ function setRule (name, callback) {
   }
 }
 
+// 添加插件
 function addPlugin (plugin) {
   plugins.push(plugin)
 }
 
+// 删除插件
 function delPlugin (plugin) {
   let index = plugins.findIndex((item) => item.constructor === plugin.constructor)
   index !== -1 && plugins.splice(index, 1)

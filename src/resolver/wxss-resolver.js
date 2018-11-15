@@ -1,9 +1,9 @@
 import path from 'path'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
-import stripCssComments from 'strip-css-comments'
+import stripComments from 'strip-css-comments'
 import { Resolver } from './resolver'
-import { replacement } from './share'
+import { replacement } from '../share'
 
 const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([~\w\d_\-./]+?)['"];/
 const IMAGE_REGEXP = /url\(["']?([~\w\d_\-./]+?)["']?\)/i
@@ -24,11 +24,11 @@ export default class WXSSResolver extends Resolver {
   resolve () {
     const { staticDir, pubPath } = this.options
 
-    this.source = this.source.toString()
-    this.source = stripCssComments(this.source)
+    let source = this.source.toString()
+    let strippedCommentsCode = stripComments(source)
 
-    let importDeps = this.resolveDependencies(IMPORT_REGEXP)
-    let imageDeps = this.resolveDependencies(IMAGE_REGEXP, {
+    let importDeps = this.resolveDependencies(strippedCommentsCode, IMPORT_REGEXP)
+    let imageDeps = this.resolveDependencies(strippedCommentsCode, IMAGE_REGEXP, {
       convertDestination: this.convertAssetsDestination.bind(this)
     })
 
@@ -38,11 +38,12 @@ export default class WXSSResolver extends Resolver {
       let relativePath = destination.replace(staticDir, '')
       let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
 
-      this.source = replacement(this.source, code, url, IMAGE_REGEXP)
+      source = replacement(source, code, url, IMAGE_REGEXP)
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(this.source)
-    return { file: this.file, source: this.source, dependencies }
+    source = Buffer.from(source)
+
+    return { file: this.file, content: source, dependencies }
   }
 }
