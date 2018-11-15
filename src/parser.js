@@ -118,7 +118,7 @@ export class Parser {
    * @param {Chunk} chunk 代码片段
    * @param {Object} rule 规则
    * @param {Array} loeaders 加载器
-   * @returns {Promise} promise
+   * @returns {Promise} chunk
    */
   transform (chunk, rule, loaders) {
     const { file } = chunk
@@ -177,16 +177,19 @@ export class Parser {
         return Promise.reject(new Error('Params use is not provided from loader'))
       }
 
-      if (typeof loader.use !== 'string') {
-        return Promise.reject(new Error('Params use is not a stirng'))
+      let transform = loader.use
+      if (typeof transform === 'string') {
+        /**
+         * 读取模块, 若模块为 es6 模块则通过 default 形式去获取.
+         * 所有 loader 都通过 default 形式暴露接口给编译器
+         */
+        let module = require(transform)
+        transform = module.default || module
       }
 
-      /**
-       * 读取模块, 若模块为 es6 模块则通过 default 形式去获取.
-       * 所有 loader 都通过 default 形式暴露接口给编译器
-       */
-      let transformer = require(loader.use)
-      let transform = transformer.default || transformer
+      if (typeof transform !== 'function') {
+        return Promise.reject(new Error('Params use is invalid, make sure use is a file path or class'))
+      }
 
       /**
        * 因为 loader 为外部包, 因此这里为了不给外部包改变配置
@@ -246,7 +249,7 @@ export class Parser {
    *
    * @param {String}} file 文件
    * @param {Array} rules 规则
-   * @return {Object} rule 匹配到的规则
+   * @return {Object} 匹配到的规则
    *
    * 这里通过配置 rule.test 来进行匹配
    * {

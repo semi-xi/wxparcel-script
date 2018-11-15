@@ -3,7 +3,7 @@
   "version": "1.0.0-alpha.11.1",
   "license": "MIT",
   "bin": "./bin/cli",
-  "main": "./libs/parcel.js",
+  "main": "./libs/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/wxparcel/wxparcel-script.git"
