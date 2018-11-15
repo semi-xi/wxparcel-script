@@ -5,7 +5,7 @@ import stripComments from 'strip-css-comments'
 import { Resolver } from './resolver'
 import { replacement } from '../share'
 
-const IMPORT_REGEXP = /@import\s*(?:.+?)\s*['"]([~\w\d_\-./]+?)['"];/
+const IMPORT_REGEXP = /@import\s*(?:[\w\W]+?)\s*['"]([~\w\d_\-./]+?)['"];/
 const IMAGE_REGEXP = /url\(["']?([~\w\d_\-./]+?)["']?\)/i
 
 /**
