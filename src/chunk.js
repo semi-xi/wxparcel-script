@@ -64,7 +64,7 @@ export class Chunk {
     this.file = file
 
     /**
-     * 分片类型 [bundler|entry]
+     * 分片类型 [bundle|bundler|scatter|entry]
      *
      * @type {Menu}
      */
@@ -75,7 +75,18 @@ export class Chunk {
      *
      * @type {Array}
      */
-    this.dependencies = state.dependencies || []
+    this.dependencies = []
+    if (Array.isArray(state.dependencies) && state.dependencies.length > 0) {
+      state.dependencies.forEach((dependency) => {
+        if (typeof dependency === 'string') {
+          this.dependencies.push({ dependency })
+        }
+
+        if (typeof dependency === 'object') {
+          this.dependencies.push(dependency)
+        }
+      })
+    }
 
     /**
      * 代码内容
@@ -90,7 +101,6 @@ export class Chunk {
      * @type {Sourcemap}
      */
     this.sourceMap = null
-
     if (options.sourceMap !== false) {
       if (typeof state.sourceMap === 'string') {
         this.sourceMap = JSON.parse(state.sourceMap)
@@ -167,7 +177,19 @@ export class Chunk {
     }
 
     if (props.hasOwnProperty('dependencies') && Array.isArray(props.dependencies)) {
-      this.dependencies = props.dependencies
+      if (props.dependencies.length > 0) {
+        this.dependencies = []
+
+        props.dependencies.forEach((dependency) => {
+          if (typeof dependency === 'string') {
+            this.dependencies.push({ dependency })
+          }
+
+          if (typeof dependency === 'object') {
+            this.dependencies.push(dependency)
+          }
+        })
+      }
     }
 
     if (props.hasOwnProperty('rule') && isPlainObject(props.rule)) {

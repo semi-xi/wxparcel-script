@@ -11,12 +11,14 @@ import { render } from 'node-sass'
 export default function SassLoader (asset, options = {}) {
   return new Promise((resolve, reject) => {
     let { content } = asset
+    const { tmplDir, rootDir, srcDir } = options
     let { file, options: sassOptions } = options
 
     let data = content.toString()
     let params = { file, data }
 
     let defaultOptions = {
+      includePaths: [tmplDir, rootDir, srcDir],
       outputStyle: 'compressed',
       sourceComments: false,
       sourceMap: true

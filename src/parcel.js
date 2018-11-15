@@ -81,7 +81,8 @@ export default class Parcel {
 
       entries.unshift(projectConfigFile)
 
-      let chunks = await Parser.multiCompile(entries)
+      await Parser.multiCompile(entries)
+      let chunks = Assets.chunks
 
       if (useBundle === true) {
         let bundles = await Bundler.bundle(chunks)

@@ -1,6 +1,5 @@
 import path from 'path'
 import minimatch from 'minimatch'
-import map from 'lodash/map'
 import omit from 'lodash/omit'
 import find from 'lodash/find'
 import filter from 'lodash/filter'
@@ -200,7 +199,6 @@ export class Parser {
 
       return transform(chunk.metadata, options).then((result) => {
         let { code: content, map: sourceMap, dependencies } = result
-        dependencies = map(dependencies, (file) => ({ dependency: file }))
         return chunk.update({ content, sourceMap, dependencies })
       })
     })
