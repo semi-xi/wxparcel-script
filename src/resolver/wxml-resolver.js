@@ -4,7 +4,7 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
-import { replacement } from './share'
+import { replacement } from '../share'
 
 const WXS_REGEPX = /<wxs\s*(?:.*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:.*?)\s*(?:\/>|>(?:.*?)<\/wxs>)/
 const TEMPLATE_REGEPX = /<import\s*(?:.*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:\/>|>(?:.*?)<\/import>)/
@@ -29,19 +29,16 @@ export default class WXMLResolver extends Resolver {
     const { staticDir, pubPath } = this.options
 
     let source = this.source.toString()
-    source = stripComments(source)
+    let strippedCommentsCode = stripComments(source)
 
     let covertImageOptions = {
       convertDestination: this.convertAssetsDestination.bind(this)
     }
 
-    const wxsDeps = this.resolveDependencies(source, WXS_REGEPX)
-    const templateDeps = this.resolveDependencies(source, TEMPLATE_REGEPX)
-    const includeDeps = this.resolveDependencies(source, INCLUDE_REGEPX)
-    const imageDeps = this.resolveDependencies(source, IMAGE_REGEXP, covertImageOptions)
-    const coverImageDeps = this.resolveDependencies(source, COVER_IMAGE_REGEXP, covertImageOptions)
+    const surroundingDeps = this.resolveDependencies(strippedCommentsCode, [WXS_REGEPX, TEMPLATE_REGEPX, INCLUDE_REGEPX])
+    const imageDeps = this.resolveDependencies(strippedCommentsCode, [IMAGE_REGEXP, COVER_IMAGE_REGEXP], covertImageOptions)
 
-    let dependencies = [].concat(wxsDeps, templateDeps, includeDeps, imageDeps, coverImageDeps)
+    let dependencies = [].concat(surroundingDeps, imageDeps)
     dependencies = map(dependencies, (item) => {
       let { file, destination, dependency, required, code } = item
       let relativePath = destination.replace(staticDir, '')
@@ -53,7 +50,10 @@ export default class WXMLResolver extends Resolver {
       return { file, destination, dependency, required }
     })
 
-    this.source = Buffer.from(source)
-    return { file: this.file, content: this.source, dependencies }
+    source = source.trim()
+    source = source.replace(/(\n)+/g, '$1')
+    source = Buffer.from(source)
+
+    return { file: this.file, content: source, dependencies }
   }
 }

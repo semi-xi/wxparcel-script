@@ -1,23 +1,20 @@
 import fs from 'fs-extra'
 import path from 'path'
-import filter from 'lodash/filter'
-import colors from 'colors'
+import flattenDeep from 'lodash/flattenDeep'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
 import promisifyWaterfall from 'promise-waterfall'
 import minimatch from 'minimatch'
-import map from 'lodash/map'
-import capitalize from 'lodash/capitalize'
 import OptionManager from './option-manager'
 import Assets, { Assets as AssetsInstance } from './assets'
 import { BUNDLER, SCATTER } from './constants/chunk-type'
 import JSONResolver from './resolver/json-resolver'
 import Parser from './parser'
 import Bundler from './bundler'
-import Printer from './printer'
+import Logger from './logger'
 import IgnoreFiles from './constants/ingore-files'
-import Package from '../package.json'
 import HOOK_TYPES from './constants/hooks'
+import { readFileAsync } from './share/index'
 
 /**
  * Parcel
@@ -61,13 +58,12 @@ export default class Parcel {
    */
   async run () {
     if (this.running === true) {
-      Printer.warn(`WXParcel is running, you can enter ${colors.bold('Ctrl + C')} to exit.`)
-      return Promise.resolve()
+      return Promise.reject(new Error('WXParcel is running'))
     }
 
     try {
+      let startTime = Date.now()
       this.running = true
-      const timer = Printer.timer()
 
       this.hook('async')()
       await this.hook('before')()
@@ -75,15 +71,8 @@ export default class Parcel {
       let instance = new AssetsInstance()
       await this.hook('beforeTransform')(instance)
 
-      let { rootDir, miniprogramRoot, pluginRoot } = this.options
-      let resolver = new JSONResolver({})
-      let entryModule = resolver.findModule('app', miniprogramRoot)
-      let entries = entryModule.files || []
-
-      if (pluginRoot) {
-        entries.push(path.join(pluginRoot, 'plugin.json'))
-        entries.push(path.join(pluginRoot, 'index.js'))
-      }
+      let { rootDir, bundle: useBundle } = this.options
+      let entries = this.findEntries()
 
       let projectConfigFile = path.join(rootDir, './project.config.json')
       if (!fs.existsSync(projectConfigFile)) {
@@ -92,15 +81,21 @@ export default class Parcel {
 
       entries.unshift(projectConfigFile)
 
-      let chunks = await Parser.multiCompile(entries)
-      let bundles = await Bundler.bundle(chunks)
+      await Parser.multiCompile(entries)
+      let chunks = Assets.chunks
 
-      let stats = await this.flush(bundles)
-      stats.spendTime = timer.end()
+      if (useBundle === true) {
+        let bundles = await Bundler.bundle(chunks)
+        let stats = await this.flush(bundles)
+        stats.spendTime = Date.now() - startTime
+        return stats
+      }
 
-      this.printStats(stats)
+      let stats = await this.flush(chunks)
+      stats.spendTime = Date.now() - startTime
+      return stats
     } catch (error) {
-      Printer.error(error)
+      Logger.error(error)
     } finally {
       this.running = false
     }
@@ -110,110 +105,145 @@ export default class Parcel {
    * 监听文件
    *
    */
-  watch () {
-    let { rootDir, appConfigFile } = this.options
+  watch (options = {}) {
+    const { appConfigFile } = this.options
 
-    let ignoreFile = (file) => {
+    // 判断是否为被忽略文件
+    const ignoreFile = (file) => {
       return IgnoreFiles.findIndex((pattern) => minimatch(file, pattern)) !== -1
     }
 
-    let transform = async (file) => {
+    // 编译并输出文件
+    const transform = async (files) => {
+      files = Array.isArray(files) ? files : [files]
+
+      let chunks = await Parser.multiCompile(files)
+
+      /**
+       * 找出对应的打包器, 这样就能简单直接地进行
+       * 相应文件类型的打包, 若找不到对应的打包器
+       * 则说明该文件可能不需要打包, 则直接进行输
+       * 出即可
+       */
+      let bundlers = Bundler.matchBundler(chunks)
+      if (bundlers.length > 0) {
+        let promises = bundlers.map((item) => {
+          let { regexp, bundler: MatchedBundler } = item
+
+          let chunks = Assets.chunks.filter((chunk) => {
+            let { destination } = chunk
+            return regexp.test(destination)
+          })
+
+          if (chunks.length === 0) {
+            return Promise.resolve()
+          }
+
+          let bundler = new MatchedBundler(chunks)
+          return bundler.bundle()
+        })
+
+        chunks = await Promise.all(promises)
+      }
+
+      chunks = flattenDeep(chunks)
+      chunks = chunks.filter((chunk) => chunk)
+
+      return chunks
+    }
+
+    // 开始执行
+    const start = async (file, involvedFiles = []) => {
       try {
+        let startTime = Date.now()
         this.running = true
-        const timer = Printer.timer()
 
         let instance = new AssetsInstance()
         await this.hook('beforeTransform')(instance)
 
-        /**
-         * 找到相应的 rule 与对应的 loaders 这样才能够遍历文件与其依赖的文件
-         */
-        let rule = Parser.matchRule(file, this.options.rules)
-        let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
-        let chunk = Assets.exists(file) ? Assets.get(file) : Assets.add(file, { rule })
-
-        /**
-         * Chunk 不会自己读取内容也不会自动更新新内容
-         * 因此这里需要手动 update 内容
-         */
-        let content = fs.readFileSync(file)
-        chunk.update({ content })
-        await Parser.transform(chunk, rule, loaders)
-
-        let files = chunk.dependencies.map((item) => item.dependency)
-        let chunks = await Parser.multiCompile(files)
-
-        /**
-         * 找出对应的打包器, 这样就能简单直接地进行
-         * 相应文件类型的打包, 若找不到对应的打包器
-         * 则说明该文件可能不需要打包, 则直接进行输
-         * 出即可
-         */
-        let { regexp, bundler: MatchedBundler } = Bundler.matchBundler(chunk.destination) || {}
-        if (MatchedBundler) {
-          chunks = filter(Assets.chunks, ({ destination }) => regexp.test(destination))
-
-          const bundler = new MatchedBundler(chunks)
-          chunks = await bundler.bundle()
-        } else {
-          chunks = [chunk].concat(chunks)
+        if (Assets.exists(file)) {
+          let chunk = Assets.get(file)
+          let source = await readFileAsync(chunk.file)
+          chunk.update({ content: source })
         }
 
+        // 包含编译与打包
+        let chunks = await transform(involvedFiles.length > 0 ? involvedFiles : file)
         chunks = [].concat(chunks, instance.chunks)
-        let stats = await this.flush(chunks)
 
-        stats.spendTime = timer.end()
-        this.printStats(stats)
+        let stats = await this.flush(chunks)
+        stats.spendTime = Date.now() - startTime
+
+        typeof options.complete === 'function' && options.complete(stats)
       } catch (error) {
-        Printer.error(error)
+        Logger.error(error)
       } finally {
         this.running = false
         this.excutePaddingTask()
       }
     }
 
-    let handleFileChanged = (file) => {
+    // 处理文件改变事件
+    const handleFileChanged = (file) => {
+      /**
+       * 判断变更的文件是否被忽略,
+       * 若被忽略则直接退出
+       */
       if (ignoreFile(file)) {
         return
       }
 
-      let relativePath = file.replace(rootDir, '')
-      let message = `File ${colors.bold(relativePath)} has been changed`
-
+      /**
+       * 判断文件是否为入口配置文件
+       * 若为入口配置文件则直接重新解析即可
+       */
       if (appConfigFile === file) {
-        Printer.info(`${message}, resolve and compile...`)
-
+        typeof options.change === 'function' && options.change(file, true)
         this.options.resolveWXAppConf(file)
-        transform(file)
+        start(file)
         return
       }
 
+      /**
+       * 判断变更的文件是否本来就在 assets 列表中
+       * 如果是则直接重新编译该文件即可
+       */
       if (Assets.exists(file)) {
-        Printer.info(`${message}, compile...`)
-        transform(file)
+        typeof options.change === 'function' && options.change(file, true)
+        start(file)
         return
       }
 
-      let entries = this.findEntries()
-      if (entries.indexOf(file) !== -1) {
-        Printer.info(`${message}, it's a entry-file, compile...`)
-        transform(file)
+      /**
+       * 查找该文件是否为被依赖文件, 若该文件被依赖, 则找出
+       * 依赖该文件的 chunks, 将它们的文件进行重新编译
+       */
+      let chunks = Assets.findChunkByDependent(file)
+      if (chunks.length) {
+        let involvedFiles = chunks.map((chunk) => chunk.file)
+        start(file, involvedFiles)
         return
       }
 
-      Printer.info(`${message}, but it's not be required, ignore...`)
+      typeof options.change === 'function' && options.change(file, false)
     }
 
-    let handleFileUnlink = (file) => {
+    // 处理删除文件事件
+    const handleFileUnlink = (file) => {
+      /**
+       * 判断变更的文件是否被忽略,
+       * 若被忽略则直接退出
+       */
       if (ignoreFile(file)) {
         return
       }
 
-      let relativePath = file.replace(rootDir, '')
-      let message = `File ${colors.bold(relativePath)} has been deleted`
-
+      /**
+       * 判断文件是否存在与 assets 中
+       * 若存在则删除对应的 chunk
+       */
       if (Assets.exists(file)) {
-        Printer.warn(`${message}, it will be only delete from cache.`)
+        typeof options.unlink === 'function' && options.unlink(file, false)
         Assets.del(file)
       }
     }
@@ -263,6 +293,9 @@ export default class Parcel {
       let { destination, content, sourceMap } = chunk.flush()
       content = stripBOM(content)
 
+      /**
+       * 只有打包文件(BUNDLER) 与 独立文件(SCATTER) 才需要 sourceMap
+       */
       if (useSourceMap !== false && (chunk.type === BUNDLER || chunk.type === SCATTER) && sourceMap) {
         sourceMap = JSON.stringify(sourceMap)
 
@@ -273,14 +306,16 @@ export default class Parcel {
       return new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, content, 'utf8'),
-          fs.stat.bind(fs, destination)
+          fs.writeFile.bind(fs, destination, content, 'utf8')
         ]
 
-        waterfall(taskQueue, (error, stats) => {
-          error
-            ? reject(error)
-            : resolve({ assets: destination, size: stats.size })
+        waterfall(taskQueue, (error) => {
+          if (error) {
+            reject(error)
+            return
+          }
+
+          resolve({ assets: destination, size: content.length })
         })
       })
     })
@@ -296,7 +331,7 @@ export default class Parcel {
    */
   hook (type) {
     switch (type) {
-      case 'async':
+      case 'async': {
         return () => {
           let promises = []
           this.options.plugins.forEach((plugin) => {
@@ -306,14 +341,15 @@ export default class Parcel {
             }
 
             let options = this.options.connect({})
-            let promise = plugin[fn](options, Printer)
+            let promise = plugin[fn](options)
             promises.push(promise)
           })
 
           return Promise.all(promises)
         }
+      }
 
-      case 'before':
+      case 'before': {
         return () => {
           let promises = []
           this.options.plugins.forEach((plugin) => {
@@ -323,7 +359,7 @@ export default class Parcel {
             }
 
             promises.push(async () => {
-              await plugin[fn](this.options, Printer)
+              await plugin[fn](this.options)
               return Promise.resolve()
             })
           })
@@ -334,8 +370,9 @@ export default class Parcel {
 
           return Promise.resolve()
         }
+      }
 
-      case 'beforeTransform':
+      case 'beforeTransform': {
         return (assets = new AssetsInstance()) => {
           if (!(assets instanceof AssetsInstance)) {
             throw new TypeError('Params assets is not instanceof Assets')
@@ -350,7 +387,7 @@ export default class Parcel {
 
             promises.push(async () => {
               let options = this.options.connect({})
-              await plugin[fn](assets, options, Printer)
+              await plugin[fn](assets, options)
 
               assets.size > 0 && Assets.chunks.push(...assets.chunks)
               return Promise.resolve()
@@ -363,6 +400,7 @@ export default class Parcel {
 
           return Promise.resolve()
         }
+      }
     }
   }
 
@@ -385,50 +423,18 @@ export default class Parcel {
    * @return {Array} 文件集合
    */
   findEntries () {
-    let { appConfig, appConfigFile } = this.options
-    let resolver = new JSONResolver(appConfig, appConfigFile)
-    let chunk = resolver.resolve(appConfig, appConfigFile)
-    let files = chunk.dependencies.map((item) => item.dependency)
-    return [chunk.file].concat(files)
-  }
+    let { miniprogramRoot, pluginRoot } = this.options
+    let resolver = new JSONResolver({})
 
-  /**
-   * 打印 stats
-   *
-   * @param {Object} stats 状态
-   * @param {Boolean} [watching=this.options.watching] 是否在监听
-   */
-  printStats (stats, watching = this.options.watching) {
-    let { rootDir, srcDir } = this.options
+    let entryModule = resolver.findModule('app', miniprogramRoot)
+    let entries = entryModule.files || []
 
-    let statsFormatter = stats.map(({ assets, size }) => {
-      assets = assets.replace(rootDir, '.')
-      return { assets, size }
-    })
-
-    let warning = map(stats.conflict, (dependency, file) => {
-      file = file.replace(rootDir, '')
-      dependency = dependency.replace(rootDir, '')
-      return `-> ${file} ${colors.gray('reqiured')} ${dependency}`
-    })
-
-    Printer.push('')
-    Printer.push(`${capitalize(Package.name).replace(/-(\w)/g, (_, $1) => $1.toUpperCase())} Version at ${colors.cyan.bold(Package.version)}`)
-    Printer.push(`${colors.gray('Time:')} ${colors.bold(colors.white(stats.spendTime))}ms\n`)
-    Printer.push(Printer.formatStats(statsFormatter))
-    Printer.push('')
-
-    watching && Printer.push(`✨ Open your ${colors.magenta.bold('WeChat Develop Tool')} to serve`)
-    watching && Printer.push(`✨ Watching folder ${colors.white.bold(srcDir)}, cancel at ${colors.white.bold('Ctrl + C')}`)
-    Printer.push('')
-
-    if (warning.length > 0) {
-      Printer.push(colors.yellow.bold('Some below files required each other, it maybe occur circular reference error in WeChat Mini Program'))
-      Printer.push(warning.join('\n'))
-      Printer.push('')
+    if (pluginRoot) {
+      entries.push(path.join(pluginRoot, 'plugin.json'))
+      entries.push(path.join(pluginRoot, 'index.js'))
     }
 
-    Printer.flush()
+    return entries
   }
 }
 

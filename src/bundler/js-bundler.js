@@ -8,7 +8,7 @@ import findIndex from 'lodash/findIndex'
 import Bundler from './bundler'
 import { getSourceNode } from '../source-map'
 import { SourceNode } from 'source-map'
-import { BUNDLER, ENTRY } from '../constants/chunk-type'
+import { BUNDLER, BUNDLE, ENTRY } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
 import Parser from '../parser'
 
@@ -95,8 +95,7 @@ export default class JSBundler extends Bundler {
 
     let bundleContent = Buffer.from(code)
     let bundleDestination = path.join(outDir, bundleFilename)
-
-    let bundledChunk = this.assets.add(bundleFilename, {
+    let bundlerChunk = this.assets.add(bundleFilename, {
       type: BUNDLER,
       content: bundleContent,
       destination: bundleDestination,
@@ -104,8 +103,14 @@ export default class JSBundler extends Bundler {
       sourceMap: srouceMapResult
     })
 
-    let entryChunks = filter(this.chunks, (chunk) => chunk.type === ENTRY)
-    entryChunks = map(entryChunks, ({ file, content, destination, ...otherProps }) => {
+    /**
+     * 因为这里传入的 chunks 已经过滤了出JS代码块与独立类型代码块
+     * 因此这里只有通过 JSResolver 查找依赖 (dependencies) 的
+     * 代码块, 并且类型一定为 BUNDLE; 因此将 BUNDLE 去除以外的
+     * 代码块就为入口代码块
+     */
+    let bundleChunks = filter(this.chunks, (chunk) => chunk.type !== BUNDLE)
+    let entryChunks = map(bundleChunks, ({ file, content, destination, ...otherProps }) => {
       let id = this._remember(destination)
 
       let destFolder = path.dirname(destination)
@@ -116,14 +121,17 @@ export default class JSBundler extends Bundler {
       let code = `require(${this.wrapQuote(required)})(${this.wrapQuote(id)})`
       let entryContent = Buffer.from(code)
 
-      return this.assets.add(file, {
+      let params = {
         ...otherProps,
+        type: ENTRY,
         content: entryContent,
         rule: Parser.matchRule(file, rules)
-      })
+      }
+
+      return this.assets.add(file, params)
     })
 
-    return [bundledChunk].concat(entryChunks)
+    return [bundlerChunk].concat(entryChunks)
   }
 
   /**

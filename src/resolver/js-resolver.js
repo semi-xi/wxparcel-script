@@ -2,14 +2,14 @@ import path from 'path'
 import Module from 'module'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
-import stripComments from 'strip-comments'
 import { Resolver } from './resolver'
-import { SCATTER } from '../constants/chunk-type'
+import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
-import { escapeRegExp } from './share'
+import { stripComments, escapeRegExp } from '../share'
 
-const REQUIRE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
-const WORKER_REQUIRE_REGEXP = /wx.createWorker\(['"]([~\w\d_\-./]+?)['"]\)/
+const IMPORT_REGEXP = /(?:ex|im)port(?:\s+(?:[\w\W]+?\s+from\s+)?['"]([~\w\d_\-./]+?)['"]|\s*\(['"]([~\w\d_\-./]+?)['"]\))/
+const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
+const WORKER_REQUIRE_REGEXP = /wx.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
  * JS 解析器
@@ -45,14 +45,19 @@ export default class JSResolver extends Resolver {
     const { pubPath, staticDir } = this.options
 
     let source = this.source.toString()
-    source = stripComments(source)
+    let strippedCommentsCode = stripComments(source)
 
-    let jsDependencies = this.resolveDependencies(source, REQUIRE_REGEXP, {
+    let jsDependencies = this.resolveDependencies(strippedCommentsCode, [IMPORT_REGEXP, REQUIRE_REGEXP], {
+      type: BUNDLE,
       convertDependencyPath: this.convertRelative.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })
 
-    let workerDependencies = this.resolveDependencies(source, WORKER_REQUIRE_REGEXP, {
+    /**
+     * worker 文件因为必须独立于 worker 目录, 因此这里使用 SCATTER 类型
+     * worker 目录在 app.json 中定义
+     */
+    let workerDependencies = this.resolveDependencies(strippedCommentsCode, WORKER_REQUIRE_REGEXP, {
       type: SCATTER,
       convertDependencyPath: this.convertWorkerRelative.bind(this)
     })
@@ -74,8 +79,11 @@ export default class JSResolver extends Resolver {
       return { type, file, destination: dependencyDestination, dependency, required }
     })
 
-    this.source = Buffer.from(source)
-    return { file: this.file, content: this.source, dependencies }
+    source = source.trim()
+    source = source.replace(/(\n)+/g, '$1')
+
+    source = Buffer.from(source)
+    return { file: this.file, content: source, dependencies }
   }
 
   /**

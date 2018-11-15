@@ -1,4 +1,3 @@
-import find from 'lodash/find'
 import flatten from 'lodash/flatten'
 import without from 'lodash/without'
 import filter from 'lodash/filter'
@@ -47,22 +46,35 @@ export class Bundler {
     this.bundlers.push({ regexp, bundler })
   }
 
+  /**
+   * 打包代码块
+   *
+   * @param {Array} chunks chunk 集合
+   * @returns {Promise} [chunk]
+   */
   async bundle (chunks) {
     chunks = [].concat(chunks)
 
     let bundledChunks = []
     let bundleTasks = this.bundlers.map(({ regexp, bundler: Bundler }) => {
-      let targetChunks = filter(chunks, (chunk) => {
-        return chunk.type !== SCATTER && regexp.test(chunk.destination)
+      /**
+       * 过滤需要打包的文件, 这里先判断文件类型
+       * 再判断结果文件是否与操作打包匹配的正则匹配到
+       */
+      let bundleChunks = []
+      chunks.forEach((chunk) => {
+        if (chunk.type !== SCATTER && regexp.test(chunk.destination)) {
+          bundleChunks.push(chunk)
+        }
       })
 
       /**
        * 已经确定的文件就不需要再次读取
        * 这里筛选掉已匹配过的 chunks
        */
-      chunks = without(chunks, ...targetChunks)
+      chunks = without(chunks, ...bundleChunks)
 
-      let bundler = new Bundler(targetChunks, this.options)
+      let bundler = new Bundler(bundleChunks, this.options)
       return bundler.bundle()
     })
 
@@ -71,7 +83,14 @@ export class Bundler {
 
     let transformTasks = bundledChunks.map((chunk) => {
       let rule = chunk.rule || {}
-      let loaders = filter(rule.loaders, (loader) => loader.for === BUNDLER)
+      let loaders = filter(rule.loaders, (loader) => {
+        if (Array.isArray(loader.for)) {
+          return loader.for.indexOf(BUNDLER) !== -1
+        }
+
+        return loader.for === BUNDLER
+      })
+
       return Parser.transform(chunk, rule, loaders)
     })
 
@@ -79,8 +98,17 @@ export class Bundler {
     return [].concat(chunks, bundledChunks)
   }
 
-  matchBundler (file) {
-    return find(this.bundlers, ({ regexp }) => regexp.test(file))
+  /**
+   * 获取适合 file 的 bulder
+   *
+   * @param {Chunk} chunks 代码片
+   * @returns {Array} Bundler
+   */
+  matchBundler (chunks) {
+    return this.bundlers.filter(({ regexp }) => {
+      let index = chunks.findIndex((chunk) => regexp.test(chunk.file))
+      return index !== -1
+    })
   }
 }
 

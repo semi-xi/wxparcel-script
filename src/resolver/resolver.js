@@ -1,11 +1,11 @@
 import path from 'path'
 import defaults from 'lodash/defaults'
+import flatten from 'lodash/flatten'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import findIndex from 'lodash/findIndex'
-import { BUNDLE } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
-import { genFileSync } from './share'
+import { genFileSync } from '../share'
 
 /**
  * 解析器
@@ -20,7 +20,7 @@ export class Resolver {
    * @param {Object} asset 资源对象
    * @param {OptionManager} [options=OptionManager] 配置管理器
    */
-  constructor (asset, options = OptionManager) {
+  constructor (asset = {}, options = OptionManager) {
     /**
      * 代码
      *
@@ -55,15 +55,19 @@ export class Resolver {
   /**
    * 查找依赖
    *
-   * @param {RegExp} regexp 查找正则
+   * @param {Array|RegExp} regexp 查找正则, 该正则请忽略不必要的匹配值, 保存 [token, ...required]. ...required 只允许有一个路径值其他全部都为 undefined, 参考正则非捕获组 `?:` 用法
    * @param {Object} options 配置
    * @param {Function} [options.convertDependencyPath=this.convertDependencyPath] 转换依赖路径
    * @param {Function} [options.convertDestination=this.convertDestination] 转换目标路径
    * @return {Array} 依赖
    */
   resolveDependencies (source, regexp, options = {}) {
+    if (Array.isArray(regexp)) {
+      let maps = regexp.map((regexp) => this.resolveDependencies(source, regexp, options))
+      return flatten(maps)
+    }
+
     options = defaults({}, options, {
-      type: BUNDLE,
       convertDependencyPath: this.convertDependencyPath.bind(this),
       convertDestination: this.convertDestination.bind(this)
     })
@@ -79,7 +83,9 @@ export class Resolver {
         break
       }
 
-      let [all, required] = match
+      let [all, ...required] = match
+      required = required.find((item) => typeof item !== 'undefined')
+
       code = code.replace(all, '')
 
       let dependency = convertDependencyPath(required, relativeTo)

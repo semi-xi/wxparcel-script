@@ -84,10 +84,10 @@ export default class JSONResolver extends Resolver {
 
     config = this.convertProjectConf(config)
 
-    let source = JSON.stringify(config, null, 2)
-    this.source = Buffer.from(source)
+    let source = JSON.stringify(config, null, process.env.NODE_ENV === 'production' ? 0 : 2)
+    source = Buffer.from(source)
 
-    return { file: this.file, content: this.source, dependencies }
+    return { file: this.file, content: source, dependencies }
   }
 
   /**

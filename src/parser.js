@@ -1,14 +1,16 @@
-import fs from 'fs'
 import path from 'path'
 import minimatch from 'minimatch'
 import omit from 'lodash/omit'
 import find from 'lodash/find'
 import filter from 'lodash/filter'
+import isEmpty from 'lodash/isEmpty'
 import flattenDeep from 'lodash/flattenDeep'
 import waterfall from 'promise-waterfall'
 import OptionManager from './option-manager'
 import Assets from './assets'
 import Resolver from './resolver'
+import { SCATTER } from './constants/chunk-type'
+import { readFileAsync } from './share'
 
 /**
  * 编译器
@@ -51,54 +53,61 @@ export class Parser {
   /**
    * 编译文件
    *
-   * @param {String} file 文件位置
+   * @param {Array|String} file 文件位置
+   * @return {Promise} [chunk]
    */
   async compile (file) {
-    let chunkOptions = {}
+    let chunk = await this.convert(file)
 
+    /**
+     * 筛选 loader 类型, 只有不指定 loader.for
+     * 或者独立类型 (SCATTER) 才能操作代码片段
+     * 因为某些 loader 只操作打包后的文件, 例如
+     * uglify 只操作 打包类型 (BUNDLER)
+     */
+    const { rule } = chunk
+    const loaders = filter(rule.loaders, (loader) => {
+      if (!loader.hasOwnProperty('for')) {
+        return true
+      }
+
+      if (Array.isArray(loader.for)) {
+        return loader.for.indexOf(SCATTER) !== -1
+      }
+
+      return loader.for === SCATTER
+    })
+
+    chunk = await this.transform(chunk, rule, loaders)
+    let chunks = await this.resolve(chunk)
+    return chunks
+  }
+
+  /**
+   * 将 file 转化成 chunk
+   *
+   * @param {String} file 文件
+   * @param {Object} [chunkOptions={}] 配置
+   * @return {Promise} chunk
+   */
+  convert (file, chunkOptions = {}) {
     if (typeof file === 'object') {
-      chunkOptions = omit(file, 'file')
+      chunkOptions = isEmpty(chunkOptions) ? omit(file, 'file') : chunkOptions
       file = file.file
     }
 
     if (Assets.exists(file)) {
-      return Promise.resolve()
+      let chunk = Assets.get(file)
+      return Promise.resolve(chunk)
     }
 
-    let rule = this.matchRule(file, this.options.rules) || {}
-    let loaders = filter(rule.loaders, (loader) => !loader.hasOwnProperty('for'))
-    let chunk = Assets.add(file, Object.assign(chunkOptions, { rule }))
-    let content = fs.readFileSync(file)
-    chunk.update({ content })
+    const { rules } = this.options
+    const rule = this.matchRule(file, rules) || {}
+    const chunk = Assets.add(file, Object.assign({}, chunkOptions, { rule }))
 
-    let queue = [
-      () => this.transform(chunk, rule, loaders),
-      () => this.resolve(chunk)
-    ]
-
-    return waterfall(queue).then(() => {
-      let { dependencies } = chunk
-      if (!Array.isArray(dependencies) || dependencies.length === 0) {
-        return chunk
-      }
-
-      let files = []
-      dependencies.forEach((item) => {
-        if (Assets.exists(item.dependency)) {
-          return chunk
-        }
-
-        let { type, dependency, destination } = item
-        files.push({ type, file: dependency, destination })
-      })
-
-      if (!Array.isArray(files) || files.length === 0) {
-        return chunk
-      }
-
-      return this.multiCompile(files).then((chunks) => {
-        return [chunk].concat(chunks)
-      })
+    return readFileAsync(file).then((content) => {
+      chunk.update({ content })
+      return chunk
     })
   }
 
@@ -106,10 +115,12 @@ export class Parser {
    * 编译代码
    *
    * @param {Chunk} chunk 代码片段
-   * @returns {Promise} promise
+   * @param {Object} rule 规则
+   * @param {Array} loeaders 加载器
+   * @returns {Promise} chunk
    */
   transform (chunk, rule, loaders) {
-    let { file } = chunk
+    const { file } = chunk
 
     /**
      * 没有 loader 不需要编译
@@ -134,7 +145,8 @@ export class Parser {
           return Promise.resolve(chunk)
         }
       } else {
-        pattern = path.join(this.options.rootDir, pattern)
+        const { rootDir } = this.options
+        pattern = path.join(rootDir, pattern)
 
         if (minimatch(file, pattern)) {
           return Promise.resolve(chunk)
@@ -164,16 +176,19 @@ export class Parser {
         return Promise.reject(new Error('Params use is not provided from loader'))
       }
 
-      if (typeof loader.use !== 'string') {
-        return Promise.reject(new Error('Params use is not a stirng'))
+      let transform = loader.use
+      if (typeof transform === 'string') {
+        /**
+         * 读取模块, 若模块为 es6 模块则通过 default 形式去获取.
+         * 所有 loader 都通过 default 形式暴露接口给编译器
+         */
+        let module = require(transform)
+        transform = module.default || module
       }
 
-      /**
-       * 读取模块, 若模块为 es6 模块则通过 default 形式去获取.
-       * 所有 loader 都通过 default 形式暴露接口给编译器
-       */
-      let transformer = require(loader.use)
-      let transform = transformer.default || transformer
+      if (typeof transform !== 'function') {
+        return Promise.reject(new Error('Params use is invalid, make sure use is a file path or class'))
+      }
 
       /**
        * 因为 loader 为外部包, 因此这里为了不给外部包改变配置
@@ -183,8 +198,8 @@ export class Parser {
       let options = this.options.connect({ file, rule, options: loaderOptions })
 
       return transform(chunk.metadata, options).then((result) => {
-        let { code: content, map } = result
-        return chunk.update({ content, sourceMap: map })
+        let { code: content, map: sourceMap, dependencies } = result
+        return chunk.update({ content, sourceMap, dependencies })
       })
     })
 
@@ -195,16 +210,35 @@ export class Parser {
    * 解析代码
    *
    * @param {Chunk} chunk 代码片段
-   * @returns {Promise} promise
+   * @returns {Promise} [chunk]
    */
-  resolve (chunk) {
-    return new Promise((resolve) => {
-      let result = Resolver.resolve(chunk.metadata)
-      let { file, content, dependencies, map } = result
-      chunk.update({ file, content, dependencies, sourceMap: map })
+  async resolve (chunk) {
+    let result = Resolver.resolve(chunk.metadata)
+    let { file, content, dependencies, map: sourceMap } = result
 
-      resolve(chunk)
+    dependencies = chunk.dependencies.concat(dependencies)
+    chunk.update({ file, content, dependencies, sourceMap })
+
+    if (!Array.isArray(dependencies) || dependencies.length === 0) {
+      return chunk
+    }
+
+    let files = []
+    dependencies.forEach((item) => {
+      if (Assets.exists(item.dependency)) {
+        return
+      }
+
+      let { type, dependency, destination } = item
+      destination && files.push({ type, file: dependency, destination })
     })
+
+    if (!Array.isArray(files) || files.length === 0) {
+      return chunk
+    }
+
+    let chunks = await this.multiCompile(files)
+    return [chunk].concat(chunks)
   }
 
   /**
@@ -213,7 +247,7 @@ export class Parser {
    *
    * @param {String}} file 文件
    * @param {Array} rules 规则
-   * @return {Object} rule 匹配到的规则
+   * @return {Object} 匹配到的规则
    *
    * 这里通过配置 rule.test 来进行匹配
    * {
