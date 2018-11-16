@@ -1,11 +1,10 @@
 import path from 'path'
 import Module from 'module'
-import trimEnd from 'lodash/trimEnd'
-import trimStart from 'lodash/trimStart'
+import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
 import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
-import { stripComments, escapeRegExp } from '../share'
+import { escapeRegExp } from '../share'
 
 const IMPORT_REGEXP = /(?:ex|im)port(?:\s+(?:[\w\W]+?\s+from\s+)?['"]([~\w\d_\-./]+?)['"]|\s*\(['"]([~\w\d_\-./]+?)['"]\))/
 const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
@@ -42,48 +41,62 @@ export default class JSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { pubPath, staticDir } = this.options
-
     let source = this.source.toString()
-    let strippedCommentsCode = stripComments(source)
+    let dependencies = []
 
-    let jsDependencies = this.resolveDependencies(strippedCommentsCode, [IMPORT_REGEXP, REQUIRE_REGEXP], {
+    source = stripComments.js(source, true)
+
+    ;[source, dependencies] = this.revise([source, dependencies], [IMPORT_REGEXP, REQUIRE_REGEXP], {
       type: BUNDLE,
-      convertDependencyPath: this.convertRelative.bind(this),
-      convertDestination: this.convertDestination.bind(this)
+      convertDependency: this.convertRelative.bind(this),
+      convertDestination: this.convertDestination.bind(this),
+      convertFinallyState: this.convertFinallyState.bind(this)
     })
 
     /**
      * worker 文件因为必须独立于 worker 目录, 因此这里使用 SCATTER 类型
      * worker 目录在 app.json 中定义
      */
-    let workerDependencies = this.resolveDependencies(strippedCommentsCode, WORKER_REQUIRE_REGEXP, {
+    ;[source, dependencies] = this.revise([source, dependencies], WORKER_REQUIRE_REGEXP, {
       type: SCATTER,
-      convertDependencyPath: this.convertWorkerRelative.bind(this)
-    })
-
-    let dependencies = [].concat(jsDependencies, workerDependencies)
-    dependencies = this.filterDependencies(dependencies)
-    dependencies = dependencies.map((item) => {
-      let { type, file, destination, dependency, required, code } = item
-      let extname = path.extname(destination)
-      if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
-        return item
-      }
-
-      let dependencyDestination = this.convertAssetsDestination(dependency)
-      let relativePath = dependencyDestination.replace(staticDir, '')
-      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
-
-      source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
-      return { type, file, destination: dependencyDestination, dependency, required }
+      convertDependency: this.convertWorkerRelative.bind(this),
+      convertFinallyState: this.convertFinallyState.bind(this)
     })
 
     source = source.trim()
-    source = source.replace(/(\n)+/g, '$1')
-
     source = Buffer.from(source)
+
+    dependencies = this.filterDependencies(dependencies)
     return { file: this.file, content: source, dependencies }
+  }
+
+  /**
+   * 转换最终信息
+   *
+   * @param {String} source 代码
+   * @param {Object} dependence 依赖
+   * @param {String} dependence.code 匹配到的代码
+   * @param {String} dependence.type 类型
+   * @param {String} dependence.file 文件名路径
+   * @param {String} dependence.dependency 依赖文件路径
+   * @param {String} dependence.required 依赖匹配, 指代路径
+   * @param {String} dependence.destination 目标路径
+   * @return {Array} [source, dependence] 其中 dependence 不包含 code 属性
+   */
+  convertFinallyState (source, { code, dependency, destination, ...props }) {
+    let extname = path.extname(destination)
+    if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
+      let dependence = { dependency, destination, ...props }
+      return [source, dependence]
+    }
+
+    let dependencyDestination = this.convertAssetsDestination(dependency)
+    let url = this.convertPublicPath(dependencyDestination)
+
+    source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
+
+    let dependence = { dependency, destination: dependencyDestination, ...props }
+    return [source, dependence]
   }
 
   /**
@@ -121,7 +134,7 @@ export default class JSResolver extends Resolver {
      * 若无法通过正常方式获取, 则尝试使用相对定位寻找该文件
      */
     try {
-      let file = this.convertDependencyPath(requested, relativeTo)
+      let file = this.convertDependency(requested, relativeTo)
       return require.resolve(file)
     } catch (err) {
       try {
@@ -140,7 +153,7 @@ export default class JSResolver extends Resolver {
    * @return {String} 目的地文件路径
    */
   convertDestination (file) {
-    let { rootDir, srcDir, outDir, npmDir } = this.options
+    const { rootDir, srcDir, outDir, npmDir } = this.options
 
     /**
      * windows 下 path 存在多个反斜杠

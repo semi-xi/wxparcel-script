@@ -1,6 +1,5 @@
 import path from 'path'
 import defaults from 'lodash/defaults'
-import flatten from 'lodash/flatten'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import findIndex from 'lodash/findIndex'
@@ -49,58 +48,64 @@ export class Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    return { file: this.file, content: this.source, dependencies: [] }
+    return { file: this.file, content: this.source, dependencies: this.dependencies }
   }
 
   /**
-   * 查找依赖
+   * 修正信息
    *
-   * @param {Array|RegExp} regexp 查找正则, 该正则请忽略不必要的匹配值, 保存 [token, ...required]. ...required 只允许有一个路径值其他全部都为 undefined, 参考正则非捕获组 `?:` 用法
-   * @param {Object} options 配置
-   * @param {Function} [options.convertDependencyPath=this.convertDependencyPath] 转换依赖路径
+   * @param {Array} [source, dependencies] 信息
+   * @param {Regexp} pattern 匹配正则
+   * @param {Object} [options={}] 配置
+   * @param {Function} [options.convertDependency=this.convertDependency] 转换依赖路径
    * @param {Function} [options.convertDestination=this.convertDestination] 转换目标路径
-   * @return {Array} 依赖
+   * @param {Function} [options.convertFinallyState=this.convertFinallyState] 转换最终信息
+   * @return {Array} [source, dependencies]
    */
-  resolveDependencies (source, regexp, options = {}) {
-    if (Array.isArray(regexp)) {
-      let maps = regexp.map((regexp) => this.resolveDependencies(source, regexp, options))
-      return flatten(maps)
+  revise ([source, dependencies], pattern, options = {}) {
+    if (Array.isArray(pattern)) {
+      pattern.forEach((pattern) => {
+        [source, dependencies] = this.revise([source, dependencies], pattern, options)
+      })
+
+      return [source, dependencies]
     }
 
     options = defaults({}, options, {
-      convertDependencyPath: this.convertDependencyPath.bind(this),
-      convertDestination: this.convertDestination.bind(this)
+      convertDependency: this.convertDependency.bind(this),
+      convertDestination: this.convertDestination.bind(this),
+      convertFinallyState: this.convertFinallyState.bind(this)
     })
 
-    let relativeTo = path.dirname(this.file)
-    let { convertDependencyPath, convertDestination } = options
-
+    let { convertDependency, convertDestination, convertFinallyState } = options
     let code = source
-    let dependencies = []
+
     while (true) {
-      let match = regexp.exec(code)
+      let match = pattern.exec(code)
       if (!match) {
         break
       }
 
       let [all, ...required] = match
       required = required.find((item) => typeof item !== 'undefined')
-
       code = code.replace(all, '')
 
-      let dependency = convertDependencyPath(required, relativeTo)
+      let dependency = convertDependency(required)
       if (dependency === false) {
         break
       }
 
-      if (findIndex(dependencies, { file: this.file, dependency, required, code: all }) === -1) {
+      let props = { file: this.file, dependency, required }
+      if (findIndex(dependencies, props) === -1) {
         let destination = convertDestination(dependency, this.options)
-        let item = { type: options.type, file: this.file, dependency, destination, required, code: all }
-        dependencies.push(item)
+        let dependence = { ...props, type: options.type, destination }
+
+        ;[source, dependence] = convertFinallyState(source, { ...dependence, code: all })
+        dependencies.push(dependence)
       }
     }
 
-    return dependencies
+    return [source, dependencies]
   }
 
   /**
@@ -110,8 +115,8 @@ export class Resolver {
    * @param {String} relativeTo 相对引用文件路径
    * @return {String} 依赖路径
    */
-  convertDependencyPath (required, relativeTo) {
-    let { srcDir, rootDir } = this.options
+  convertDependency (required, relativeTo = path.dirname(this.file)) {
+    const { srcDir, rootDir } = this.options
     switch (required.charAt(0)) {
       case '~':
         return path.join(srcDir, required.substr(1))
@@ -143,6 +148,23 @@ export class Resolver {
   }
 
   /**
+   * 转换最终信息
+   *
+   * @param {String} source 代码
+   * @param {Object} dependence 依赖
+   * @param {String} dependence.code 匹配到的代码
+   * @param {String} dependence.type 类型
+   * @param {String} dependence.file 文件名路径
+   * @param {String} dependence.dependency 依赖文件路径
+   * @param {String} dependence.required 依赖匹配, 指代路径
+   * @param {String} dependence.destination 目标路径
+   * @return {Array} [source, dependence] 其中 dependence 不包含 code 属性
+   */
+  convertFinallyState (source, { code, ...dependence }) {
+    return [source, dependence]
+  }
+
+  /**
    * 转换静态目标路径
    *
    * @param {String} file 文件路径
@@ -164,12 +186,13 @@ export class Resolver {
    * @return {String} 公共路径
    */
   convertPublicPath (file) {
-    let { staticDir, pubPath } = this.options
+    const { staticDir, pubPath } = this.options
+
     /**
      * 这里使用 `/` 而非 `path.sep`, 但必须要过滤 `path.sep`
      * 以防 windows 路径与 web 路径不统一
      */
-    let originPath = file.replace(staticDir, '')
-    return trimEnd(pubPath, path.sep) + '/' + trimStart(originPath, path.sep)
+    let relativePath = file.replace(staticDir, '')
+    return trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
   }
 }
