@@ -65,7 +65,7 @@ export const replacement = function (source, string, url, regexp) {
  * @return {String} 哈希
  */
 export const gen = function (source) {
-  return crypto.createHash('md5').update(source).digest('hex')
+  return crypto.createHash('md5').update(source).digest('hex').substr(0, 7)
 }
 
 /**

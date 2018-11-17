@@ -159,7 +159,7 @@ export default class SpritesmithPlugin {
   }
 }
 
-const gen = (source) => crypto.createHash('md5').update(source).digest('hex')
+const gen = (source) => crypto.createHash('md5').update(source).digest('hex').substr(0, 7)
 const promiseify = (asyncHandle) => (...args) => new Promise((resolve, reject) => asyncHandle(...args, (error, result) => error ? reject(error) : resolve(result)))
 const statAsync = promiseify(fs.stat.bind(fs))
 const readdirAsync = promiseify(fs.readdir.bind(fs))
