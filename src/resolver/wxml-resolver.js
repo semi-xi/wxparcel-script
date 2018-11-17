@@ -1,16 +1,9 @@
 import path from 'path'
-import map from 'lodash/map'
-import trimEnd from 'lodash/trimEnd'
-import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
 import { replacement } from '../share'
 
-const WXS_REGEPX = /<wxs\s*(?:[\w\W]*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:[\w\W]*?)\s*(?:\/>|>(?:[\w\W]*?)<\/wxs>)/
-const TEMPLATE_REGEPX = /<import\s*(?:[\w\W]*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:\/>|>(?:[\w\W]*?)<\/import>)/
-const INCLUDE_REGEPX = /<include\s*(?:[\w\W]*?)\s*src=['"]([~\w\d_\-./]+)['"]\s*(?:\/>|>(?:[\w\W]*?)<\/include>)/
-const IMAGE_REGEXP = /<image(?:[\w\W]*?)src=['"]([~\w\d_\-./]+)['"](?:[\w\W]*?)(?:\/>|>(?:[\w\W]*?)<\/image>)/
-const COVER_IMAGE_REGEXP = /<cover-image(?:[\w\W]*?)src=['"]([~\w\d_\-./]+)['"](?:[\w\W]*?)(?:\/>|>(?:[\w\W]*?)<\/cover-image>)/
+const SRC_REGEXP = /src=["']([~\w\d_\-./]*?)["']/
 
 /**
  * WXML 解析器
@@ -26,34 +19,46 @@ export default class WXMLResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, pubPath } = this.options
-
     let source = this.source.toString()
-    let strippedCommentsCode = stripComments(source)
+    let dependencies = []
 
-    let covertImageOptions = {
-      convertDestination: this.convertAssetsDestination.bind(this)
-    }
+    source = stripComments(source)
 
-    const surroundingDeps = this.resolveDependencies(strippedCommentsCode, [WXS_REGEPX, TEMPLATE_REGEPX, INCLUDE_REGEPX])
-    const imageDeps = this.resolveDependencies(strippedCommentsCode, [IMAGE_REGEXP, COVER_IMAGE_REGEXP], covertImageOptions)
-
-    let dependencies = [].concat(surroundingDeps, imageDeps)
-    dependencies = map(dependencies, (item) => {
-      let { file, destination, dependency, required, code } = item
-      let relativePath = destination.replace(staticDir, '')
-      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
-
-      source = replacement(source, code, url, IMAGE_REGEXP)
-      source = replacement(source, code, url, COVER_IMAGE_REGEXP)
-
-      return { file, destination, dependency, required }
+    ;[source, dependencies] = this.revise([source, dependencies], SRC_REGEXP, {
+      convertFinallyState: this.convertFinallyState.bind(this)
     })
 
     source = source.trim()
-    source = source.replace(/(\n)+/g, '$1')
     source = Buffer.from(source)
 
     return { file: this.file, content: source, dependencies }
+  }
+
+  /**
+   * 转换最终信息
+   *
+   * @param {String} source 代码
+   * @param {Object} dependence 依赖
+   * @param {String} dependence.code 匹配到的代码
+   * @param {String} dependence.type 类型
+   * @param {String} dependence.file 文件名路径
+   * @param {String} dependence.dependency 依赖文件路径
+   * @param {String} dependence.required 依赖匹配, 指代路径
+   * @param {String} dependence.destination 目标路径
+   * @return {Array} [source, dependence] 其中 dependence 不包含 code 属性
+   */
+  convertFinallyState (source, { code, dependency, destination, ...props }) {
+    let extname = path.extname(destination)
+    if (extname === '' || /\.(wxs|wxml)$/.test(extname)) {
+      let dependence = { dependency, destination, ...props }
+      return [source, dependence]
+    }
+
+    let dependencyDestination = this.convertAssetsDestination(dependency)
+    let url = this.convertPublicPath(dependencyDestination)
+    source = replacement(source, code, url, SRC_REGEXP)
+
+    let dependence = { dependency, destination: dependencyDestination, ...props }
+    return [source, dependence]
   }
 }

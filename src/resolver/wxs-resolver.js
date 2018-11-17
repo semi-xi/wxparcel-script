@@ -1,6 +1,3 @@
-import path from 'path'
-import trimEnd from 'lodash/trimEnd'
-import trimStart from 'lodash/trimStart'
 import stripComments from 'strip-css-comments'
 import { Resolver } from './resolver'
 import { escapeRegExp } from '../share'
@@ -21,29 +18,40 @@ export default class WXSResolver extends Resolver {
    * @return {Object} 包括文件, 代码, 依赖
    */
   resolve () {
-    const { staticDir, pubPath } = this.options
-
     let source = this.source.toString()
-    let strippedCommentsCode = stripComments(source)
+    let dependencies = []
 
-    let imageDeps = this.resolveDependencies(strippedCommentsCode, IMAGE_REGEXP, {
-      convertDestination: this.convertAssetsDestination.bind(this)
-    })
+    source = stripComments(source)
 
-    let dependencies = [].concat(imageDeps)
-    dependencies = dependencies.map((item) => {
-      let { file, destination, dependency, required, code } = item
-      let relativePath = destination.replace(staticDir, '')
-      let url = trimEnd(pubPath, path.sep) + '/' + trimStart(relativePath, path.sep)
-
-      source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
-      return { file, destination, dependency, required }
+    ;[source, dependencies] = this.revise([source, dependencies], IMAGE_REGEXP, {
+      convertDestination: this.convertAssetsDestination.bind(this),
+      convertFinallyState: this.convertFinallyState.bind(this)
     })
 
     source = source.trim()
-    source = source.replace(/(\n)+/g, '$1')
     source = Buffer.from(source)
 
     return { file: this.file, content: source, dependencies }
+  }
+
+  /**
+   * 转换最终信息
+   *
+   * @param {String} source 代码
+   * @param {Object} dependence 依赖
+   * @param {String} dependence.code 匹配到的代码
+   * @param {String} dependence.type 类型
+   * @param {String} dependence.file 文件名路径
+   * @param {String} dependence.dependency 依赖文件路径
+   * @param {String} dependence.required 依赖匹配, 指代路径
+   * @param {String} dependence.destination 目标路径
+   * @return {Array} [source, dependence] 其中 dependence 不包含 code 属性
+   */
+  convertFinallyState (source, { code, destination, ...props }) {
+    let url = this.convertPublicPath(destination)
+    source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
+
+    let dependence = { destination, ...props }
+    return [source, dependence]
   }
 }
