@@ -8,12 +8,7 @@ import Logger from '../logger'
 import Parcel from '../parcel'
 import { version as pkgVersion } from '../../package.json'
 
-/**
- * 执行编译流程
- *
- * @param {Object} [options={}] 配置
- * @param {String} options.config 配置文件
- */
+// 执行编译流程
 const run = async (options = {}) => {
   let { config: configFile, bundle } = options
   if (!configFile) {
@@ -38,14 +33,18 @@ const run = async (options = {}) => {
   parcelOptions = parcelOptions.default || parcelOptions
 
   if (options.hasOwnProperty('publicPath')) {
-    parcelOptions.publicPath = options.publicPath
+    options.publicPath = options.publicPath
+  }
+
+  if (options.hasOwnProperty('sourceMap')) {
+    options.sourceMap = options.sourceMap === 'false' ? false : options.sourceMap
   }
 
   Object.assign(parcelOptions, options)
   await OptionManager.resolve(parcelOptions)
 
   cleanConsole()
-  printInfor()
+  printInfo()
 
   let parcel = new Parcel()
   let stats = await parcel.run()
@@ -67,12 +66,7 @@ const run = async (options = {}) => {
   }
 }
 
-/**
- * Start Action
- *
- * @param {Object} [options={}] 配置
- * @param {String} options.config 配置文件
- */
+// Start Action
 const startAction = async (options = {}) => {
   try {
     let { config, env } = options
@@ -122,9 +116,7 @@ const startAction = async (options = {}) => {
   }
 }
 
-/**
- * Help Action
- */
+// Help Action
 const helpAction = () => {
   Logger.trace('\nExamples:')
   Logger.trace(`  $ wxparcel-script start --env development --watch`)
@@ -137,12 +129,13 @@ program
   .command('start')
   .description('start the compilation process')
   .option('-c, --config <config>', 'setting configuration file')
-  .option('--publicPath <publicPath>', 'set public path of static resources')
   .option('-w, --watch', 'open the listener for file changes')
+  .option('--publicPath <publicPath>', 'set public path of static resources')
+  .option('--sourceMap <sourceMap>', 'generate sourceMap')
   .option('--env <env>', `setting process.env.NODE_ENV variables` +
-    `\n${padidngMessage}${chalk.bold('dev|develop|development')} for development` +
-    `\n${padidngMessage}${chalk.bold('test|unitest|prerelease')} for test` +
-    `\n${padidngMessage}${chalk.bold('prod|product|production')} for production`
+  `\n${padidngMessage}${chalk.bold('dev|develop|development')} for development` +
+  `\n${padidngMessage}${chalk.bold('test|unitest|prerelease')} for test` +
+  `\n${padidngMessage}${chalk.bold('prod|product|production')} for production`
   )
   .option('--bundle <bundle>', 'generate bundlers with generated bundler')
   .on('--help', helpAction)
@@ -152,7 +145,7 @@ function cleanConsole () {
   Logger.clear()
 }
 
-function printInfor () {
+function printInfo () {
   const { srcDir, watching } = OptionManager
   Logger.trace(`Version: ${chalk.cyan.bold(pkgVersion)}`)
   Logger.trace(`Open your ${chalk.cyan.bold('WeChat Develop Tool')} to serve. Download in ${chalk.white.bold('https://developers.weixin.qq.com/miniprogram/dev/devtools/devtools.html')}`)
@@ -220,5 +213,5 @@ function printStats (stats) {
   Logger.trace(message)
   Logger.trace(`\n${chalk.gray('Spend Time:')} ${chalk.white.bold(stats.spendTime)}ms\n`)
 
-  printInfor()
+  printInfo()
 }

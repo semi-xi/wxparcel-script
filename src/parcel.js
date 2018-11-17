@@ -285,6 +285,7 @@ export default class Parcel {
    */
   flush (chunks) {
     const { sourceMap: useSourceMap } = this.options
+
     if (!Array.isArray(chunks) || chunks.length === 0) {
       return Promise.reject(new TypeError('Chunks is not a array or not be provided or be empty'))
     }

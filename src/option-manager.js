@@ -124,7 +124,7 @@ export class OptionManager {
      *
      * @type {String|Boolean}
      */
-    this.sourceMap = options.sourceMap || process.env.NODE_ENV === 'development'
+    this.sourceMap = options.hasOwnProperty('sourceMap') ? options.sourceMap : process.env.NODE_ENV === 'development'
 
     /**
      * 插件集合
