@@ -40,7 +40,7 @@ const run = async (options = {}) => {
     options.sourceMap = options.sourceMap === 'false' ? false : options.sourceMap
   }
 
-  Object.assign(parcelOptions, options)
+  parcelOptions = Object.assign({}, parcelOptions, options)
   await OptionManager.resolve(parcelOptions)
 
   cleanConsole()

@@ -53,12 +53,23 @@ let plugins = [
 ]
 
 // 全局配置
-let config = Object.defineProperties({ setRule, addPlugin, delPlugin }, {
-  rules: {
-    get: () => [...jsRules, ...wxssRules]
+const getRules = () => [...jsRules, ...wxssRules]
+const getPlugins = () => [...plugins]
+
+const config = new Proxy({ setRule, addPlugin, delPlugin }, {
+  get (config, prop) {
+    return prop === 'rules' ? getRules() : prop === 'plugins' ? getPlugins() : config[prop]
   },
-  plugins: {
-    get: () => [...plugins]
+  ownKeys (config) {
+    return Object.keys(config).concat('rules', 'plugins')
+  },
+  enumerate (config) {
+    return Object.keys(config).concat('rules', 'plugins')
+  },
+  getOwnPropertyDescriptor (config, prop) {
+    let state = { writable: false, enumerable: true, configurable: true }
+    let value = prop === 'rules' ? getRules() : prop === 'plugins' ? getPlugins() : config[prop]
+    return { ...state, value }
   }
 })
 
