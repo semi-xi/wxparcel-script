@@ -37,23 +37,28 @@ $ wxparcel-script start --config /path/to/config.js --watch
 $ wxparcel-script start --config development --publicPath "https://github.com"
 ```
 
-## 功能
+## 功能简述
 
-- 支持编译 babel 文件 (自带)
+- 支持编译 babel 文件 (可配置, 默认开启)
   - babel 配置根据根目录下 .babelrc 文件来配置, 需要如何修改可以手动添加
   - 支持 导入 node_modules
-  - 支持 require('path/to/static.custom')
+  - 支持 require('path/to/static.ext')
   - 支持 alias 路径 { ~: srcDir, /: rootDir, .: relativeDir }
-- 支持编译 scss/sass 文件 (自带)
-  - 支持 background-image: url('path/to/static.custom')
-- 支持编译 环境变量替换
-- 支持 本地开发静态服务
-- 支持 可扩展插件(Plugins)与加载器(Loaders)
+- 支持编译 scss/sass 文件 (可配置, 默认开启)
+  - 支持 background-image: url('path/to/static.ext')
+- 支持编译 环境变量替换 (默认引入)
+  - 默认引入 `process.env.NODE_ENV` [`development`, `test`, `production`]
+- 支持 本地开发静态服务 (可配置, 默认开发环境自动开启)
+- 支持 可扩展插件(Plugins),加载器(Loaders)与解析器(Resolvers)
 
-## 开发
+## 本地开发调试工具
 
 ```
-cd path/to/wxparcel-script
-npm link . # 这样就可以全局通用, 若要使用全局作用于项目, 必须把本地项目的依赖删除
+$ cd path/to/wxparcel-script
+$ npm link . # 这样就可以全局通用, 若要使用全局作用于项目, 必须把本地项目的依赖删除
+
+# 若要引用到 wxparcel-script 中配置文件或内部类
+$ cd path/to/project
+$ npm link wxparcel-script # 必须在 `npm link .` 之后执行
 ```
 
