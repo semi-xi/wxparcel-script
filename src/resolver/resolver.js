@@ -117,6 +117,13 @@ export class Resolver {
    */
   convertDependency (required, relativeTo = path.dirname(this.file)) {
     const { srcDir, rootDir } = this.options
+
+    switch (required.charAt(0)) {
+      case '@':
+        required = required.substr(1)
+        break
+    }
+
     switch (required.charAt(0)) {
       case '~':
         return path.join(srcDir, required.substr(1))

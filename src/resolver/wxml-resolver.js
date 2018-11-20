@@ -47,10 +47,10 @@ export default class WXMLResolver extends Resolver {
    * @param {String} dependence.destination 目标路径
    * @return {Array} [source, dependence] 其中 dependence 不包含 code 属性
    */
-  convertFinallyState (source, { code, dependency, destination, ...props }) {
+  convertFinallyState (source, { code, dependency, destination, required, ...props }) {
     let extname = path.extname(destination)
-    if (extname === '' || /\.(wxs|wxml)$/.test(extname)) {
-      let dependence = { dependency, destination, ...props }
+    if (required.charAt(0) === '@' || extname === '' || /\.(wxs|wxml)$/.test(extname)) {
+      let dependence = { dependency, destination, required, ...props }
       return [source, dependence]
     }
 
@@ -58,7 +58,7 @@ export default class WXMLResolver extends Resolver {
     let url = this.convertPublicPath(dependencyDestination)
     source = replacement(source, code, url, SRC_REGEXP)
 
-    let dependence = { dependency, destination: dependencyDestination, ...props }
+    let dependence = { dependency, destination: dependencyDestination, required, ...props }
     return [source, dependence]
   }
 }

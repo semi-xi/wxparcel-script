@@ -47,11 +47,16 @@ export default class WXSResolver extends Resolver {
    * @param {String} dependence.destination 目标路径
    * @return {Array} [source, dependence] 其中 dependence 不包含 code 属性
    */
-  convertFinallyState (source, { code, destination, ...props }) {
+  convertFinallyState (source, { code, destination, required, ...props }) {
+    if (required.charAt(0) === '@') {
+      let dependence = { destination, required, ...props }
+      return [source, dependence]
+    }
+
     let url = this.convertPublicPath(destination)
     source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
 
-    let dependence = { destination, ...props }
+    let dependence = { destination, required, ...props }
     return [source, dependence]
   }
 }
