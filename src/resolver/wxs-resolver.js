@@ -2,7 +2,7 @@ import stripComments from 'strip-css-comments'
 import { Resolver } from './resolver'
 import { escapeRegExp } from '../share'
 
-const IMAGE_REGEXP = /require\(['"]([~\w\d_\-./]+?)['"]\)/
+const IMAGE_REGEXP = /require\(['"]([@~\w\d_\-./]+?)['"]\)/
 
 /**
  * WXSS解析器

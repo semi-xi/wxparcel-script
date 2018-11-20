@@ -3,7 +3,7 @@ import stripComments from 'strip-comment'
 import { Resolver } from './resolver'
 import { replacement } from '../share'
 
-const SRC_REGEXP = /src=["']([~\w\d_\-./]*?)["']/
+const SRC_REGEXP = /src=["']([@~\w\d_\-./]*?)["']/
 
 /**
  * WXML 解析器
