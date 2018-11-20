@@ -106,7 +106,7 @@ export default class Parcel {
    *
    */
   watch (options = {}) {
-    const { appConfigFile } = this.options
+    const { appConfigFile, useBundle } = this.options
 
     // 判断是否为被忽略文件
     const ignoreFile = (file) => {
@@ -118,32 +118,33 @@ export default class Parcel {
       files = Array.isArray(files) ? files : [files]
 
       let chunks = await Parser.multiCompile(files)
+      if (useBundle === true) {
+        /**
+         * 找出对应的打包器, 这样就能简单直接地进行
+         * 相应文件类型的打包, 若找不到对应的打包器
+         * 则说明该文件可能不需要打包, 则直接进行输
+         * 出即可
+         */
+        let bundlers = Bundler.matchBundler(chunks)
+        if (bundlers.length > 0) {
+          let promises = bundlers.map((item) => {
+            let { regexp, bundler: MatchedBundler } = item
 
-      /**
-       * 找出对应的打包器, 这样就能简单直接地进行
-       * 相应文件类型的打包, 若找不到对应的打包器
-       * 则说明该文件可能不需要打包, 则直接进行输
-       * 出即可
-       */
-      let bundlers = Bundler.matchBundler(chunks)
-      if (bundlers.length > 0) {
-        let promises = bundlers.map((item) => {
-          let { regexp, bundler: MatchedBundler } = item
+            let chunks = Assets.chunks.filter((chunk) => {
+              let { destination } = chunk
+              return regexp.test(destination)
+            })
 
-          let chunks = Assets.chunks.filter((chunk) => {
-            let { destination } = chunk
-            return regexp.test(destination)
+            if (chunks.length === 0) {
+              return Promise.resolve()
+            }
+
+            let bundler = new MatchedBundler(chunks)
+            return bundler.bundle()
           })
 
-          if (chunks.length === 0) {
-            return Promise.resolve()
-          }
-
-          let bundler = new MatchedBundler(chunks)
-          return bundler.bundle()
-        })
-
-        chunks = await Promise.all(promises)
+          chunks = await Promise.all(promises)
+        }
       }
 
       chunks = flattenDeep(chunks)

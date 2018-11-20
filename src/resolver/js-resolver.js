@@ -7,7 +7,7 @@ import OptionManager from '../option-manager'
 import { escapeRegExp } from '../share'
 
 const IMPORT_REGEXP = /(?:ex|im)port(?:\s+(?:[\w\W]+?\s+from\s+)?['"]([~\w\d_\-./]+?)['"]|\s*\(['"]([~\w\d_\-./]+?)['"]\))/
-const REQUIRE_REGEXP = /require\s*\(['"]([~\w\d_\-./]+?)['"]\)/
+const REQUIRE_REGEXP = /require\s*\(['"]([@~\w\d_\-./]+?)['"]\)/
 const WORKER_REQUIRE_REGEXP = /wx\.createWorker\s*\(['"]([~\w\d_\-./]+?)['"]\)/
 
 /**
@@ -83,10 +83,17 @@ export default class JSResolver extends Resolver {
    * @param {String} dependence.destination 目标路径
    * @return {Array} [source, dependence] 其中 dependence 不包含 code 属性
    */
-  convertFinallyState (source, { code, dependency, destination, ...props }) {
+  convertFinallyState (source, { code, dependency, destination, required, ...props }) {
     let extname = path.extname(destination)
     if (extname === '' || /\.(jsx?|babel|es6)/.test(extname)) {
-      let dependence = { dependency, destination, ...props }
+      let dependence = { dependency, destination, required, ...props }
+      return [source, dependence]
+    }
+
+    if (required.charAt(0) === '@') {
+      let dependence = { dependency, destination, required, ...props }
+      let url = required.substr(1)
+      source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
       return [source, dependence]
     }
 
@@ -94,8 +101,7 @@ export default class JSResolver extends Resolver {
     let url = this.convertPublicPath(dependencyDestination)
 
     source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
-
-    let dependence = { dependency, destination: dependencyDestination, ...props }
+    let dependence = { dependency, destination: dependencyDestination, required, ...props }
     return [source, dependence]
   }
 
