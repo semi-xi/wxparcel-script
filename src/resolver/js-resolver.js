@@ -1,6 +1,6 @@
 import path from 'path'
 import Module from 'module'
-import stripComments from 'strip-comment'
+import stripComments from 'decomment'
 import { Resolver } from './resolver'
 import { BUNDLE, SCATTER } from '../constants/chunk-type'
 import OptionManager from '../option-manager'
@@ -44,7 +44,11 @@ export default class JSResolver extends Resolver {
     let source = this.source.toString()
     let dependencies = []
 
-    source = stripComments.js(source, true)
+    try {
+      source = stripComments(source)
+    } catch (error) {
+      throw new Error(`Some error occur when strip comments in ${this.file}\n${error.message}`)
+    }
 
     ;[source, dependencies] = this.revise([source, dependencies], [IMPORT_REGEXP, REQUIRE_REGEXP], {
       type: BUNDLE,
