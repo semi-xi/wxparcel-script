@@ -47,7 +47,8 @@ $ wxparcel-script start --config development --publicPath "https://github.com"
 - 支持 生成 SourceMap 文件 (可配置, 默认开启, js 文件仅在 `development`, `test` 模式下开启, wxss 文件则不开启)
 - 支持 文件压缩 (可配置, 默认 js 文件只在 `test`, `production` 模式下开启, wxss 文件所有环境下均开启)
 - 支持 资源路径替换
-  - 支持 alias 路径, 例如: `./srcDir`(资源路径), `/rootDir`(根目录路径) 与 `./relativeDir`(相对路径)
+  - 支持 alias 路径, 例如: `~/srcDir`(资源路径), `/rootDir`(根目录路径) 与 `./relativeDir`(相对路径)
+  - 支持 静态资源保存到非CDN, 例如: `@./a.png`, `@~/a.png`, `@/a.png`
   - 支持 `.js` 文件路径替换, 例如 `require('path/to/static.ext')`
   - 支持 `.wxss` 文件路径替换, 例如 `background-image: url('path/to/static.ext')`
   - 支持 `.wxml` 文件路径替换, 例如 `<image src="path/to/static.ext" />` 路径替换
