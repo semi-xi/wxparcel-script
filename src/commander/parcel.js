@@ -146,8 +146,9 @@ function cleanConsole () {
 }
 
 function printInfo () {
-  const { srcDir, watching } = OptionManager
+  const { srcDir, watching, pubPath } = OptionManager
   Logger.trace(`Version: ${chalk.cyan.bold(pkgVersion)}`)
+  Logger.trace(`StaticServ: ${chalk.cyan.bold(pubPath)}`)
   Logger.trace(`Open your ${chalk.cyan.bold('WeChat Develop Tool')} to serve. Download in ${chalk.white.bold('https://developers.weixin.qq.com/miniprogram/dev/devtools/devtools.html')}`)
   watching && Logger.trace(`Watching folder ${chalk.white.bold(srcDir)}, cancel at ${chalk.white.bold('Ctrl + C')}`)
 }

@@ -98,7 +98,13 @@ export class Parser {
 
     if (Assets.exists(file)) {
       let chunk = Assets.get(file)
-      return Promise.resolve(chunk)
+      if (typeof chunk.destination === 'string' && typeof chunkOptions.destination === 'string') {
+        if (isSameOutPath(chunk.destination, chunkOptions.destination)) {
+          return Promise.resolve(chunk)
+        }
+      } else {
+        return Promise.resolve(chunk)
+      }
     }
 
     const { rules } = this.options
@@ -226,7 +232,14 @@ export class Parser {
     let files = []
     dependencies.forEach((item) => {
       if (Assets.exists(item.dependency)) {
-        return
+        let chunk = Assets.get(item.dependency)
+        if (typeof item.destination === 'string' && typeof chunk.destination === 'string') {
+          if (isSameOutPath(item.destination, chunk.destination)) {
+            return
+          }
+        } else {
+          return
+        }
       }
 
       let { type, dependency, destination } = item
@@ -287,4 +300,15 @@ const inMatches = (string, regexps) => {
   }
 
   return false
+}
+
+/**
+ * 判断是否同一个输出地址
+ *
+ * @param {String} pathA 路径A
+ * @param {String} pathB 路径B
+ * @param {Array} dirs 路径集合
+ */
+const isSameOutPath = (pathA, pathB, dirs = [OptionManager.outDir, OptionManager.staticDir]) => {
+  return dirs.findIndex((dir) => pathA.search(dir) !== -1 && pathB.search(dir) !== -1) !== -1
 }
