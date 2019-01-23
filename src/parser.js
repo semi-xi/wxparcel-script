@@ -98,13 +98,24 @@ export class Parser {
 
     if (Assets.exists(file)) {
       let chunk = Assets.get(file)
-      if (typeof chunk.destination === 'string' && typeof chunkOptions.destination === 'string') {
-        if (isSameOutPath(chunk.destination, chunkOptions.destination)) {
-          return Promise.resolve(chunk)
+      if (typeof chunkOptions.destination === 'string') {
+        let destinations = Array.isArray(chunk.destination)
+          ? chunk.destination
+          : typeof chunk.destination === 'string'
+            ? [chunk.destination]
+            : []
+
+        for (let i = 0, l = destinations.length; i < l; i++) {
+          let destination = destinations[i]
+          if (isSameOutPath(destination, chunkOptions.destination)) {
+            return Promise.resolve(chunk)
+          }
         }
-      } else {
-        return Promise.resolve(chunk)
+
+        chunk.destination = [].concat(destinations, chunkOptions.destination)
       }
+
+      return Promise.resolve(chunk)
     }
 
     const { rules } = this.options
@@ -232,14 +243,25 @@ export class Parser {
     let files = []
     dependencies.forEach((item) => {
       if (Assets.exists(item.dependency)) {
-        let chunk = Assets.get(item.dependency)
-        if (typeof item.destination === 'string' && typeof chunk.destination === 'string') {
-          if (isSameOutPath(item.destination, chunk.destination)) {
-            return
+        let existsChunk = Assets.get(item.dependency)
+        let destinations = Array.isArray(existsChunk.destination)
+          ? existsChunk.destination
+          : typeof existsChunk.destination === 'string'
+            ? [existsChunk.destination]
+            : []
+
+        if (typeof chunk.destination === 'string') {
+          for (let i = 0, l = destinations.length; i < l; i++) {
+            let destination = destinations[i]
+            if (isSameOutPath(destination, item.destination)) {
+              return
+            }
           }
-        } else {
-          return
+
+          existsChunk.destination = [].concat(destinations, item.destination)
         }
+
+        return
       }
 
       let { type, dependency, destination } = item
