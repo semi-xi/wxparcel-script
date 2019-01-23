@@ -1,5 +1,7 @@
 import fs from 'fs-extra'
 import path from 'path'
+import uniqBy from 'lodash/uniqBy'
+import flatten from 'lodash/flatten'
 import flattenDeep from 'lodash/flattenDeep'
 import chokidar from 'chokidar'
 import waterfall from 'async/waterfall'
@@ -149,6 +151,7 @@ export default class Parcel {
 
       chunks = flattenDeep(chunks)
       chunks = chunks.filter((chunk) => chunk)
+      chunks = uniqBy(chunks, 'file')
 
       return chunks
     }
@@ -305,12 +308,14 @@ export default class Parcel {
         content = content + '\n' + base64SourceMap
       }
 
-      return new Promise((resolve, reject) => {
+      let destinations = Array.isArray(destination) ? destination : [destination]
+      let promises = destinations.map((destination) => new Promise((resolve, reject) => {
         let taskQueue = [
           fs.ensureFile.bind(fs, destination),
           fs.writeFile.bind(fs, destination, content, 'utf8')
         ]
 
+        taskQueue = flatten(taskQueue)
         waterfall(taskQueue, (error) => {
           if (error) {
             reject(error)
@@ -319,10 +324,12 @@ export default class Parcel {
 
           resolve({ assets: destination, size: content.length })
         })
-      })
+      }))
+
+      return Promise.all(promises)
     })
 
-    return Promise.all(promises)
+    return Promise.all(promises).then((stats) => flatten(stats))
   }
 
   /**
