@@ -45,7 +45,7 @@ export class OptionManager {
      *
      * @type {Number}
      */
-    let idlePort = await portscanner.findAPortNotInUse(50000, 60000)
+    let idlePort = await portscanner.findAPortNotInUse(3000, 8000)
 
     /**
      * 原文件存放目录
