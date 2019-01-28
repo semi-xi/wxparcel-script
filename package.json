@@ -1,6 +1,6 @@
 {
   "name": "wxparcel-script",
-  "version": "1.0.0-alpha.12.6",
+  "version": "1.0.0-alpha.12.7",
   "license": "MIT",
   "bin": "./bin/cli",
   "main": "./libs/index.js",
