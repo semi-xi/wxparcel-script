@@ -1,4 +1,5 @@
 import path from 'path'
+import fs from 'fs-extra'
 import defaults from 'lodash/defaults'
 import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
@@ -96,6 +97,10 @@ export class Resolver {
       }
 
       let props = { file: this.file, dependency, required }
+      if (!fs.existsSync(dependency)) {
+        throw new Error(`Cannot found module ${required} in ${this.file}`)
+      }
+
       if (findIndex(dependencies, props) === -1) {
         let destination = convertDestination(dependency, this.options)
         let dependence = { ...props, type: options.type, destination }
