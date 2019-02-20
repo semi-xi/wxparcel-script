@@ -151,7 +151,7 @@ export default class JSResolver extends Resolver {
         let root = this.convertModule(relativeTo)
         return Module._resolveFilename(requested, root)
       } catch (error) {
-        throw new Error(error)
+        throw new Error(`Cannot found module ${requested} in ${this.file}`)
       }
     }
   }
