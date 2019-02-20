@@ -153,7 +153,7 @@ function printInfo () {
   watching && Logger.trace(`Watching folder ${chalk.white.bold(srcDir)}, cancel at ${chalk.white.bold('Ctrl + C')}`)
 }
 
-function printStats (stats) {
+function printStats (stats = {}) {
   const maxWidth = 80
 
   const headingTransform = (heading) => {
@@ -211,8 +211,11 @@ function printStats (stats) {
   }
 
   const message = columnify(stats, options)
-  Logger.trace(message)
-  Logger.trace(`\n${chalk.gray('Spend Time:')} ${chalk.white.bold(stats.spendTime)}ms\n`)
+
+  if (stats.spendTime) {
+    Logger.trace(message)
+    Logger.trace(`\n${chalk.gray('Spend Time:')} ${chalk.white.bold(stats.spendTime)}ms\n`)
+  }
 
   printInfo()
 }
