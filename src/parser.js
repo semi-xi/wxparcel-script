@@ -250,7 +250,7 @@ export class Parser {
             ? [existsChunk.destination]
             : []
 
-        if (typeof chunk.destination === 'string') {
+        if (typeof chunk.destination === 'string' && typeof item.destination === 'string') {
           for (let i = 0, l = destinations.length; i < l; i++) {
             let destination = destinations[i]
             if (isSameOutPath(destination, item.destination)) {
@@ -332,5 +332,9 @@ const inMatches = (string, regexps) => {
  * @param {Array} dirs 路径集合
  */
 const isSameOutPath = (pathA, pathB, dirs = [OptionManager.outDir, OptionManager.staticDir]) => {
+  if (typeof pathA !== 'string' || typeof pathB !== 'string') {
+    throw new Error('Path must be a string')
+  }
+
   return dirs.findIndex((dir) => pathA.search(dir) !== -1 && pathB.search(dir) !== -1) !== -1
 }

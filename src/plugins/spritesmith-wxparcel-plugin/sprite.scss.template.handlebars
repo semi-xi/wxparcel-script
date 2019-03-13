@@ -112,14 +112,14 @@
 
 {{#block "spritesheet-functions"}}
   {{#if options.functions}}
-    @mixin sprites($sprites: $spritesheet-sprites) {
+    @mixin sprites($zoom: 1, $sprites: $spritesheet-sprites) {
       @each $sprite in $sprites {
         $sprite-name: nth($sprite, 10);
 
         .sp.sp-#{$sprite-name} {
           display: inline-block;
-          width: nth($sprite, 5) / 2 + rpx;
-          height: nth($sprite, 6) / 2 + rpx;
+          width: strip-unit(nth($sprite, 5) / $zoom) + rpx;
+          height: strip-unit(nth($sprite, 6) / $zoom) + rpx;
 
           &:before {
             content: "";
