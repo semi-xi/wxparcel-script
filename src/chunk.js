@@ -196,7 +196,7 @@ export class Chunk {
       this.rule = props.rule
     }
 
-    if (props.hasOwnProperty('destination') && typeof props.destination === 'string') {
+    if (props.hasOwnProperty('destination') && (typeof props.destination === 'string' || Array.isArray(props.destination))) {
       this.destination = props.destination
     }
 
