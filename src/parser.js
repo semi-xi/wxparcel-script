@@ -98,6 +98,7 @@ export class Parser {
 
     if (Assets.exists(file)) {
       let chunk = Assets.get(file)
+
       if (typeof chunkOptions.destination === 'string') {
         let destinations = Array.isArray(chunk.destination)
           ? chunk.destination
@@ -240,7 +241,8 @@ export class Parser {
       return chunk
     }
 
-    let files = []
+    let newFiles = []
+    let affectedExistsChunks = []
     dependencies.forEach((item) => {
       if (Assets.exists(item.dependency)) {
         let existsChunk = Assets.get(item.dependency)
@@ -250,7 +252,7 @@ export class Parser {
             ? [existsChunk.destination]
             : []
 
-        if (typeof chunk.destination === 'string' && typeof item.destination === 'string') {
+        if (typeof existsChunk.destination === 'string' && typeof item.destination === 'string') {
           for (let i = 0, l = destinations.length; i < l; i++) {
             let destination = destinations[i]
             if (isSameOutPath(destination, item.destination)) {
@@ -258,22 +260,24 @@ export class Parser {
             }
           }
 
-          existsChunk.destination = [].concat(destinations, item.destination)
+          let destination = [].concat(destinations, item.destination)
+          existsChunk.update({ destination })
+          affectedExistsChunks.push(existsChunk)
         }
 
         return
       }
 
       let { type, dependency, destination } = item
-      destination && files.push({ type, file: dependency, destination })
+      destination && newFiles.push({ type, file: dependency, destination })
     })
 
-    if (!Array.isArray(files) || files.length === 0) {
+    if (newFiles.length === 0 && affectedExistsChunks.length === 0) {
       return chunk
     }
 
-    let chunks = await this.multiCompile(files)
-    return [chunk].concat(chunks)
+    let chunks = await this.multiCompile(newFiles)
+    return [chunk].concat(chunks, affectedExistsChunks)
   }
 
   /**
