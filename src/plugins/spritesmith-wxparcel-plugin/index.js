@@ -30,7 +30,7 @@ export default class SpritesmithPlugin {
      *
      * @type {OptionManager}
      */
-    this.options = Object.assign({ imageFile, styleFile, directory, template }, options)
+    this.options = Object.assign({ directory, imageFile, styleFile, template }, options)
   }
 
   /**
@@ -39,7 +39,7 @@ export default class SpritesmithPlugin {
    * @param {Object} options 配置
    * @param {String} options.directory 图片目录(相对于 srcDir 路径, 也可以设置成绝对略经)
    * @param {String} options.imageFile 生成图片路径名称(相对于 staticDir, 也可以设置成绝对略经)
-   * @param {String} options.imageFile 生成图片样式路径(相对于 tmplDir, 也可以设置成绝对略经)
+   * @param {String} options.styleFile 生成图片样式路径(相对于 tmplDir, 也可以设置成绝对略经)
    * @param {String} options.template 模板路径(相对于 srcDir 路径, 也可以设置成绝对略经)
    * @return {Promise}
    */
@@ -99,7 +99,8 @@ export default class SpritesmithPlugin {
          * 且反斜杠容易造成转义情况, 例如 \s, 因此这里
          * 需要做一下处理
          */
-        let image = trimEnd(pubPath, '/') + '/' + trimStart(imageFile, '/')
+        let relativeImagefile = imageFile.replace(staticDir, '')
+        let image = trimEnd(pubPath, '/') + '/' + trimStart(relativeImagefile, '/')
         image = image.replace(/\\/g, '/')
 
         // 生成样式文件
