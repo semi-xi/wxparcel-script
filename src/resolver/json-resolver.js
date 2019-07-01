@@ -51,9 +51,11 @@ export default class JSONResolver extends Resolver {
 
     /**
      * 微信小程序分包加载配置关键属性
+     * 官网文档是小写, 官方 demo 是大写, 这里做一下兼容
+     *
      * docs: https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html
      */
-    let subPackages = config.subPackages || []
+    let subPackages = config.subPackages || config.subpackages || []
     let usingComponents = config.usingComponents || {}
 
     /**
@@ -63,7 +65,17 @@ export default class JSONResolver extends Resolver {
     let publicComponents = config.publicComponents || {}
     let tabs = get(config, 'tabBar.list', [])
 
-    let subPages = subPackages.map((item) => item.pages || [])
+    let subPages = subPackages.map((item) => {
+      let rootPath = item.root
+      let pages = item.pages || []
+
+      if (rootPath && pages.length > 0) {
+        return pages.map((page) => path.join(rootPath, page))
+      }
+
+      return pages
+    })
+
     subPages = flatten(subPages)
     pages = pages.concat(subPages)
 
