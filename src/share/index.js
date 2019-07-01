@@ -1,17 +1,5 @@
 import fs from 'fs'
 import crypto from 'crypto'
-import CommentStripper from './comment-stripper'
-
-/**
- * 去除所有备注
- *
- * @param {String} source JS code
- * @return {String}
- */
-export const stripComments = (source) => {
-  let stripper = new CommentStripper()
-  return stripper.strip(source)
-}
 
 /**
  * 异步读取文件
