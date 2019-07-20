@@ -8,6 +8,7 @@ import GlobalOptionManager from '../services/option-manager'
 import GlobalLogger from '../services/logger'
 import * as Typings from '../typings'
 import Project from '../constants/project'
+import babelRequire from '../vendors/babel-register'
 
 // 执行编译流程
 const run = async (options: Typings.ParcelCliOptions = {}) => {
@@ -24,14 +25,17 @@ const run = async (options: Typings.ParcelCliOptions = {}) => {
     GlobalOptionManager.bundle = bundle !== 'false'
   }
 
-  let babelrc = path.join(GlobalOptionManager.execDir, './.babelrc')
-  if (fs.existsSync(babelrc)) {
-    let babelConfig = fs.readJSONSync(babelrc)
-    require('babel-register')(babelConfig || {})
-  }
+  let parcelOptions: any
+  switch (path.extname(configFile)) {
+    case '.js': {
+      parcelOptions = babelRequire(configFile)
+      break
+    }
 
-  let parcelOptions = require(configFile)
-  parcelOptions = parcelOptions.default || parcelOptions
+    case '.ts': {
+      break
+    }
+  }
 
   if (options.hasOwnProperty('publicPath')) {
     options.publicPath = options.publicPath

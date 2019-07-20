@@ -122,7 +122,7 @@ export default class Chunk {
     let { rootDir, srcDir, outDir, npmDir, staticDir } = this.options
     let { rule, destination } = this.state = state
 
-    this.rule = rule = rule || null
+    this.rule = rule = rule || {} as any
     this.destination = destination || ''
 
     if (destination) {

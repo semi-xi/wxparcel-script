@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { transform, TransformOptions } from 'babel-core'
+import { transform, TransformOptions } from '@babel/core'
 import * as Typings from '../typings'
 
 interface BabelOptions extends Typings.ParcelLoaderOptions {
@@ -10,7 +10,7 @@ interface BabelOptions extends Typings.ParcelLoaderOptions {
 /**
  * Babel 加载器
  * @param asset 资源对象
- * @param options 配置, 配置参考 require('babel-core').transform 中的配置, https://babeljs.io/docs/en/next/babel-core.html
+ * @param options 配置, 配置参考 require('@babel/core').transform 中的配置, https://babeljs.io/docs/en/next/babel-core.html
  */
 const BabelLoader: Typings.ParcelLoader = (asset, options: BabelOptions) => {
   return new Promise((resolve) => {

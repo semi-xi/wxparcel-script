@@ -128,7 +128,7 @@ export default class OptionManager {
 
   constructor (options: Typings.ParcelOptions = {}) {
     this.rootDir = process.cwd()
-    this.execDir = path.join(__dirname, '../')
+    this.execDir = path.join(__dirname, '../../')
     !isEmpty(options) && this.resolve(options)
   }
 

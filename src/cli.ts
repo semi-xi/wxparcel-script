@@ -1,12 +1,12 @@
 import program from 'commander'
-import Logger from './services/logger'
+import GlobalLogger from './services/logger'
 import Project from './constants/project'
 import './commander/parcel'
 
 const helpAction = (): void => {
-  Logger.trace('\nExamples:')
-  Logger.trace('  $ wxparcel-script start --env development --watch')
-  Logger.trace('  $ wxparcel-script start --env production --config wx.config.js')
+  GlobalLogger.trace('\nExamples:')
+  GlobalLogger.trace('  $ wxparcel-script start --env development --watch')
+  GlobalLogger.trace('  $ wxparcel-script start --env production --config wx.config.js')
 }
 
 program

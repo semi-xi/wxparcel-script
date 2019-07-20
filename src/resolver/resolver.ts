@@ -93,9 +93,9 @@ export default class Resolver {
         break
       }
 
-      let props = { file: this.file, dependency, required }
+      let props = { file: this.file, dependency, required: validRequired }
       if (!fs.existsSync(dependency as string)) {
-        throw new Error(`Cannot found module ${required} in ${this.file}`)
+        throw new Error(`Cannot found module ${validRequired} in ${this.file}`)
       }
 
       if (findIndex(dependencies, props) === -1) {

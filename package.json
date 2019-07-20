@@ -1,6 +1,6 @@
 {
   "name": "wxparcel-script",
-  "version": "1.0.0-alpha.13.0",
+  "version": "2.0.0-alpha.0.0",
   "license": "MIT",
   "bin": "./bin/cli",
   "main": "./libs/index.js",
@@ -12,32 +12,28 @@
     "lint-staged"
   ],
   "lint-staged": {
-    "*.{ts,tsx}": [
+    "*.ts": [
       "npm run lint",
       "git add"
     ]
   },
   "scripts": {
     "precommit": "lint-staged",
-    "docs:esdoc": "rimraf ./gh-pages/esdoc && esdoc -c ./.esdoc.json",
     "docs:used": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
     "docs:used:server": "concurrently \"cpx './README.md' ./documents --watch\" \"docsify serve ./documents\"",
-    "docs": "concurrently \"npm run docs:esdoc\" \"npm run docs:used\"",
+    "docs": "concurrently \"npm run docs:used\"",
     "gh-pages": "rimraf gh-pages && npm run docs",
     "yamllint": "yamllint ./*.yml",
     "tslint": "tslint --project ./src --fix",
     "lint": "npm run yamllint && npm run tslint",
-    "mocha": "mocha --require babel-core/register ./test/*.spec.js",
-    "coverage": "rimraf ./coverage && nyc --reporter=text --reporter=lcov --report-dir=./coverage npm run mocha",
-    "coveralls": "npm run coverage && node ./node_modules/coveralls/bin/coveralls.js < ./coverage/lcov.info",
-    "test": "npm run lint && npm run mocha",
-    "develop": "rimraf ./libs && concurrently \"tsc --project ./src --outDir ./libs --declaration --watch\" \"cpx 'src/**/*.handlebars' ./libs --watch --verbose\"",
-    "release": "rimraf ./libs && concurrently \"tsc --project ./src --outDir ./libs --declaration\" \"cpx 'src/**/*.handlebars' ./libs --verbose\"",
+    "test": "npm run lint",
+    "develop": "rimraf ./libs && concurrently \"tsc --project ./src --outDir ./libs --declaration --watch\" \"cpx 'src/**/{*.handlebars,.babelrc}' ./libs --watch --verbose\"",
+    "release": "rimraf ./libs && cpx 'src/**/{*.handlebars,.babelrc}' ./libs --verbose && tsc --project ./src --outDir ./libs --declaration",
     "start": "npm run develop"
   },
   "dependencies": {
-    "async": "^2.6.1",
-    "babel-register": "^6.26.0",
+    "@babel/core": "^7.5.5",
+    "@babel/register": "^7.5.5",
     "chalk": "^2.4.1",
     "chokidar": "^2.0.4",
     "columnify": "^1.5.4",
@@ -63,7 +59,7 @@
     "uglify-es": "^3.3.9"
   },
   "devDependencies": {
-    "@types/babel-core": "^6.25.6",
+    "@types/babel__core": "^7.1.2",
     "@types/finalhandler": "^1.1.0",
     "@types/fs-extra": "^8.0.0",
     "@types/ip": "^1.1.0",
@@ -72,14 +68,12 @@
     "@types/node-sass": "^4.11.0",
     "@types/portscanner": "^2.1.0",
     "@types/serve-static": "^1.13.2",
-    "@types/source-map": "^0.5.7",
     "@types/uglify-es": "^3.0.0",
     "chai": "^4.1.2",
     "concurrently": "^4.0.1",
     "cpx": "^1.5.0",
     "docsify-cli": "^4.3.0",
-    "lint-staged": "^7.2.2",
-    "mocha": "^5.2.0",
+    "lint-staged": "^9.2.0",
     "nyc": "^14.1.1",
     "pre-commit": "^1.2.2",
     "rimraf": "^2.6.2",
