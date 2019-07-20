@@ -1,3 +1,4 @@
+import fs from 'fs-extra'
 import * as path from 'path'
 import minimatch from 'minimatch'
 import omit from 'lodash/omit'
@@ -11,7 +12,7 @@ import Chunk from './Chunk'
 import GlobalResolver from '../services/resolver'
 import GlobalAssets from '../services/assets'
 import { SCATTER } from '../constants/chunk-type'
-import { readFileAsync, inMatches, isSameOutPath } from '../share'
+import { inMatches, isSameOutPath } from '../share/utils'
 import * as Typings from '../typings'
 
 /**
@@ -116,7 +117,7 @@ export default class Parser {
     const rule = this.matchRule(file, rules) || {}
     const chunk = GlobalAssets.add(file, Object.assign({}, chunkOptions, { rule }))
 
-    return readFileAsync(file).then((content) => {
+    return fs.readFile(file).then((content) => {
       chunk.update({ content })
       return chunk
     })

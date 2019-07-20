@@ -1,6 +1,6 @@
 import stripComments from 'strip-css-comments'
 import Resolver from './resolver'
-import { replacement } from '../share'
+import { replacement } from '../share/utils'
 import * as Typings from '../typings'
 
 const IMPORT_REGEXP = /@import\s*['"]([@~\w\d_\-./]+?)['"];/

@@ -18,7 +18,7 @@ import GlobalParser from '../services/parser'
 import { BUNDLER, SCATTER } from '../constants/chunk-type'
 import IgnoreFiles from '../constants/ingore-files'
 import HOOK_TYPES from '../constants/hooks'
-import { readFileAsync, stripBOM } from '../share'
+import { stripBOM } from '../share/utils'
 import * as Typings from '../typings'
 
 /**
@@ -170,7 +170,7 @@ export default class Parcel {
 
         if (GlobalAssets.exists(file)) {
           let chunk = GlobalAssets.get(file)
-          let source = await readFileAsync(chunk.file)
+          let source = await fs.readFile(chunk.file)
           chunk.update({ content: source })
         }
 

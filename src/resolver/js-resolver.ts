@@ -2,7 +2,7 @@ import path from 'path'
 import stripComments from 'decomment'
 import Resolver from './resolver'
 import { BUNDLE, SCATTER } from '../constants/chunk-type'
-import { escapeRegExp } from '../share'
+import { escapeRegExp } from '../share/utils'
 import * as ModuleUtils from '../share/module'
 import * as Typings from '../typings'
 

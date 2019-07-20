@@ -1,6 +1,6 @@
 import stripComments from 'strip-css-comments'
 import Resolver from './resolver'
-import { escapeRegExp } from '../share'
+import { escapeRegExp } from '../share/utils'
 import * as Typings from '../typings'
 
 const IMAGE_REGEXP = /require\(['"]([@~\w\d_\-./]+?)['"]\)/

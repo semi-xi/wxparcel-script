@@ -3,20 +3,6 @@ import crypto from 'crypto'
 import optionManager from '../services/option-manager'
 
 /**
- * 异步读取文件
- * @param file 文件名
- * @param type 读取类型
- * @returns source
- */
-export const readFileAsync = (file: string, type?: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    fs.readFile(file, type, (error, source: string) => {
-      error ? reject(error) : resolve(source)
-    })
-  })
-}
-
-/**
  * 反斜杠转义
  * @param source 代码
  * @returns 代码

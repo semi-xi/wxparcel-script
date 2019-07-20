@@ -1,7 +1,7 @@
 import path from 'path'
 import stripComments from 'strip-comment'
 import Resolver from './resolver'
-import { replacement } from '../share'
+import { replacement } from '../share/utils'
 import * as Typings from '../typings'
 
 const SRC_REGEXP = /src=["']([@~\w\d_\-./]*?)["']/

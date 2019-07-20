@@ -5,7 +5,7 @@ import trimEnd from 'lodash/trimEnd'
 import trimStart from 'lodash/trimStart'
 import findIndex from 'lodash/findIndex'
 import OptionManager from '../libs/OptionManager'
-import { genFileSync } from '../share'
+import { genFileSync } from '../share/utils'
 import * as Types from '../constants/chunk-type'
 import * as Typings from '../typings'
 

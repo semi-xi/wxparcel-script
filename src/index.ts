@@ -34,6 +34,13 @@ import * as chunkTypes from './constants/chunk-type'
 // Runtime
 import * as Runtime from './runtime'
 
+// Utils
+import * as utils from './share/utils'
+import * as module from './share/module'
+import * as pm from './share/pm'
+import * as process from './share/process'
+import * as sourceMap from './share/source-map'
+
 // Typings
 import * as Typings from './typings'
 
@@ -90,7 +97,16 @@ export {
   Runtime,
 
   /**
-   * Typings
+   * share utils
+   */
+  utils,
+  module,
+  pm,
+  process,
+  sourceMap,
+
+  /**
+   * typings
    */
   Typings
 }
