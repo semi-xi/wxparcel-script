@@ -12,13 +12,13 @@
     "lint-staged"
   ],
   "lint-staged": {
-    "*.ts": [
+    "*.{ts,tsx}": [
       "npm run lint",
       "git add"
     ]
   },
   "scripts": {
-    "precommit": "lint-staged",
+    "lint-staged": "lint-staged",
     "docs:used": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
     "docs:used:server": "concurrently \"cpx './README.md' ./documents --watch\" \"docsify serve ./documents\"",
     "docs": "concurrently \"npm run docs:used\"",
