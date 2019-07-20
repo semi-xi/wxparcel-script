@@ -2,6 +2,7 @@ import * as path from 'path'
 import Module from 'module'
 import { installDependencies } from './pm'
 
+const cwdPath = process.cwd()
 const modules = {}
 
 /**
@@ -10,7 +11,7 @@ const modules = {}
  * @param findedPath 起始的查找路径
  * @param triedInstall 尝试安装
  */
-export const localRequire = async (moduleName: string, findPath: string, triedInstall: boolean = false): Promise<any> => {
+export const localRequire = async (moduleName: string, findPath: string = cwdPath, triedInstall: boolean = false): Promise<any> => {
   let resolved = await localResolve(moduleName, findPath, triedInstall)
   return require(resolved)
 }
@@ -21,7 +22,7 @@ export const localRequire = async (moduleName: string, findPath: string, triedIn
  * @param findedPath 起始的查找路径
  * @param triedInstall 尝试安装
  */
-export const localResolve = async (moduleName: string, findPath: string, triedInstall: boolean = false): Promise<string> => {
+export const localResolve = async (moduleName: string, findPath: string = cwdPath, triedInstall: boolean = false): Promise<string> => {
   try {
     return require.resolve(moduleName)
 
@@ -45,7 +46,7 @@ export const localResolve = async (moduleName: string, findPath: string, triedIn
  * @param moduleName 模块名称
  * @param findedPath 起始的查找路径
  */
-export const resolve = (moduleName: string, findedPath: string): string => {
+export const resolve = (moduleName: string, findedPath: string = cwdPath): string => {
   let root = resolvePaths(findedPath)
   return (Module as any)._resolveFilename(moduleName, root)
 }
@@ -56,7 +57,7 @@ export const resolve = (moduleName: string, findedPath: string): string => {
  * @param findedPath 起始的查找路径
  * @returns 匹配到的路径
  */
-export const resolvePaths = (findedPath: string): any => {
+export const resolvePaths = (findedPath: string = cwdPath): any => {
   let rootPath = findedPath ? path.resolve(findedPath) : process.cwd()
   let rootName = path.join(rootPath, '@root')
   let root = modules[rootName]
