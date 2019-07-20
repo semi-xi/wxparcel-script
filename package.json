@@ -8,8 +8,11 @@
     "type": "git",
     "url": "https://github.com/wxparcel/wxparcel-script.git"
   },
+  "pre-commit": [
+    "lint-staged"
+  ],
   "lint-staged": {
-    "*.js": [
+    "*.{ts,tsx}": [
       "npm run lint",
       "git add"
     ]
@@ -22,14 +25,14 @@
     "docs": "concurrently \"npm run docs:esdoc\" \"npm run docs:used\"",
     "gh-pages": "rimraf gh-pages && npm run docs",
     "yamllint": "yamllint ./*.yml",
-    "eslint": "eslint --config .eslintrc.js --ext .js --fix './src/**/*.js'",
-    "lint": "npm run yamllint && npm run eslint",
+    "tslint": "tslint --project ./src --fix",
+    "lint": "npm run yamllint && npm run tslint",
     "mocha": "mocha --require babel-core/register ./test/*.spec.js",
     "coverage": "rimraf ./coverage && nyc --reporter=text --reporter=lcov --report-dir=./coverage npm run mocha",
     "coveralls": "npm run coverage && node ./node_modules/coveralls/bin/coveralls.js < ./coverage/lcov.info",
     "test": "npm run lint && npm run mocha",
-    "develop": "rimraf ./libs && concurrently \"babel ./src --out-dir ./libs --watch\" \"cpx 'src/**/*.handlebars' ./libs --watch --verbose\"",
-    "release": "rimraf ./libs && concurrently \"babel ./src --out-dir ./libs\" \"cpx 'src/**/*.handlebars' ./libs --verbose\"",
+    "develop": "rimraf ./libs && concurrently \"tsc --project ./src --outDir ./libs --declaration --watch\" \"cpx 'src/**/*.handlebars' ./libs --watch --verbose\"",
+    "release": "rimraf ./libs && concurrently \"tsc --project ./src --outDir ./libs --declaration\" \"cpx 'src/**/*.handlebars' ./libs --verbose\"",
     "start": "npm run develop"
   },
   "dependencies": {
@@ -60,29 +63,29 @@
     "uglify-es": "^3.3.9"
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-core": "^6.26.3",
-    "babel-eslint": "^8.2.1",
-    "babel-plugin-transform-object-rest-spread": "^6.26.0",
-    "babel-preset-env": "^1.7.0",
+    "@types/babel-core": "^6.25.6",
+    "@types/finalhandler": "^1.1.0",
+    "@types/fs-extra": "^8.0.0",
+    "@types/ip": "^1.1.0",
+    "@types/lodash": "^4.14.136",
+    "@types/node": "^12.6.8",
+    "@types/node-sass": "^4.11.0",
+    "@types/portscanner": "^2.1.0",
+    "@types/serve-static": "^1.13.2",
+    "@types/source-map": "^0.5.7",
+    "@types/uglify-es": "^3.0.0",
     "chai": "^4.1.2",
     "concurrently": "^4.0.1",
     "cpx": "^1.5.0",
     "docsify-cli": "^4.3.0",
-    "esdoc": "^1.1.0",
-    "esdoc-ecmascript-proposal-plugin": "^1.0.0",
-    "esdoc-standard-plugin": "^1.0.0",
-    "eslint": "^4.14.0",
-    "eslint-config-standard": "^11.0.0-beta.0",
-    "eslint-plugin-import": "^2.8.0",
-    "eslint-plugin-node": "^5.2.1",
-    "eslint-plugin-promise": "^3.6.0",
-    "eslint-plugin-standard": "^3.0.1",
-    "husky": "^0.14.3",
     "lint-staged": "^7.2.2",
     "mocha": "^5.2.0",
     "nyc": "^14.1.1",
+    "pre-commit": "^1.2.2",
     "rimraf": "^2.6.2",
+    "tslint": "^5.18.0",
+    "tslint-config-standard": "^8.0.1",
+    "typescript": "^3.5.3",
     "yaml-lint": "^1.2.4"
   }
 }
