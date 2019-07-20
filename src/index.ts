@@ -34,6 +34,9 @@ import * as chunkTypes from './constants/chunk-type'
 // Runtime
 import * as Runtime from './runtime'
 
+// Typings
+import * as Typings from './typings'
+
 // export all classes
 export {
   /**
@@ -84,5 +87,10 @@ export {
   /**
    * global services
    */
-  Runtime
+  Runtime,
+
+  /**
+   * Typings
+   */
+  Typings
 }
