@@ -114,10 +114,10 @@ export default class Resolver {
    * 转换依赖路径
    *
    * @param required 依赖文件路径
-   * @param relativeTo 相对引用文件路径
+   * @param relativePath 相对引用文件路径
    * @returns 依赖路径
    */
-  public convertDependency (required: string, relativeTo: string = path.dirname(this.file)): string | boolean {
+  public convertDependency (required: string, relativePath: string = path.dirname(this.file)): string | boolean {
     const { srcDir, rootDir } = this.options
 
     switch (required.charAt(0)) {
@@ -133,7 +133,7 @@ export default class Resolver {
         return path.join(rootDir, required.substr(1))
       case '.':
       default:
-        return path.join(relativeTo, required)
+        return path.join(relativePath, required)
     }
   }
 

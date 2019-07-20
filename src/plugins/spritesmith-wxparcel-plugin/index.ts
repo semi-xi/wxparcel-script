@@ -151,17 +151,17 @@ export default class SpritesmithPlugin implements Typings.ParcelPlugin {
    */
   public async findSprites (directory: string, pattern: RegExp): Promise<string[]> {
     let results = []
-    let stat = await statAsync(directory)
+    let stat = await fs.stat(directory)
 
     if (!stat.isDirectory()) {
       results.push(pattern.test(directory))
       return results
     }
 
-    let files = await readdirAsync(directory)
+    let files = await fs.readdir(directory)
     let promises = files.map(async (filename) => {
       let file = path.join(directory, filename)
-      let stat = await statAsync(file)
+      let stat = await fs.stat(file)
 
       if (stat.isDirectory()) {
         let sub = await this.findSprites(file, pattern)
@@ -180,6 +180,4 @@ export default class SpritesmithPlugin implements Typings.ParcelPlugin {
 }
 
 const gen = (source: string) => crypto.createHash('md5').update(source).digest('hex').substr(0, 7)
-const statAsync: (file: string) => Promise<fs.Stats> = promisify(fs.stat.bind(fs))
-const readdirAsync: (dir: string) => Promise<string[]> = promisify(fs.readdir.bind(fs))
 const spritesmithAsync = promisify(Spritesmith.run.bind(Spritesmith))

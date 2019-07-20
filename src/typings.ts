@@ -271,3 +271,11 @@ export interface ParcelChunkDependency {
   required?: string
   type?: ValueOf<typeof Types>
 }
+
+export interface PMInstallOptions {
+  installPeers?: boolean
+  saveDev?: boolean
+  packageManager?: string
+}
+
+export type ProcessStdout = (data: Buffer, type?: string) => void

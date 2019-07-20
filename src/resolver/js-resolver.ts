@@ -1,10 +1,9 @@
 import path from 'path'
-import Module from 'module'
 import stripComments from 'decomment'
 import Resolver from './resolver'
 import { BUNDLE, SCATTER } from '../constants/chunk-type'
-import OptionManager from '../libs/OptionManager'
 import { escapeRegExp } from '../share'
+import * as ModuleUtils from '../share/module'
 import * as Typings from '../typings'
 
 const IMPORT_REGEXP = /(?:ex|im)port(?:\s+(?:[\w\W]+?\s+from\s+)?['"]([@~\w\d_\-./]+?)['"]|\s*\(['"]([~\w\d_\-./]+?)['"]\))/
@@ -15,16 +14,6 @@ const WORKER_REQUIRE_REGEXP = /wx\.createWorker\s*\(['"]([@~\w\d_\-./]+?)['"]\)/
  * JS 解析器
  */
 export default class JSResolver extends Resolver {
-  /**
-   * 模块集合
-   */
-  public modules: { [key: string]: any }
-
-  constructor (asset, options: OptionManager) {
-    super(asset, options)
-    this.modules = {}
-  }
-
   /**
    * 解析, 并返回文件,代码,依赖等信息
    * @returns 包括文件, 代码, 依赖
@@ -113,22 +102,21 @@ export default class JSResolver extends Resolver {
    * 转换路径
    * @description 根据路径往上查找依赖文件
    * @param requested 请求路径
-   * @param relativeTo 被依赖文件所在文件夹路径
+   * @param relativePath 被依赖文件所在文件夹路径
    * @returns 文件路径
    */
-  public convertRelative (requested: string, relativeTo: string): string {
+  public convertRelative (requested: string, relativePath: string): string {
     /**
      * 兼容 require('not-a-system-dependency') 的情况
      * 若无法通过正常方式获取, 则尝试使用相对定位寻找该文件
      */
     try {
-      let file = this.convertDependency(requested, relativeTo)
+      let file = this.convertDependency(requested, relativePath)
       return require.resolve(file as string)
 
     } catch (err) {
       try {
-        let root = this.convertModule(relativeTo)
-        return (Module as any)._resolveFilename(requested, root)
+        return ModuleUtils.resolve(requested, relativePath)
 
       } catch (error) {
         throw new Error(`Cannot found module ${requested} in ${this.file}`)
@@ -158,27 +146,6 @@ export default class JSResolver extends Resolver {
 
     let filename = path.basename(file)
     return path.join(outDir, relativePath, filename)
-  }
-
-  /**
-   * 模块转换
-   * @description 根据 NodeJS 的查找方式往上查找依赖, 直到根目录为止
-   * @param directive 起始的查找路径
-   * @returns 匹配到的路径
-   */
-  public convertModule (directive: string): any {
-    let rootPath = directive ? path.resolve(directive) : process.cwd()
-    let rootName = path.join(rootPath, '@root')
-    let root = this.modules[rootName]
-
-    if (!root) {
-      root = new Module(rootName)
-      root.filename = rootName
-      root.paths = (Module as any)._nodeModulePaths(rootPath)
-      this.modules[rootName] = root
-    }
-
-    return root
   }
 
   /**
