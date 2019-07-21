@@ -1,17 +1,17 @@
 import fs from 'fs-extra'
 import * as path from 'path'
 import { promisify } from 'util'
-import Module from 'module'
 import commandExists from 'command-exists'
-import GlobalOptionManager from '../services/option-manager'
+import { log } from './utils'
 import { spawn } from './process'
-import { resolve } from './module'
 import * as Typings from '../typings'
+
+const cwdPath = process.cwd()
 
 /**
  * 安装依赖
  */
-export const installDependencies = async (modules: string[] | string, execPath: string, options: Typings.PMInstallOptions = {}): Promise<any> => {
+export const installDependencies = async (modules: string[] | string, execPath: string = cwdPath, options: Typings.PMInstallOptions = {}): Promise<any> => {
   let { installPeers = true, saveDev = true, packageManager } = options
   if (typeof modules === 'string') {
     modules = [modules]
@@ -21,8 +21,9 @@ export const installDependencies = async (modules: string[] | string, execPath: 
     packageManager = await determinePackageManager()
   }
 
-  let isYarn = packageManager === 'yarn'
+  log(`Determine use ${packageManager.toUpperCase()} to install`)
 
+  let isYarn = packageManager === 'yarn'
   let installCommand = isYarn ? 'add' : 'install'
   let args = [installCommand, ...modules]
   if (saveDev === true) {
@@ -34,10 +35,17 @@ export const installDependencies = async (modules: string[] | string, execPath: 
     await fs.writeFile(packageFile, '{}')
   }
 
+  let linkedModules = await fetchNpmLinks(execPath)
+
   try {
+    log(`${packageManager} ${args.join(' ')}`)
     await spawn(packageManager, args, { stdio: 'inherit' })
-  } catch (err) {
-    throw new Error(`Failed to install ${modules.join(', ')}.`)
+
+    let promises = linkedModules.map(({ file, real }) => fs.symlink(real, file))
+    await Promise.all(promises)
+
+  } catch (error) {
+    throw new Error(`Failed to install ${modules.join(', ')}\n${error.message}`)
   }
 
   if (installPeers === true) {
@@ -69,7 +77,7 @@ export const installPeerDependencies = async (name: string, execPath: string, op
  * 判断是否支持 Yarn
  * @param rootPath 根目录
  */
-export const determinePackageManager = async (rootPath: string = GlobalOptionManager.rootDir): Promise<string> => {
+export const determinePackageManager = async (rootPath: string = cwdPath): Promise<string> => {
   const lockFile = path.join(rootPath, 'yarn.lock')
   if (fs.existsSync(lockFile)) {
     return 'yarn'
@@ -85,4 +93,22 @@ export const determinePackageManager = async (rootPath: string = GlobalOptionMan
 export const detectYarnCommand = async (): Promise<boolean> => {
   const support = await promisify(commandExists.bind(null))('yarn')
   return support ? true : false
+}
+
+export const fetchNpmLinks = async (rootPath: string = cwdPath): Promise<Array<{ file: string, real: string }>> => {
+  let links = []
+
+  let nodeModules = path.join(rootPath, './node_modules')
+  if (!fs.existsSync(nodeModules)) {
+    return []
+  }
+
+  let files = await fs.readdir(nodeModules)
+  files.forEach((filename) => {
+    let file = path.join(nodeModules, filename)
+    let real = fs.realpathSync(file)
+    real !== file && links.push({ file, real })
+  })
+
+  return links
 }

@@ -92,6 +92,7 @@ export default class Parser {
 
     if (GlobalAssets.exists(file)) {
       let chunk = GlobalAssets.get(file)
+      let { outDir, staticDir } = this.options
 
       if (typeof chunkOptions.destination === 'string') {
         let destinations = Array.isArray(chunk.destination)
@@ -102,7 +103,7 @@ export default class Parser {
 
         for (let i = 0; i < destinations.length; i++) {
           let destination = destinations[i]
-          if (isSameOutPath(destination, chunkOptions.destination)) {
+          if (isSameOutPath(destination, chunkOptions.destination, [outDir, staticDir])) {
             return Promise.resolve(chunk)
           }
         }
@@ -223,6 +224,7 @@ export default class Parser {
   public async resolve (chunk): Promise<Chunk[]> {
     let result = GlobalResolver.resolve(chunk.metadata)
     let { file, content, dependencies, map: sourceMap } = result
+    let { outDir, staticDir } = this.options
 
     dependencies = chunk.dependencies.concat(dependencies)
     chunk.update({ file, content, dependencies, sourceMap })
@@ -233,6 +235,7 @@ export default class Parser {
 
     let newFiles = []
     let affectedExistsChunks = []
+
     dependencies.forEach((item) => {
       if (GlobalAssets.exists(item.dependency)) {
         let existsChunk = GlobalAssets.get(item.dependency)
@@ -245,7 +248,7 @@ export default class Parser {
         if (typeof existsChunk.destination === 'string' && typeof item.destination === 'string') {
           for (let i = 0; i < destinations.length; i++) {
             let destination = destinations[i]
-            if (isSameOutPath(destination, item.destination)) {
+            if (isSameOutPath(destination, item.destination, [outDir, staticDir])) {
               return
             }
           }

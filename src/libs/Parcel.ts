@@ -18,6 +18,7 @@ import { BUNDLER, SCATTER } from '../constants/chunk-type'
 import IgnoreFiles from '../constants/ingore-files'
 import HOOK_TYPES from '../constants/hooks'
 import { stripBOM } from '../share/utils'
+import { onexit } from '../share/process'
 import * as Typings from '../typings'
 
 /**
@@ -275,20 +276,12 @@ export default class Parcel {
     watcher.on('change', handleFileChanged)
     watcher.on('unlink', handleFileUnlink)
 
-    let handleProcessSigint = process.exit.bind(process)
-    let handleProcessExit = function () {
+    let exit = () => {
       watcher && watcher.close()
-
-      process.removeListener('exit', handleProcessExit)
-      process.removeListener('SIGINT', handleProcessSigint)
-
-      handleProcessExit = undefined
-      handleProcessSigint = undefined
       watcher = undefined
     }
 
-    process.on('exit', handleProcessExit)
-    process.on('SIGINT', handleProcessSigint)
+    onexit(exit)
   }
 
   /**

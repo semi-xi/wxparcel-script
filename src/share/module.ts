@@ -1,6 +1,7 @@
 import * as path from 'path'
 import Module from 'module'
 import { installDependencies } from './pm'
+import { log } from './utils'
 
 const cwdPath = process.cwd()
 const modulesPaths = {}
@@ -83,9 +84,10 @@ export const localResolve = async <T extends string | string[]>(moduleNames: T, 
   if (invalids.length > 0) {
     if (triedInstall === true) {
       let dependencies = invalids.map((name) => resolveTruthModuleName(name))
+      log(`Try install ${dependencies.join(',')}, please wait...`)
       await installDependencies(dependencies, findPath)
 
-      let installedModules = localResolve(dependencies, findPath)
+      let installedModules = localResolve(moduleNames, findPath)
       modules = modules.concat(installedModules)
       return isSingle ? modules[0] : modules
     }
