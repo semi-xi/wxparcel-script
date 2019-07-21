@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import * as path from 'path'
 import chalk from 'chalk'
+import pick from 'lodash/pick'
 import program from 'commander'
 import columnify from 'columnify'
 import Parcel from '../libs/Parcel'
@@ -45,7 +46,12 @@ const run = async (options: Typings.ParcelCliOptions = {}) => {
     options.sourceMap = options.sourceMap === 'false' ? false : options.sourceMap
   }
 
-  parcelOptions = Object.assign({}, parcelOptions, options)
+  let proto = Object.getPrototypeOf(parcelOptions)
+  let descriptors = Object.entries(Object.getOwnPropertyDescriptors(proto))
+  let getters = descriptors.filter(([_key, descriptor]) => typeof descriptor.get === 'function').map(([key]) => key)
+  let getterOptions = pick(parcelOptions, getters)
+
+  parcelOptions = Object.assign({}, getterOptions, parcelOptions, options)
   await GlobalOptionManager.resolve(parcelOptions)
 
   cleanConsole()

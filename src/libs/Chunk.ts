@@ -199,6 +199,7 @@ export default class Chunk {
     if (props.hasOwnProperty('content')) {
       if (typeof props.content === 'string') {
         this.content = Buffer.from(props.content)
+
       } else if (props.content instanceof Buffer) {
         this.content = props.content
       }

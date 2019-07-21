@@ -4,7 +4,6 @@ import uniqBy from 'lodash/uniqBy'
 import flatten from 'lodash/flatten'
 import flattenDeep from 'lodash/flattenDeep'
 import chokidar from 'chokidar'
-import waterfall from 'async/waterfall'
 import promisifyWaterfall from 'promise-waterfall'
 import minimatch from 'minimatch'
 import OptionManager from './OptionManager'
@@ -306,7 +305,7 @@ export default class Parcel {
 
     let promises = chunks.map((chunk) => {
       let { destination, content: buffer, sourceMap } = chunk.flush()
-      let content: string = stripBOM(buffer).toString()
+      let content = stripBOM(buffer)
 
       /**
        * 只有打包文件(BUNDLER) 与 独立文件(SCATTER) 才需要 sourceMap
@@ -319,22 +318,11 @@ export default class Parcel {
       }
 
       let destinations = Array.isArray(destination) ? destination : [destination]
-      let promises = destinations.map((destination) => new Promise((resolve, reject) => {
-        let taskQueue = [
-          fs.ensureFile.bind(fs, destination),
-          fs.writeFile.bind(fs, destination, content, 'utf8')
-        ]
-
-        taskQueue = flatten(taskQueue)
-        waterfall(taskQueue, (error) => {
-          if (error) {
-            reject(error)
-            return
-          }
-
-          resolve({ assets: destination, size: content.length })
-        })
-      }))
+      let promises = destinations.map(async (destination) => {
+        await fs.ensureFile(destination)
+        await fs.writeFile(destination, content, 'utf8')
+        return { assets: destination, size: content.length }
+      })
 
       return Promise.all(promises)
     })

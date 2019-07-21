@@ -266,6 +266,7 @@ export interface ParcelPlugin {
 }
 
 export interface ParcelChunkDependency {
+  file?: string
   dependency: string
   destination?: string
   required?: string

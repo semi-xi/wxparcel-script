@@ -186,7 +186,7 @@ export default class Parser {
         return Promise.reject(new Error('Params use is not provided from loader'))
       }
 
-      let transform: Typings.ParcelLoader = loader.use
+      let transform: Typings.ParcelLoader = loader.use as any
       if (typeof transform === 'string') {
         /**
          * 读取模块, 若模块为 es6 模块则通过 default 形式去获取.
@@ -271,17 +271,16 @@ export default class Parser {
   }
 
   /**
-   * 匹配规则, 根据文件名与 test 来进行
-   * 规则匹配
-   *
-   * @param file 文件
-   * @param rules 规则
-   * @returns 匹配到的规则
-   *
+   * 匹配规则
+   * @description
+   * 根据文件名与 test 来进行规则匹配
    * 这里通过配置 rule.test 来进行匹配
    * {
    *   test: /regexp/
    * }
+   * @param file 文件
+   * @param rules 规则
+   * @returns 匹配到的规则
    */
   public matchRule (file: string, rules: Typings.ParcelOptionRule[] = []) {
     let handleFind = (rule) => {
