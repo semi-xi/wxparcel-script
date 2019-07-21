@@ -12,20 +12,37 @@
     "lint-staged"
   ],
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "npm run lint",
+    "src/**/*.ts": [
+      "tslint --project ./src --fix",
+      "git add"
+    ],
+    "test/**/*.ts": [
+      "tslint --config tslint.json 'test/**/*.ts' --fix",
       "git add"
     ]
   },
+  "nyc": {
+    "include": [
+      "src/**/*.ts",
+      "src/**/*.d.ts"
+    ],
+    "extension": [
+      ".ts",
+      ".d.ts"
+    ]
+  },
   "scripts": {
+    "qwe": "tslint --config tslint.json 'test/**/*.ts' --fix",
     "lint-staged": "lint-staged",
-    "docs:used": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
-    "docs:used:server": "concurrently \"cpx './README.md' ./documents --watch\" \"docsify serve ./documents\"",
-    "docs": "concurrently \"npm run docs:used\"",
+    "docs:server": "concurrently \"cpx './README.md' ./documents --watch\" \"docsify serve ./documents\"",
+    "docs": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
     "gh-pages": "rimraf gh-pages && npm run docs",
     "yamllint": "yamllint ./*.yml",
     "tslint": "tslint --project ./src --fix",
     "lint": "npm run yamllint && npm run tslint",
+    "mocha": "cross-env TS_NODE_PROJECT=./test/tsconfig.json mocha --require ts-node/register ./test/*.spec.ts",
+    "coverage": "rimraf ./coverage && nyc --require ts-node/register --reporter=text --reporter=lcov --report-dir=./coverage npm run mocha",
+    "coveralls": "npm run coverage && node ./node_modules/coveralls/bin/coveralls.js < ./coverage/lcov.info",
     "test": "npm run lint",
     "develop": "rimraf ./libs && concurrently \"tsc --project ./src --outDir ./libs --declaration --watch\" \"cpx 'src/**/{*.handlebars,.babelrc}' ./libs --watch --verbose\"",
     "release": "rimraf ./libs && cpx 'src/**/{*.handlebars,.babelrc}' ./libs --verbose && tsc --project ./src --outDir ./libs --declaration",
@@ -54,23 +71,31 @@
   },
   "devDependencies": {
     "@types/babel__core": "^7.1.2",
+    "@types/chai": "^4.1.7",
     "@types/finalhandler": "^1.1.0",
     "@types/fs-extra": "^8.0.0",
     "@types/ip": "^1.1.0",
     "@types/lodash": "^4.14.136",
+    "@types/mocha": "^5.2.7",
     "@types/node": "^12.6.8",
     "@types/node-sass": "^4.11.0",
     "@types/portscanner": "^2.1.0",
     "@types/serve-static": "^1.13.2",
     "@types/uglify-es": "^3.0.0",
+    "chai": "^4.2.0",
     "concurrently": "^4.0.1",
     "cpx": "^1.5.0",
+    "cross-env": "^5.2.0",
     "docsify-cli": "^4.3.0",
     "lint-staged": "^9.2.0",
+    "mocha": "^6.2.0",
+    "nyc": "^14.1.1",
     "pre-commit": "^1.2.2",
     "rimraf": "^2.6.2",
+    "ts-node": "^8.3.0",
     "tslint": "^5.18.0",
     "tslint-config-standard": "^8.0.1",
+    "typedoc": "^0.14.2",
     "typescript": "^3.5.3",
     "yaml-lint": "^1.2.4"
   }

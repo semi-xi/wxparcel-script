@@ -317,11 +317,15 @@ export default class OptionManager {
     this.staticDir = undefined
     this.tmplDir = undefined
     this.npmDir = undefined
+    this.pubPath = undefined
+    this.logType = undefined
     this.env = undefined
     this.rules = undefined
-    this.sourceMap = undefined
     this.plugins = undefined
+    this.sourceMap = undefined
     this.watching = undefined
+    this.bundle = undefined
+    this.silence = undefined
     this.projectConfig = undefined
     this.projectConfigFile = undefined
     this.miniprogramRoot = undefined

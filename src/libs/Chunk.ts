@@ -96,7 +96,7 @@ export default class Chunk {
     this.dependencies = []
 
     if (Array.isArray(state.dependencies) && state.dependencies.length > 0) {
-      state.dependencies.forEach((dependency) => {
+      state.dependencies.forEach((dependency: Typings.ParcelChunkDependency | string) => {
         if (typeof dependency === 'string') {
           this.dependencies.push({ dependency })
         }

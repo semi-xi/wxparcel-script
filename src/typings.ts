@@ -151,7 +151,7 @@ export interface ParcelOptionRuleLoader {
   /**
    * 加载器路径
    */
-  use: any
+  use: (asset: any, options: ParcelLoaderOptions) => Promise<{ code: string | Buffer, sourceMap?: string | object, dependencies?: ParcelChunkDependency[] | string[] }>
 
   /**
    * 标记 Chunk 类型

@@ -7,7 +7,6 @@
     "experimentalDecorators": true,
     "esModuleInterop": true,
     "removeComments": true,
-    "resolveJsonModule": true,
     "sourceMap": false
   },
   "typeRoots": [
