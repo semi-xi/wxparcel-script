@@ -38,14 +38,14 @@ describe('配置管理器', () => {
       expect(optionManager.silence).to.be.eq(false)
 
       let projectConfigFile = path.join(optionManager.rootDir, 'project.config.json')
-      let projectConfig = fs.readJsonSync(projectConfigFile) as any
+      let projectConfig = fs.readJsonSync(projectConfigFile)
       expect(optionManager.projectConfigFile).to.be.eq(projectConfigFile)
       expect(optionManager.projectConfig).to.be.deep.eq(projectConfig)
       expect(optionManager.miniprogramRoot).to.be.eq(path.join(optionManager.rootDir, './src/'))
       expect(optionManager.pluginRoot).to.be.eq('')
 
       let appConfigFile = path.join(optionManager.rootDir, 'src/app.json')
-      let appConfig = fs.readJsonSync(appConfigFile) as any
+      let appConfig = fs.readJsonSync(appConfigFile)
 
       expect(optionManager.appConfigFile).to.be.eq(appConfigFile)
       expect(optionManager.appConfig).to.be.deep.eq(appConfig)
@@ -124,7 +124,7 @@ describe('配置管理器', () => {
       await optionManager.resolve()
 
       let empty = optionManager.checkRules([])
-      expect(empty).to.be.eq(true)
+      expect(empty).to.true
 
       let valid = optionManager.checkRules([
         {
@@ -137,8 +137,7 @@ describe('配置管理器', () => {
           ]
         }
       ])
-
-      expect(valid).to.be.eq(true)
+      expect(valid).to.true
 
       let invalid = optionManager.checkRules([
         {
@@ -147,8 +146,7 @@ describe('配置管理器', () => {
           loaders: []
         }
       ])
-
-      expect(invalid).to.be('string')
+      expect(invalid).is.string
       expect(invalid.toString().search('Option loaders is not a array or empty')).to.not.eq(-1)
     })
   })

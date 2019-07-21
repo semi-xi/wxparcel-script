@@ -13,11 +13,7 @@
   ],
   "lint-staged": {
     "src/**/*.ts": [
-      "tslint --project ./src --fix",
-      "git add"
-    ],
-    "test/**/*.ts": [
-      "npm run tslint:test",
+      "npm run tslint",
       "git add"
     ]
   },
@@ -38,13 +34,12 @@
     "docs": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
     "gh-pages": "rimraf gh-pages && npm run docs",
     "yamllint": "yamllint ./*.yml",
-    "tslint:lib": "tslint --project ./src --fix",
-    "tslint:test": "tslint --project ./test --fix",
+    "tslint": "tslint --project ./src --fix",
     "lint": "npm run yamllint && npm run tslint",
     "mocha": "cross-env TS_NODE_PROJECT=./test/tsconfig.json mocha --require ts-node/register ./test/*.spec.ts",
     "coverage": "rimraf ./coverage && nyc --require ts-node/register --reporter=text --reporter=lcov --report-dir=./coverage npm run mocha",
     "coveralls": "npm run coverage && node ./node_modules/coveralls/bin/coveralls.js < ./coverage/lcov.info",
-    "test": "npm run lint",
+    "test": "npm run lint && npm run mocha",
     "develop": "rimraf ./libs && concurrently \"tsc --project ./src --outDir ./libs --declaration --watch\" \"cpx 'src/**/{*.handlebars,.babelrc}' ./libs --watch --verbose\"",
     "release": "rimraf ./libs && cpx 'src/**/{*.handlebars,.babelrc}' ./libs --verbose && tsc --project ./src --outDir ./libs --declaration",
     "start": "npm run develop"
