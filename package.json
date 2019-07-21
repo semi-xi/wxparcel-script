@@ -12,8 +12,16 @@
     "lint-staged"
   ],
   "lint-staged": {
+    "*.yml": [
+      "npm run yamllint",
+      "git add"
+    ],
     "src/**/*.ts": [
-      "npm run tslint",
+      "tslint --project ./src --fix",
+      "git add"
+    ],
+    "test/**/*.ts": [
+      "tslint --config tslint.json './test/**/*.spec.ts' --fix",
       "git add"
     ]
   },
@@ -34,7 +42,7 @@
     "docs": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
     "gh-pages": "rimraf gh-pages && npm run docs",
     "yamllint": "yamllint ./*.yml",
-    "tslint": "tslint --project ./src --fix",
+    "tslint": "tslint --project ./src --fix && tslint --project ./test --fix",
     "lint": "npm run yamllint && npm run tslint",
     "mocha": "cross-env TS_NODE_PROJECT=./test/tsconfig.json mocha --require ts-node/register ./test/*.spec.ts",
     "coverage": "rimraf ./coverage && nyc --require ts-node/register --reporter=text --reporter=lcov --report-dir=./coverage npm run mocha",

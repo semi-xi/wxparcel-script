@@ -124,6 +124,7 @@ describe('配置管理器', () => {
       await optionManager.resolve()
 
       let empty = optionManager.checkRules([])
+      // tslint:disable-next-line:no-unused-expression
       expect(empty).to.true
 
       let valid = optionManager.checkRules([
@@ -137,6 +138,7 @@ describe('配置管理器', () => {
           ]
         }
       ])
+      // tslint:disable-next-line:no-unused-expression
       expect(valid).to.true
 
       let invalid = optionManager.checkRules([
@@ -146,6 +148,8 @@ describe('配置管理器', () => {
           loaders: []
         }
       ])
+
+      // tslint:disable-next-line:no-unused-expression
       expect(invalid).is.string
       expect(invalid.toString().search('Option loaders is not a array or empty')).to.not.eq(-1)
     })
