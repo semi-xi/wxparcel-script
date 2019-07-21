@@ -134,7 +134,7 @@ export default class OptionManager {
 
   /**
    * 解析配置并保存起来
-   * @param [options={}] 配置
+   * @param options 配置
    */
   public async resolve (options: Typings.ParcelOptions = {}): Promise<void> {
     if (!this.idlePort) {
@@ -187,7 +187,7 @@ export default class OptionManager {
 
   /**
    * 验证规则是否符合规范
-   * @param [rules=[]] 规则集合
+   * @param rules 规则集合
    * @returns 是否通过验证
    */
   public checkRules (rules: Typings.ParcelOptionRule[] = []): true | string {
@@ -292,10 +292,10 @@ export default class OptionManager {
    * OptionManager 中的配置信息都会赋值到
    * 目标配置上, 且数据元都是只可读
    *
-   * @param [options={}] 配置
+   * @param options 配置
    * @returns 返回该配置
    */
-  public connect <T extends object> (options: T): T & NonFunctionProperties<OptionManager> {
+  public connect <T extends object, A extends NonFunctionProperties<OptionManager>> (options: T): T & { readonly [key in keyof A]: A[key] } {
     const getter = mapValues(this, (_, name) => ({ get: () => this[name] }))
 
     options = Object.assign({}, options)

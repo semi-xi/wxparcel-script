@@ -53,27 +53,6 @@ let plugins: Typings.ParcelPlugin[] = [
   })
 ]
 
-// 全局配置
-const getRules = () => [...jsRules, ...wxssRules]
-const getPlugins = () => [...plugins]
-
-const config = new Proxy({ setRule, addPlugin, delPlugin }, {
-  get (config, prop) {
-    return prop === 'rules' ? getRules() : prop === 'plugins' ? getPlugins() : config[prop]
-  },
-  ownKeys (config) {
-    return Object.keys(config).concat('rules', 'plugins')
-  },
-  enumerate (config) {
-    return Object.keys(config).concat('rules', 'plugins')
-  },
-  getOwnPropertyDescriptor (config, prop) {
-    let state = { writable: false, enumerable: true, configurable: true }
-    let value = prop === 'rules' ? getRules() : prop === 'plugins' ? getPlugins() : config[prop]
-    return { ...state, value }
-  }
-})
-
 // 开发环境下配置
 if (process.env.NODE_ENV === 'development') {
   plugins.push(new DevServerPlugin())
@@ -88,32 +67,76 @@ if (process.env.NODE_ENV === 'prerelease' || process.env.NODE_ENV === 'productio
   })
 }
 
-export default config
+class Config {
+  /**
+   * 获取所有JS规则
+   * @readonly
+   */
+  public get jsRules () {
+    return [...jsRules]
+  }
 
-// 设置规则
-function setRule (name, callback) {
-  switch (name) {
-    case 'js': {
-      let rules = jsRules || {}
-      jsRules = callback(rules)
-      break
-    }
+  /**
+   * 获取所有WXSS规则
+   * @readonly
+   */
+  public get wxssRules () {
+    return [...wxssRules]
+  }
 
-    case 'wxss': {
-      let rules = wxssRules || {}
-      wxssRules = callback(rules)
-      break
+  /**
+   * 获取所有规则
+   * @readonly
+   */
+  public get rules () {
+    return [...jsRules, ...wxssRules]
+  }
+
+  /**
+   * 获取所有插件
+   * @readonly
+   */
+  public get plugins () {
+    return [...plugins]
+  }
+
+  /**
+   * 设置规则
+   * @param name 规则名称
+   * @param callback 回调
+   */
+  public setRule (name: string, callback: (rules: Typings.ParcelOptionRule[]) => Typings.ParcelOptionRule[]): void {
+    switch (name) {
+      case 'js': {
+        let rules = jsRules || []
+        jsRules = callback(rules)
+        break
+      }
+
+      case 'wxss': {
+        let rules = wxssRules || []
+        wxssRules = callback(rules)
+        break
+      }
     }
+  }
+
+  /**
+   * 添加插件
+   * @param plugin 插件
+   */
+  public addPlugin (plugin: Typings.ParcelPlugin): void {
+    plugins.push(plugin)
+  }
+
+  /**
+   * 删除插件
+   * @param plugin 插件
+   */
+  public delPlugin (plugin: { new(): Typings.ParcelPlugin } | Typings.ParcelPlugin): void {
+    let index = plugins.findIndex((item) => typeof plugin === 'function' ? item === plugin : item.constructor === plugin.constructor)
+    index !== -1 && plugins.splice(index, 1)
   }
 }
 
-// 添加插件
-function addPlugin (plugin) {
-  plugins.push(plugin)
-}
-
-// 删除插件
-function delPlugin (plugin) {
-  let index = plugins.findIndex((item) => item.constructor === plugin.constructor)
-  index !== -1 && plugins.splice(index, 1)
-}
+export default new Config()

@@ -44,7 +44,7 @@ export default class Assets {
   /**
    * 添加 chunk
    * @param file 文件名
-   * @param [state={}] 状态
+   * @param state 状态
    */
   public add (file: string, state: Typings.ParcelChunkState = {}): Chunk {
     let chunk = new Chunk(file, state, this.options)
@@ -55,7 +55,7 @@ export default class Assets {
   /**
    * 更新 chunk
    * @param file 文件名
-   * @param [state={}] 状态
+   * @param state 状态
    */
   public update (file: string, state: Partial<Chunk> = {}): void {
     let chunk = this.get(file)
