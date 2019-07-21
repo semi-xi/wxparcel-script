@@ -1,6 +1,6 @@
 import fs from 'fs'
 import crypto from 'crypto'
-import optionManager from '../services/option-manager'
+import chalk from 'chalk'
 
 /**
  * 反斜杠转义
@@ -98,10 +98,16 @@ export const inMatches = (content: string, regexps: RegExp[]): boolean => {
  * @param pathB 路径B
  * @param {boolean}
  */
-export const isSameOutPath = (pathA: string, pathB: string, dirs: string[] = [optionManager.outDir, optionManager.staticDir]): boolean => {
+export const isSameOutPath = (pathA: string, pathB: string, dirs: string[]): boolean => {
   if (typeof pathA !== 'string' || typeof pathB !== 'string') {
     throw new Error('Path must be a string')
   }
 
   return dirs.findIndex((dir) => pathA.search(dir) !== -1 && pathB.search(dir) !== -1) !== -1
 }
+
+/**
+ * 打印
+ * @param message 信息
+ */
+export const log = (message: string) => console.log('✨', chalk.white.bold(message))
