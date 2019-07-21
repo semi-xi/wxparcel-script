@@ -1,42 +1,37 @@
 [![GitHub version](https://badge.fury.io/gh/wxparcel%2Fwxparcel-script.svg)](https://badge.fury.io/gh/wxparcel%2Fwxparcel-script)
 [![npm version](https://badge.fury.io/js/wxparcel-script.svg)](https://badge.fury.io/js/wxparcel-script)
+
 [![Build Status](https://travis-ci.org/wxparcel/wxparcel-script.svg?branch=master)](https://travis-ci.org/wxparcel/wxparcel-script)
 [![Build status](https://ci.appveyor.com/api/projects/status/s49av8k4l12hqt7n?svg=true)](https://ci.appveyor.com/project/DavidKk/wxparcel-script)
-
-[![Document](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script/badge.svg?t=0)](https://doc.esdoc.org/github.com/wxparcel/wxparcel-script)
 [![Coverage Status](https://coveralls.io/repos/github/wxparcel/wxparcel-script/badge.svg?branch=master)](https://coveralls.io/github/wxparcel/wxparcel-script?branch=master)
-[![Dependency Status](https://dependencyci.com/github/wxparcel/wxparcel-script/badge)](https://dependencyci.com/github/wxparcel/wxparcel-script)
 
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com)
 [![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/wxparcel/wxparcel-script/blob/master/LICENSE)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 
-
 # WXParcel - 小程序简易构建工具
 
-开发阶段请勿使用
+该工作流并非使用其他工作流之上进行封装, 因此可能会出现使用上的小问题, 如果有发现任何问题欢迎到 issue 进行提交
 
-- [开发文档](https://wxparcel.github.io/wxparcel-script/esdoc/)
+- [使用手册](https://wxparcel.github.io/wxparcel-script)
 
-## 使用
+## 安装使用
 
-```
-# run in default config
-$ wxparcel-script start --config development
+```bash
+# 安装
+$ npm i -g wxparcel-script
+
+# 运行并开启静态资源服务
+$ wxparcel-script start --watch
+
+# 使用默认配置运行 [`development`|`production`]
 $ wxparcel-script start --config production
 
-# run in custom config file
-$ wxparcel-script start --config /path/to/development.config.js
+# 自定义配置运行
+$ wxparcel-script start --config /path/to/wxparcel.config.js
 
-# run in wathing server
-$ wxparcel-script start --config /path/to/config.js --watch
-```
-
-## 配置公共服务域名
-
-```
-# set public path in static folder
-$ wxparcel-script start --config development --publicPath "https://github.com"
+# 配置静态资源服务域名
+$ wxparcel-script start --publicPath 'https://github.com' --config production
 ```
 
 ## 功能简述
@@ -73,4 +68,3 @@ $ npm link . # 这样就可以全局通用, 若要使用全局作用于项目, �
 $ cd path/to/project
 $ npm link wxparcel-script # 必须在 `npm link .` 之后执行
 ```
-

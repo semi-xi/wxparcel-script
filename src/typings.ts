@@ -68,7 +68,7 @@ export interface ParcelOptions {
   /**
    * 使用的插件
    */
-  plugins?: any[]
+  plugins?: ParcelPlugin[]
 
   /**
    * 监听文件改动
@@ -151,7 +151,7 @@ export interface ParcelOptionRuleLoader {
   /**
    * 加载器路径
    */
-  use: (asset: any, options: ParcelLoaderOptions) => Promise<{ code: string | Buffer, sourceMap?: string | object, dependencies?: ParcelChunkDependency[] | string[] }>
+  use: (asset: any, options: ParcelLoaderOptions) => Promise<{ code: string | Buffer, map?: string | object, dependencies?: ParcelChunkDependency[] | string[] }>
 
   /**
    * 标记 Chunk 类型
