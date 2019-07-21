@@ -20,8 +20,8 @@ import WXSSResolver from './resolver/wxss-resolver'
 import JSBundler from './libs/bundler/JSBundler'
 
 // Main
-import Assets from './libs/assets'
-import Chunk from './libs/chunk'
+import Assets from './libs/Assets'
+import Chunk from './libs/Chunk'
 import OptionManager from './libs/OptionManager'
 import Parser from './libs/Parser'
 import Resolver from './resolver'
