@@ -36,7 +36,6 @@
     ]
   },
   "scripts": {
-    "qwe": "tslint --config tslint.json 'test/**/*.ts' --fix",
     "lint-staged": "lint-staged",
     "docs:server": "concurrently \"cpx './README.md' ./documents --watch\" \"docsify serve ./documents\"",
     "docs": "cpx './README.md' ./documents && cpx './documents/.nojekyll' ./gh-pages && cpx './documents/**/*' ./gh-pages",
