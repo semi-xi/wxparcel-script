@@ -1,5 +1,6 @@
 import defaultsDeep from 'lodash/defaultsDeep'
-import UglifyJS, { MinifyOptions } from 'uglify-es'
+import { localRequire } from '../share/module'
+import { MinifyOptions } from 'uglify-es'
 import * as Typings from '../typings'
 
 interface UglifyjsOptions extends Typings.ParcelLoaderOptions {
@@ -11,7 +12,9 @@ interface UglifyjsOptions extends Typings.ParcelLoaderOptions {
  * @param asset 资源对象
  * @param options 配置, 可参考 require('uglify-js').minify 中的配置: https://github.com/mishoo/UglifyJS#usage
  */
-const UglifyjsLoader: Typings.ParcelLoader = (asset, options: UglifyjsOptions) => {
+const UglifyjsLoader: Typings.ParcelLoader = async (asset, options: UglifyjsOptions) => {
+  const UglifyJS = await localRequire('uglify-es', options.rootDir, true)
+
   return new Promise((resolve, reject) => {
     let { file, content, sourceMap } = asset
     let { options: uglifyOptions, sourceMap: useSourceMap } = options

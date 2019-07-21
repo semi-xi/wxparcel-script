@@ -93,7 +93,7 @@ export default class Logger {
    * @param isSoft 信息
    */
   public clear (isSoft: boolean = true): void {
-    process.stdout.write(isSoft ? '\x1B[H\x1B[2J' : '\x1B[2J\x1B[3J\x1B[H\x1Bc')
+    // process.stdout.write(isSoft ? '\x1B[H\x1B[2J' : '\x1B[2J\x1B[3J\x1B[H\x1Bc')
   }
 
   /**

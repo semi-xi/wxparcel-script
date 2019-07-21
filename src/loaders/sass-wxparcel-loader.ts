@@ -1,4 +1,5 @@
-import { render, Options as NodeSassOptions } from 'node-sass'
+import { localRequire } from '../share/module'
+import { Options as NodeSassOptions } from 'node-sass'
 import * as Typings from '../typings'
 
 interface SassOptions extends Typings.ParcelLoaderOptions {
@@ -10,7 +11,8 @@ interface SassOptions extends Typings.ParcelLoaderOptions {
  * @param asset 资源对象
  * @param options 配置, 可参考 require('node-sass').redner 中的配置: https://github.com/sass/node-sass#options
  */
-export const SassLoader: Typings.ParcelLoader = (asset, options: SassOptions) => {
+export const SassLoader: Typings.ParcelLoader = async (asset, options: SassOptions) => {
+  const { render } = await localRequire('node-sass', options.rootDir, true)
   return new Promise((resolve, reject) => {
     const { content } = asset
     const { tmplDir, rootDir, srcDir } = options

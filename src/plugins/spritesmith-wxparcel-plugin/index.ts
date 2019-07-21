@@ -1,15 +1,14 @@
 import fs from 'fs-extra'
-import path from 'path'
+import * as path from 'path'
 import { promisify } from 'util'
 import crypto from 'crypto'
 import forEach from 'lodash/forEach'
 import trimStart from 'lodash/trimStart'
 import trimEnd from 'lodash/trimEnd'
 import defaultsDeep from 'lodash/defaultsDeep'
-import Spritesmith from 'spritesmith'
-import SpritesmithTemplate from 'spritesheet-templates'
 import OptionManager from '../../libs/OptionManager'
 import Assets from '../../libs/Assets'
+import { localRequire } from '../../share/module'
 import * as Typings from '../../typings'
 
 const directory = 'sprites'
@@ -63,8 +62,11 @@ export default class SpritesmithPlugin implements Typings.ParcelPlugin {
    * @param options.styleFile 生成图片样式路径(相对于 tmplDir, 也可以设置成绝对略经)
    * @param options.template 模板路径(相对于 srcDir 路径, 也可以设置成绝对略经)
    */
-  public applyBeforeTransform (assets: Assets, options: NonFunctionProperties<OptionManager>) {
-    let config: SpritesmithOptions & NonFunctionProperties<OptionManager> = defaultsDeep({}, options, this.options)
+  public async applyBeforeTransform (assets: Assets, options: NonFunctionProperties<OptionManager>) {
+    let config: SpritesmithOptions & NonFunctionProperties<OptionManager> = defaultsDeep(options, this.options)
+
+    const [Spritesmith, SpritesmithTemplate] = await localRequire(['spritesmith', 'spritesheet-templates'], options.rootDir, true)
+    const spritesmithAsync = promisify(Spritesmith.run.bind(Spritesmith))
 
     const { srcDir, tmplDir, staticDir, pubPath } = config
     let { directory, imageFile, styleFile, template } = config
@@ -180,4 +182,3 @@ export default class SpritesmithPlugin implements Typings.ParcelPlugin {
 }
 
 const gen = (source: string) => crypto.createHash('md5').update(source).digest('hex').substr(0, 7)
-const spritesmithAsync = promisify(Spritesmith.run.bind(Spritesmith))

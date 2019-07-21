@@ -3,7 +3,21 @@ import Module from 'module'
 import { installDependencies } from './pm'
 
 const cwdPath = process.cwd()
+const modulesPaths = {}
 const modules = {}
+
+/**
+ * 获取真正的模块名称
+ * @param moduleName 模块名
+ */
+export const resolveTruthModuleName = (moduleName: string): string => {
+  let paths = moduleName.split('/')
+  if (paths[0].charAt(0) === '@') {
+    return paths.splice(0, 2).join('/')
+  }
+
+  return paths.splice(0, 1).join('/')
+}
 
 /**
  * 加载本地依赖
@@ -11,9 +25,30 @@ const modules = {}
  * @param findedPath 起始的查找路径
  * @param triedInstall 尝试安装
  */
-export const localRequire = async (moduleName: string, findPath: string = cwdPath, triedInstall: boolean = false): Promise<any> => {
-  let resolved = await localResolve(moduleName, findPath, triedInstall)
-  return require(resolved)
+export const localRequire = async (moduleName: string | string[], findPath: string = cwdPath, triedInstall: boolean = false): Promise<any> => {
+  if (Array.isArray(moduleName)) {
+    let resolves = await localResolve(moduleName, findPath, triedInstall)
+    return resolves.map((resolved, index) => {
+      let name = moduleName[index]
+      let module = modules[name]
+
+      if (!module) {
+        module = require(resolved)
+        modules[resolved] = module
+      }
+
+      return module
+    })
+  }
+
+  let module = modules[moduleName]
+  if (!module) {
+    let resolved = await localResolve(moduleName, findPath, triedInstall)
+    module = require(resolved)
+    modules[resolved] = module
+  }
+
+  return module
 }
 
 /**
@@ -22,23 +57,43 @@ export const localRequire = async (moduleName: string, findPath: string = cwdPat
  * @param findedPath 起始的查找路径
  * @param triedInstall 尝试安装
  */
-export const localResolve = async (moduleName: string, findPath: string = cwdPath, triedInstall: boolean = false): Promise<string> => {
-  try {
-    return require.resolve(moduleName)
+export const localResolve = async <T extends string | string[]>(moduleNames: T, findPath: string = cwdPath, triedInstall: boolean = false): Promise<T> => {
+  let isSingle = !Array.isArray(moduleNames)
+  let names = isSingle ? [moduleNames] : [].concat(moduleNames)
 
-  } catch (error) {
+  let modules = []
+  let invalids = []
+
+  names.forEach((name) => {
     try {
-      return resolve(moduleName, findPath)
+      let path = require.resolve(name)
+      modules.push(path)
 
     } catch (error) {
-      if (triedInstall === true) {
-        await installDependencies(moduleName, findPath)
-        return localResolve(moduleName, findPath)
-      }
+      try {
+        let path = resolve(name, findPath)
+        modules.push(path)
 
-      throw new Error(`Cannot found module ${moduleName}`)
+      } catch (error) {
+        invalids.push(name)
+      }
     }
+  })
+
+  if (invalids.length > 0) {
+    if (triedInstall === true) {
+      let dependencies = invalids.map((name) => resolveTruthModuleName(name))
+      await installDependencies(dependencies, findPath)
+
+      let installedModules = localResolve(dependencies, findPath)
+      modules = modules.concat(installedModules)
+      return isSingle ? modules[0] : modules
+    }
+
+    throw new Error(`Cannot found modules ${invalids.join(',')}`)
   }
+
+  return isSingle ? modules[0] : modules
 }
 
 /**
@@ -60,13 +115,13 @@ export const resolve = (moduleName: string, findedPath: string = cwdPath): strin
 export const resolvePaths = (findedPath: string = cwdPath): any => {
   let rootPath = findedPath ? path.resolve(findedPath) : process.cwd()
   let rootName = path.join(rootPath, '@root')
-  let root = modules[rootName]
+  let root = modulesPaths[rootName]
 
   if (!root) {
     root = new Module(rootName)
     root.filename = rootName
     root.paths = (Module as any)._nodeModulePaths(rootPath)
-    modules[rootName] = root
+    modulesPaths[rootName] = root
   }
 
   return root

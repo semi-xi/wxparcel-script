@@ -49,7 +49,7 @@ export const installDependencies = async (modules: string[] | string, execPath: 
  * 安装 peer 依赖
  */
 export const installPeerDependencies = async (name: string, execPath: string, options: Typings.PMInstallOptions = {}) => {
-  const modulePath = path.dirname(resolve(name, execPath))
+  const modulePath = path.resolve(path.join('node_modules', name))
   const packageFile = path.join(modulePath, 'package.json')
   const pkg = await fs.readJsonSync(packageFile)
   const peers = pkg.peerDependencies || {}

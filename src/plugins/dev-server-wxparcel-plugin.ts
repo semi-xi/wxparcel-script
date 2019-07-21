@@ -58,7 +58,7 @@ export default class DevServerPlugin implements Typings.ParcelPlugin {
    * @param options 配置
    */
   public async applyAsync (options: NonFunctionProperties<OptionManager>) {
-    let config: DevServerOptions & NonFunctionProperties<OptionManager> = defaultsDeep({}, options, this.options)
+    let config: DevServerOptions & NonFunctionProperties<OptionManager> = defaultsDeep(options, this.options)
 
     if (config.watching === false) {
       return Promise.resolve()

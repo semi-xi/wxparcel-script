@@ -170,11 +170,9 @@ export default class JSONResolver extends Resolver {
 
   /**
    * 解析组件配置
-   *
-   * @param [config={}] 配置
-   * @returns 组件集合
+   * @param components 组件
    */
-  resolveComponents (components) {
+  public resolveComponents (components) {
     let relativePath = path.dirname(this.file)
     let outputs = []
 
@@ -182,9 +180,9 @@ export default class JSONResolver extends Resolver {
       let realtiveFolder = path.dirname(component)
       let folder = this.convertRelative(realtiveFolder, [relativePath, this.options.srcDir])
 
-      if (folder) {
+      if (folder !== false) {
         let name = path.basename(component)
-        outputs.push(this.findModule(name, folder))
+        outputs.push(this.findModule(name, folder as string))
       }
     })
 
@@ -193,11 +191,10 @@ export default class JSONResolver extends Resolver {
 
   /**
    * 解析配置需要的图片
-   *
-   * @param [config={}] 配置
+   * @param tabs Tab
    * @returns 图片集合
    */
-  resolveTabs (tabs) {
+  public resolveTabs (tabs): string[] {
     let images = []
     let basePath = path.dirname(this.file)
 
@@ -217,15 +214,16 @@ export default class JSONResolver extends Resolver {
   }
 
   /**
-   * 转换相对路径, 用于查找文件是否存在
+   * 转换相对路径
+   * @description
+   * 用于查找文件是否存在
    * 通过传入路径 paths, 查找相对路径的 file
    * 在某一路径是否存在, 存在返回路径地址, 不存在返回  false
-   *
    * @param file 文件路径
    * @param paths 路径集合
    * @returns 路径地址或 false
    */
-  convertRelative (file, paths) {
+  public convertRelative (file: string, paths: string[]): string | boolean {
     if (!Array.isArray(paths) || paths.length === 0) {
       throw new Error('Paths is not a array or not be provided')
     }
@@ -244,15 +242,15 @@ export default class JSONResolver extends Resolver {
 
   /**
    * 查找模块
+   * @description
    * 这里的模块是指 微信小程序 指定的 page, component 等
    * 拥有相对规范的一个组合; 通过此方法可以查找到配置对应的
    * Page, component 的路径与所包含对应的文件集合
-   *
    * @param name 模块名称
    * @param folder 路径
    * @returns 包括模块名称,模块路径,模块所包含符合要求的文件
    */
-  findModule (name, folder) {
+  public findModule (name: string, folder: string) {
     if (!folder) {
       throw new TypeError('Folder is not provided')
     }

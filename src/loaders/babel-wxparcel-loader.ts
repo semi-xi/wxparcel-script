@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import { transform, TransformOptions } from '@babel/core'
+import { localRequire } from '../share/module'
+import { TransformOptions } from '@babel/core'
 import * as Typings from '../typings'
 
 interface BabelOptions extends Typings.ParcelLoaderOptions {
@@ -12,7 +13,9 @@ interface BabelOptions extends Typings.ParcelLoaderOptions {
  * @param asset 资源对象
  * @param options 配置, 配置参考 require('@babel/core').transform 中的配置, https://babeljs.io/docs/en/next/babel-core.html
  */
-const BabelLoader: Typings.ParcelLoader = (asset, options: BabelOptions) => {
+const BabelLoader: Typings.ParcelLoader = async (asset, options: BabelOptions) => {
+  const { transform } = await localRequire('@babel/core', options.rootDir, true)
+
   return new Promise((resolve) => {
     let { file, content } = asset
     let { options: babelOptions, sourceMap: useSourceMap } = options

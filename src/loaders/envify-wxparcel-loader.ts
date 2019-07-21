@@ -1,4 +1,4 @@
-import envifyReplace from 'loose-envify/replace'
+import { localRequire } from '../share/module'
 import * as Typings from '../typings'
 
 interface EnvifyOptions extends Typings.ParcelLoaderOptions {
@@ -12,7 +12,9 @@ interface EnvifyOptions extends Typings.ParcelLoaderOptions {
  * @param asset 资源对象
  * @param options 配置
  */
-const EnvifyLoader: Typings.ParcelLoader = (asset, options: EnvifyOptions) => {
+const EnvifyLoader: Typings.ParcelLoader = async (asset, options: EnvifyOptions) => {
+  const envifyReplace = await localRequire('loose-envify/replace', options.rootDir, true)
+
   return new Promise((resolve) => {
     let { content } = asset
     let { options: envifyOptions } = options
