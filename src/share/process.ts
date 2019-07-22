@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events'
 import { spawn as cpSpawn, SpawnOptions } from 'child_process'
+import Queue from '../libs/Queue'
 import * as Typings from '../typings'
 
 const EXIT_TOKEN = 'processExit'
@@ -21,12 +22,23 @@ let handleProcessExit = () => {
 process.on('exit', handleProcessExit)
 process.on('SIGINT', handleProcessSigint)
 
+/**
+ * 程序退出事件
+ */
 export const onexit = (handle: (...args: any[]) => void) => {
   ee.on(EXIT_TOKEN, handle)
 }
 
 const processes = []
 
+/**
+ * spawn promisify
+ * @param cli 命令
+ * @param params 参数
+ * @param options SpawnOptions
+ * @param stdout 输出配置
+ * @param killToken 关闭 token
+ */
 export const spawn = (cli: string, params?: Array<string>, options?: SpawnOptions, stdout?: Typings.ProcessStdout, killToken?: Symbol): Promise<any> => {
   return new Promise((resolve, reject) => {
     let cp = cpSpawn(cli, params || [], options || {})
@@ -50,6 +62,10 @@ export const spawn = (cli: string, params?: Array<string>, options?: SpawnOption
   })
 }
 
+/**
+ * kill spawn process
+ * @param killToken 关闭 token
+ */
 export const kill = (killToken?: Symbol): void => {
   const index = processes.findIndex((item) => item.killToken === killToken)
   if (-1 === index) {
@@ -57,3 +73,15 @@ export const kill = (killToken?: Symbol): void => {
     process.kill()
   }
 }
+
+const spawnQueue = new Queue()
+
+/**
+ * 队列化 spawn
+ * @param cli 命令
+ * @param params 参数
+ * @param options SpawnOptions
+ * @param stdout 输出配置
+ * @param killToken 关闭 token
+ */
+export const pipeSpawn: typeof spawn = spawnQueue.pipefy(spawn)
