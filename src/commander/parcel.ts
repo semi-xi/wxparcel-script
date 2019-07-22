@@ -13,17 +13,13 @@ import babelRequire from '../vendors/babel-register'
 
 // 执行编译流程
 const run = async (options: Typings.ParcelCliOptions = {}) => {
-  let { config: configFile, bundle } = options
+  let { config: configFile } = options
   if (!configFile) {
     throw new TypeError('Config file is not provided')
   }
 
   if (!fs.existsSync(configFile)) {
     throw new Error(`Config file is not found, please ensure config file exists. ${configFile}`)
-  }
-
-  if (typeof bundle !== 'undefined') {
-    GlobalOptionManager.bundle = bundle !== 'false'
   }
 
   let parcelOptions: any
@@ -40,10 +36,6 @@ const run = async (options: Typings.ParcelCliOptions = {}) => {
 
   if (options.hasOwnProperty('publicPath')) {
     options.publicPath = options.publicPath
-  }
-
-  if (options.hasOwnProperty('sourceMap')) {
-    options.sourceMap = options.sourceMap === 'false' ? false : options.sourceMap
   }
 
   let proto = Object.getPrototypeOf(parcelOptions)

@@ -46,6 +46,9 @@ export default class WXSSResolver extends Resolver {
    */
   public convertFinallyState (source: string, { code, destination, required, ...props }) {
     if (required.charAt(0) === '@') {
+      let url = this.convertAtRequired(required)
+      source = replacement(source, code, url, IMAGE_REGEXP)
+
       let dependence = { destination, required, ...props }
       return [source, dependence]
     }
