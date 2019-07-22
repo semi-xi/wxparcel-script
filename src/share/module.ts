@@ -7,18 +7,7 @@ const cwdPath = process.cwd()
 const modulesPaths = {}
 const modules = {}
 
-/**
- * 获取真正的模块名称
- * @param moduleName 模块名
- */
-export const resolveTruthModuleName = (moduleName: string): string => {
-  let paths = moduleName.split('/')
-  if (paths[0].charAt(0) === '@') {
-    return paths.splice(0, 2).join('/')
-  }
-
-  return paths.splice(0, 1).join('/')
-}
+let installPromise: Promise<any> = null
 
 /**
  * 加载本地依赖
@@ -59,6 +48,8 @@ export const localRequire = async (moduleName: string | string[], findPath: stri
  * @param triedInstall 尝试安装
  */
 export const localResolve = async <T extends string | string[]>(moduleNames: T, findPath: string = cwdPath, triedInstall: boolean = false): Promise<T> => {
+  installPromise && await installPromise
+
   let isSingle = !Array.isArray(moduleNames)
   let names = isSingle ? [moduleNames] : [].concat(moduleNames)
 
@@ -84,8 +75,10 @@ export const localResolve = async <T extends string | string[]>(moduleNames: T, 
   if (invalids.length > 0) {
     if (triedInstall === true) {
       let dependencies = invalids.map((name) => resolveTruthModuleName(name))
+
       log(`Try install ${dependencies.join(',')}, please wait...`)
-      await installDependencies(dependencies, findPath)
+      installPromise = installDependencies(dependencies, findPath)
+      await installPromise
 
       let installedModules = localResolve(moduleNames, findPath)
       modules = modules.concat(installedModules)
@@ -127,4 +120,17 @@ export const resolvePaths = (findedPath: string = cwdPath): any => {
   }
 
   return root
+}
+
+/**
+ * 获取真正的模块名称
+ * @param moduleName 模块名
+ */
+export const resolveTruthModuleName = (moduleName: string): string => {
+  let paths = moduleName.split('/')
+  if (paths[0].charAt(0) === '@') {
+    return paths.splice(0, 2).join('/')
+  }
+
+  return paths.splice(0, 1).join('/')
 }
