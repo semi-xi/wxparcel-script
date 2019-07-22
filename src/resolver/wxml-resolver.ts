@@ -45,6 +45,9 @@ export default class WXMLResolver extends Resolver {
   public convertFinallyState (source: string, { code, dependency, destination, required, ...props }) {
     let extname = path.extname(destination)
     if (required.charAt(0) === '@' || extname === '' || /\.(wxs|wxml)$/.test(extname)) {
+      let url = this.convertAtRequired(required)
+      source = replacement(source, code, url, SRC_REGEXP)
+
       let dependence = { dependency, destination, required, ...props }
       return [source, dependence]
     }

@@ -1,3 +1,4 @@
+import * as path from 'path'
 import stripComments from 'strip-css-comments'
 import Resolver from './resolver'
 import { escapeRegExp } from '../share/utils'
@@ -44,6 +45,9 @@ export default class WXSResolver extends Resolver {
    */
   public convertFinallyState (source: string, { code, destination, required, ...props }) {
     if (required.charAt(0) === '@') {
+      let url = this.convertAtRequired(required)
+      source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
+
       let dependence = { destination, required, ...props }
       return [source, dependence]
     }

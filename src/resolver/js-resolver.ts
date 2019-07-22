@@ -66,9 +66,10 @@ export default class JSResolver extends Resolver {
     }
 
     if (required.charAt(0) === '@') {
-      let dependence = { dependency, destination, required, ...props }
-      let url = required.substr(1)
+      let url = this.convertAtRequired(required)
       source = source.replace(new RegExp(escapeRegExp(code), 'ig'), `"${url}"`)
+
+      let dependence = { dependency, destination, required, ...props }
       return [source, dependence]
     }
 

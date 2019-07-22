@@ -138,6 +138,30 @@ export default class Resolver {
   }
 
   /**
+   * 转换 @ 标识的 require 路径
+   * @param required 模块路径
+   * @returns 转换后的模块路径
+   */
+  public convertAtRequired (required: string): string {
+    const { srcDir } = this.options
+    if (required.charAt(0) === '@') {
+      required = required.substr(1)
+
+      switch (required.charAt(0)) {
+        case '~':
+          return required.substr(1)
+        case '/':
+          let src = path.basename(srcDir)
+          return required.replace(`/${src}`, '')
+        default:
+          return required
+      }
+    }
+
+    return required
+  }
+
+  /**
    * 转换目标路径
    * @param file 文件路径
    * @returns 目标路径
