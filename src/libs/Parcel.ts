@@ -39,15 +39,9 @@ export default class Parcel {
    */
   public running: boolean
 
-  /**
-   * 阻塞的任务队列
-   */
-  public paddingTask: () => Array<Promise<any>>
-
   constructor (options: OptionManager) {
     this.options = options
     this.running = false
-    this.paddingTask = null
   }
 
   /**
@@ -188,7 +182,6 @@ export default class Parcel {
 
       } finally {
         this.running = false
-        this.excutePaddingTask()
       }
     }
 
@@ -399,16 +392,6 @@ export default class Parcel {
           return Promise.resolve()
         }
       }
-    }
-  }
-
-  /**
-   * 执行 padding 中的任务
-   */
-  public excutePaddingTask (): void {
-    if (typeof this.paddingTask === 'function') {
-      this.paddingTask()
-      this.paddingTask = undefined
     }
   }
 

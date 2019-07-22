@@ -1,13 +1,10 @@
 import * as path from 'path'
 import Module from 'module'
-import { installDependencies } from './pm'
-import { log } from './utils'
+import { pipeInstallDependencies } from './pm'
 
 const cwdPath = process.cwd()
 const modulesPaths = {}
 const modules = {}
-
-let installPromise: Promise<any> = null
 
 /**
  * 加载本地依赖
@@ -48,8 +45,6 @@ export const localRequire = async (moduleName: string | string[], findPath: stri
  * @param triedInstall 尝试安装
  */
 export const localResolve = async <T extends string | string[]>(moduleNames: T, findPath: string = cwdPath, triedInstall: boolean = false): Promise<T> => {
-  installPromise && await installPromise
-
   let isSingle = !Array.isArray(moduleNames)
   let names = isSingle ? [moduleNames] : [].concat(moduleNames)
 
@@ -75,12 +70,9 @@ export const localResolve = async <T extends string | string[]>(moduleNames: T, 
   if (invalids.length > 0) {
     if (triedInstall === true) {
       let dependencies = invalids.map((name) => resolveTruthModuleName(name))
+      await pipeInstallDependencies(dependencies, findPath)
 
-      log(`Try install ${dependencies.join(',')}, please wait...`)
-      installPromise = installDependencies(dependencies, findPath)
-      await installPromise
-
-      let installedModules = localResolve(moduleNames, findPath)
+      let installedModules = await localResolve(moduleNames, findPath, true)
       modules = modules.concat(installedModules)
       return isSingle ? modules[0] : modules
     }
