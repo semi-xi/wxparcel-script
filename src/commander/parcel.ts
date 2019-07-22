@@ -25,7 +25,13 @@ const run = async (options: Typings.ParcelCliOptions = {}) => {
   let parcelOptions: any
   switch (path.extname(configFile)) {
     case '.js': {
-      parcelOptions = await babelRequire(configFile)
+      if (/\.babel\.js$/.test(configFile)) {
+        parcelOptions = await babelRequire(configFile)
+        break
+      }
+
+      parcelOptions = require(configFile)
+      parcelOptions = parcelOptions.default || parcelOptions
       break
     }
 
