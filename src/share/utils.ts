@@ -35,7 +35,7 @@ export const replacement = (source: string, content: string, url: string, regexp
  * @param source 原字符串
  * @returns 哈希
  */
-export const gen = (source: string): string => {
+export const gen = (source: Buffer): string => {
   return crypto.createHash('md5').update(source).digest('hex').substr(0, 7)
 }
 
@@ -46,7 +46,7 @@ export const gen = (source: string): string => {
  */
 export const genFileSync = (file: string): string => {
   let source = fs.readFileSync(file)
-  return gen(source.toString('utf-8'))
+  return gen(source)
 }
 
 /**
