@@ -1,4 +1,3 @@
-import * as path from 'path'
 import stripComments from 'strip-css-comments'
 import Resolver from './resolver'
 import { escapeRegExp } from '../share/utils'

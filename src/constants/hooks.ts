@@ -1,5 +1,6 @@
 export default {
   async: 'applyAsync',
   before: 'applyBefore',
-  beforeTransform: 'applyBeforeTransform'
+  beforeTransform: 'applyBeforeTransform',
+  beforeFlush: 'applyBeforeFlush'
 }

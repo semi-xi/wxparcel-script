@@ -8,6 +8,7 @@ import UglifyJSLoader from './loaders/uglifyjs-wxparcel-loader'
 import CleanPlugin from './plugins/clean-wxparcel-plugin'
 import DevServerPlugin from './plugins/dev-server-wxparcel-plugin'
 import SpritesmithPlugin from './plugins/spritesmith-wxparcel-plugin'
+import QQPlugin from './plugins/qq-wxparcel-plugin'
 
 // Resolver
 import JSResolver from './resolver/js-resolver'
@@ -60,6 +61,7 @@ export {
   CleanPlugin,
   DevServerPlugin,
   SpritesmithPlugin,
+  QQPlugin,
 
   /**
    * resolvers

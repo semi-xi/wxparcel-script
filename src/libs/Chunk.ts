@@ -123,20 +123,21 @@ export default class Chunk {
     let { rule, destination } = this.state = state
 
     this.rule = rule = rule || {} as any
-    this.destination = destination || ''
+    this.destination = Array.isArray(destination) ? destination : destination ? [destination] : []
+    this.destination = this.destination.map((destination) => {
+      if (destination) {
+        if (rule.extname) {
+          let dirname = path.dirname(destination)
+          let filename = path.basename(destination)
+          let extname = path.extname(file)
 
-    if (destination) {
-      if (rule.extname) {
-        let dirname = path.dirname(destination)
-        let filename = path.basename(destination)
-        let extname = path.extname(file)
+          filename = filename.replace(extname, rule.extname)
+          return path.join(dirname, filename)
+        }
 
-        filename = filename.replace(extname, rule.extname)
-        this.destination = path.join(dirname, filename)
-      } else {
-        this.destination = destination
+        return destination
       }
-    } else {
+
       /**
        * windows 下 path 存在多个反斜杠
        * 因此需要 escape 才能进行 search
@@ -154,8 +155,8 @@ export default class Chunk {
         filename = filename.replace(extname, rule.extname)
       }
 
-      this.destination = path.join(rule.type === 'static' ? staticDir : outDir, relativePath, filename)
-    }
+      return path.join(rule.type === 'static' ? staticDir : outDir, relativePath, filename)
+    })
   }
 
   /**

@@ -1,5 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
+import uniq from 'lodash/uniq'
 import uniqBy from 'lodash/uniqBy'
 import flatten from 'lodash/flatten'
 import flattenDeep from 'lodash/flattenDeep'
@@ -76,14 +77,18 @@ export default class Parcel {
       entries.unshift(projectConfigFile)
 
       await GlobalParser.multiCompile(entries)
-      let { chunks } = GlobalAssets
+      let { chunks: globalChunks } = GlobalAssets
 
       if (useBundle === true) {
-        let bundles = await GlobalBundler.bundle(chunks)
+        let bundles = await GlobalBundler.bundle(globalChunks)
         let stats = await this.flush(bundles) as any
         stats.spendTime = Date.now() - startTime
         return stats
       }
+
+      const beforeFlushAssets = new Assets(this.options)
+      await this.hook('beforeFlush')(beforeFlushAssets)
+      const chunks = uniq([].concat(globalChunks, beforeFlushAssets.chunks))
 
       let stats = await this.flush(chunks) as any
       stats.spendTime = Date.now() - startTime
@@ -320,7 +325,7 @@ export default class Parcel {
    * 触发钩子
    * @param type 钩子类型 ['async', 'before', 'beforeTransform']
    */
-  public hook (type: 'async' | 'before' | 'beforeTransform'): (instance?: Assets) => Promise<any> {
+  public hook (type: 'async' | 'before' | 'beforeTransform' | 'beforeFlush'): (instance?: Assets) => Promise<any> {
     switch (type) {
       case 'async': {
         return () => {
@@ -364,12 +369,42 @@ export default class Parcel {
       }
 
       case 'beforeTransform': {
-        return (assets = new Assets(this.options)) => {
+        return (assets: Assets = new Assets(this.options)) => {
           if (!(assets instanceof Assets)) {
             throw new TypeError('Params assets is not instanceof Assets')
           }
 
-          let promises = []
+          const promises = []
+          this.options.plugins.forEach((plugin) => {
+            let fn = HOOK_TYPES[type]
+            if (!(fn in plugin && typeof plugin[fn] === 'function')) {
+              return
+            }
+
+            promises.push(async () => {
+              let options = this.options.connect({})
+              await plugin[fn](assets, options)
+
+              assets.size > 0 && GlobalAssets.chunks.push(...assets.chunks)
+              return Promise.resolve()
+            })
+          })
+
+          if (promises.length > 0) {
+            return promisifyWaterfall(promises)
+          }
+
+          return Promise.resolve()
+        }
+      }
+
+      case 'beforeFlush': {
+        return (assets: Assets) => {
+          if (!(assets instanceof Assets)) {
+            throw new TypeError('Params assets is not instanceof Assets')
+          }
+
+          const promises = []
           this.options.plugins.forEach((plugin) => {
             let fn = HOOK_TYPES[type]
             if (!(fn in plugin && typeof plugin[fn] === 'function')) {

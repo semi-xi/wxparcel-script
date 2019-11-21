@@ -3,7 +3,7 @@
  */
 import {
   BabelLoader, EnvifyLoader, UglifyJSLoader, SassLoader,
-  CleanPlugin, DevServerPlugin,
+  CleanPlugin, DevServerPlugin, QQPlugin,
   chunkTypes
 } from '../index'
 import * as Typings from '../typings'
@@ -50,7 +50,8 @@ let wxssRules: Typings.ParcelOptionRule[] = [
 let plugins: Typings.ParcelPlugin[] = [
   new CleanPlugin({
     alisas: ['outDir', 'staticDir', 'tmplDir']
-  })
+  }),
+  new QQPlugin()
 ]
 
 // 开发环境下配置

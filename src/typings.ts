@@ -205,7 +205,7 @@ export interface ParcelChunkState {
   /**
    * 保存的目的地路径
    */
-  destination?: string
+  destination?: string | string[]
 }
 
 /**
@@ -262,13 +262,14 @@ export type ParcelLoader = (asset: Chunk['metadata'], options: ParcelLoaderOptio
 export interface ParcelPlugin {
   applyAsync?: (options: NonFunctionProperties<OptionManager>) => Promise<any>
   applyBefore?: (options: OptionManager) => Promise<any>
-  applyBeforeTransform?: (assets: Assets, options: NonFunctionProperties<OptionManager>) => Promise<any>
+  applyBeforeTransform?: (assets: Assets, options: NonFunctionProperties<OptionManager>) => Promise<any>,
+  applyBeforeFlush?: (assets: Assets, options: NonFunctionProperties<OptionManager>) => Promise<any>
 }
 
 export interface ParcelChunkDependency {
   file?: string
   dependency: string
-  destination?: string
+  destination?: string | string[]
   required?: string
   type?: ValueOf<typeof Types>
 }
