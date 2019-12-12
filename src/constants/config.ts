@@ -3,9 +3,10 @@
  */
 import {
   BabelLoader, EnvifyLoader, UglifyJSLoader, SassLoader,
-  CleanPlugin, DevServerPlugin,
+  CleanPlugin, DevServerPlugin, SpritesmithPlugin,
   chunkTypes
 } from '../index'
+import ImageLoader from '../loaders/image-wxparcel-loader'
 import * as Typings from '../typings'
 
 // 分片类型
@@ -46,11 +47,24 @@ let wxssRules: Typings.ParcelOptionRule[] = [
   }
 ]
 
+let imageRules: Typings.ParcelOptionRule[] = [
+  {
+    test: /\.(png|jpe?g)$/,
+    loaders: [
+      {
+        use: ImageLoader,
+        options: {}
+      }
+    ]
+  }
+]
+
 // 插件配置
 let plugins: Typings.ParcelPlugin[] = [
   new CleanPlugin({
     alisas: ['outDir', 'staticDir', 'tmplDir']
-  })
+  }),
+  new SpritesmithPlugin()
 ]
 
 // 开发环境下配置
@@ -89,7 +103,7 @@ class Config {
    * @readonly
    */
   public get rules () {
-    return [...jsRules, ...wxssRules]
+    return [...jsRules, ...wxssRules, ...imageRules]
   }
 
   /**
